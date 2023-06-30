@@ -1,4 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:video_player/platform_event.dart';
+import 'package:video_player/video_player_data_source.dart';
 
 import 'video_player_method_channel.dart';
 
@@ -8,7 +11,7 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
 
   static final Object _token = Object();
 
-  static VideoPlayerPlatform _instance = MethodChannelVideoPlayer();
+  static VideoPlayerPlatform _instance = MethodChannelVideoPlayer()..init();
 
   /// The default instance of [VideoPlayerPlatform] to use.
   ///
@@ -23,7 +26,66 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<String?> getPlatformVersion() {
-    throw UnimplementedError('platformVersion() has not been implemented.');
+  /// Initializes the platform interface and disposes all existing players.
+  ///
+  /// This method is called when the plugin is first initialized
+  /// and on every full restart.
+  Future<void> init() =>
+      throw UnimplementedError('init() has not been implemented.');
+
+  /// Clears one video.
+  Future<void> dispose(int? textureId) =>
+      throw UnimplementedError('dispose() has not been implemented.');
+
+  /// Creates an instance of a video player and returns its textureId.
+  Future<int?> create() =>
+      throw UnimplementedError('create() has not been implemented.');
+
+  /// Returns a Stream of [PlatformEventType]s.
+  Stream<PlatformEvent> eventStreamFor(int? textureId) =>
+      throw UnimplementedError('eventsStream() has not been implemented.');
+
+  /// Returns a widget displaying the video with a given textureID.
+  Widget buildView(int? textureId, bool isFullscreen) =>
+      throw UnimplementedError('buildView() has not been implemented.');
+
+  Future<void> setDataSource(
+          int? textureId, VideoPlayerDataSource dataSource) =>
+      throw UnimplementedError('setDataSource() has not been implemented.');
+
+  Future<void> play(int? textureId) =>
+      throw UnimplementedError('play() has not been implemented.');
+
+  Future<void> pause(int? textureId) =>
+      throw UnimplementedError('pause() has not been implemented.');
+
+  /// Sets the video position to a [Duration] from the start.
+  Future<void> seekTo(int? textureId, Duration position) =>
+      throw UnimplementedError('seekTo() has not been implemented.');
+
+  Future<void> willExitFullscreen(int? textureId) => throw UnimplementedError(
+      'willExitFullscreen() has not been implemented.');
+
+  Future<bool> isPictureInPictureSupported() => throw UnimplementedError(
+      'isPictureInPictureSupported() has not been implemented.');
+
+  Future<void> enablePictureInPicture(int? textureId) =>
+      throw UnimplementedError(
+          'enablePictureInPicture() has not been implemented.');
+
+  Future<void> disablePictureInPicture(int? textureId) =>
+      throw UnimplementedError(
+          'disablePictureInPicture() has not been implemented.');
+
+  Future<void> setMuted(int? textureId, bool muted) =>
+      throw UnimplementedError('setMuted() has not been implemented.');
+
+  Future<void> setPlaybackRate(int? textureId, double rate) =>
+      throw UnimplementedError('setPlaybackRate() has not been implemented.');
+
+  /// Sets the video track parameters (used to select quality of the video)
+  Future<void> setTrackParameters(
+      int? textureId, int? width, int? height, int? bitrate) {
+    throw UnimplementedError('setTrackParameters() has not been implemented.');
   }
 }
