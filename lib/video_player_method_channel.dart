@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:video_player/configurations/video_player_buffering_configuration.dart';
 import 'package:video_player/platform_event.dart';
 import 'package:video_player/utils.dart';
 import 'package:video_player/video_player_data_source.dart';
@@ -23,8 +24,18 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
       );
 
   @override
-  Future<int?> create() async {
-    final response = await methodChannel.invokeMethod('create');
+  Future<int?> create(
+      VideoPlayerBufferingConfiguration bufferingConfiguration) async {
+    final response = await methodChannel.invokeMethod(
+      'create',
+      <String, dynamic>{
+        'minBufferMs': bufferingConfiguration.minBufferMs,
+        'maxBufferMs': bufferingConfiguration.maxBufferMs,
+        'bufferForPlaybackMs': bufferingConfiguration.bufferForPlaybackMs,
+        'bufferForPlaybackAfterRebufferMs':
+            bufferingConfiguration.bufferForPlaybackAfterRebufferMs,
+      },
+    );
     final map = Map<String, dynamic>.from(response);
     return map["textureId"] as int?;
   }
@@ -112,7 +123,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
   Widget buildView(int? textureId, bool isFullscreen) {
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       return UiKitView(
-        viewType: 'com.samansa/video_player',
+        viewType: 'matsune/video_player',
         creationParamsCodec: const StandardMessageCodec(),
         creationParams: {'textureId': textureId!, 'isFullscreen': isFullscreen},
       );
@@ -126,29 +137,11 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
       int? textureId, VideoPlayerDataSource dataSource) async {
     Map<String, dynamic>? dataSourceDescription;
     switch (dataSource.sourceType) {
-      case DataSourceType.asset:
-        dataSourceDescription = <String, dynamic>{
-          // 'key': dataSource.key,
-          'asset': dataSource.asset,
-          // 'package': dataSource.package,
-          // 'useCache': false,
-          // 'maxCacheSize': 0,
-          // 'maxCacheFileSize': 0,
-          // 'showNotification': dataSource.showNotification,
-          // 'title': dataSource.title,
-          // 'author': dataSource.author,
-          // 'imageUrl': dataSource.imageUrl,
-          // 'notificationChannelName': dataSource.notificationChannelName,
-          // 'overriddenDuration': dataSource.overriddenDuration?.inMilliseconds,
-          // 'activityName': dataSource.activityName
-        };
-        break;
       case DataSourceType.network:
         dataSourceDescription = <String, dynamic>{
-          // 'key': dataSource.key,
           'uri': dataSource.uri,
           // 'formatHint': dataSource.rawFormalHint,
-          // 'headers': dataSource.headers,
+          'headers': dataSource.headers,
           // 'useCache': dataSource.useCache,
           // 'maxCacheSize': dataSource.maxCacheSize,
           // 'maxCacheFileSize': dataSource.maxCacheFileSize,
@@ -165,23 +158,6 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
           // 'activityName': dataSource.activityName,
           // 'clearKey': dataSource.clearKey,
           // 'videoExtension': dataSource.videoExtension,
-        };
-        break;
-      case DataSourceType.file:
-        dataSourceDescription = <String, dynamic>{
-          // 'key': dataSource.key,
-          'uri': dataSource.uri,
-          // 'useCache': false,
-          // 'maxCacheSize': 0,
-          // 'maxCacheFileSize': 0,
-          // 'showNotification': dataSource.showNotification,
-          // 'title': dataSource.title,
-          // 'author': dataSource.author,
-          // 'imageUrl': dataSource.imageUrl,
-          // 'notificationChannelName': dataSource.notificationChannelName,
-          // 'overriddenDuration': dataSource.overriddenDuration?.inMilliseconds,
-          // 'activityName': dataSource.activityName,
-          // 'clearKey': dataSource.clearKey
         };
         break;
     }

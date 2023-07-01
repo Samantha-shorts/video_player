@@ -2,7 +2,10 @@ group 'matsune.video_player'
 version '1.0-SNAPSHOT'
 
 buildscript {
+    ext.exoPlayerVersion = "2.18.7"
     ext.kotlin_version = '1.7.10'
+    ext.multidexVersion = "2.0.1"
+
     repositories {
         google()
         mavenCentral()
@@ -46,6 +49,14 @@ android {
     }
 
     dependencies {
+        implementation "com.google.android.exoplayer:exoplayer-core:$exoPlayerVersion"
+        implementation "com.google.android.exoplayer:exoplayer-hls:$exoPlayerVersion"
+        implementation "com.google.android.exoplayer:exoplayer-dash:$exoPlayerVersion"
+        implementation "com.google.android.exoplayer:exoplayer-smoothstreaming:$exoPlayerVersion"
+        implementation "com.google.android.exoplayer:exoplayer-ui:$exoPlayerVersion"
+        implementation "com.google.android.exoplayer:extension-mediasession:$exoPlayerVersion"
+        implementation "androidx.multidex:multidex:$multidexVersion"
+
         testImplementation 'org.jetbrains.kotlin:kotlin-test'
         testImplementation 'org.mockito:mockito-core:5.0.0'
     }

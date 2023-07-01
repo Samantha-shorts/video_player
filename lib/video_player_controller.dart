@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/abr/abr_utils.dart';
+import 'package:video_player/configurations/video_player_buffering_configuration.dart';
 import 'package:video_player/configurations/video_player_configuration.dart';
 import 'package:video_player/platform_event.dart';
 import 'package:video_player/subtitles/video_player_subtitles_controller.dart';
@@ -37,6 +38,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   }
 
   final VideoPlayerConfiguration configuration;
+  VideoPlayerBufferingConfiguration bufferingConfiguration =
+      const VideoPlayerBufferingConfiguration();
 
   int? _textureId;
 
@@ -69,7 +72,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   }
 
   Future<void> _create() async {
-    _textureId = await VideoPlayerPlatform.instance.create();
+    _textureId =
+        await VideoPlayerPlatform.instance.create(bufferingConfiguration);
     tracksController.textureId = _textureId;
     _createCompleter.complete(null);
 
@@ -174,6 +178,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     if (_isDisposed) {
       return;
     }
+    bufferingConfiguration = dataSource.bufferingConfiguration;
     value = VideoPlayerValue();
     if (!_createCompleter.isCompleted) await _createCompleter.future;
     _initializeCompleter = Completer<void>();
@@ -260,12 +265,9 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   Future<void> enablePictureInPicture() async {
     final bool isPipSupported = await isPictureInPictureSupported();
     if (!isPipSupported) return;
+    await VideoPlayerPlatform.instance.enablePictureInPicture(textureId);
     if (Platform.isAndroid) {
-      throw UnimplementedError("PiP in Android");
-    } else if (Platform.isIOS) {
-      return VideoPlayerPlatform.instance.enablePictureInPicture(textureId);
-    } else {
-      Utils.log("Unsupported PiP in current platform.");
+      enterFullscreen();
     }
   }
 

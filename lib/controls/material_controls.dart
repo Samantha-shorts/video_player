@@ -30,6 +30,14 @@ class _MaterialControlsState
   double get controlsOpacity => _controlsHidden ? 0.0 : 1.0;
 
   @override
+  Future<void> setup() async {
+    await super.setup();
+    if (lastValue?.isPip == true) {
+      setControlsHidden(true);
+    }
+  }
+
+  @override
   void clear() {
     _hideTimer?.cancel();
     super.clear();

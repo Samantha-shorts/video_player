@@ -45,11 +45,6 @@ class _VideoPlayerState extends State<VideoPlayer> {
   bool _isFullscreen = false;
 
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (!_initialized) {

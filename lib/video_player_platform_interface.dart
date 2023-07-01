@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:video_player/configurations/video_player_buffering_configuration.dart';
 import 'package:video_player/platform_event.dart';
 import 'package:video_player/video_player_data_source.dart';
 
@@ -38,7 +39,8 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
       throw UnimplementedError('dispose() has not been implemented.');
 
   /// Creates an instance of a video player and returns its textureId.
-  Future<int?> create() =>
+  Future<int?> create(
+          VideoPlayerBufferingConfiguration bufferingConfiguration) =>
       throw UnimplementedError('create() has not been implemented.');
 
   /// Returns a Stream of [PlatformEventType]s.

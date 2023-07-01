@@ -12,17 +12,14 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Basic player"),
+        title: const Text("Basic player"),
       ),
       body: Column(
         children: [
           const SizedBox(height: 8),
           AspectRatio(
             aspectRatio: 16 / 9,
-            child: VideoPlayer.network(Constants.elephantDreamStreamUrl),
-            // BetterPlayer.network(
-            //   Constants.forBiggerBlazesUrl,
-            // ),
+            child: VideoPlayer.network(Constants.m3u8_16x9),
           ),
         ],
       ),
