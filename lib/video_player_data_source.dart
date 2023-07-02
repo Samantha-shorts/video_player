@@ -1,4 +1,5 @@
 import 'package:video_player/configurations/video_player_buffering_configuration.dart';
+import 'package:video_player/configurations/video_player_notification_configuration.dart';
 
 class VideoPlayerDataSource {
   VideoPlayerDataSource({
@@ -7,6 +8,7 @@ class VideoPlayerDataSource {
     this.asset,
     this.headers,
     this.bufferingConfiguration = const VideoPlayerBufferingConfiguration(),
+    this.notificationConfiguration,
   }) : assert(uri == null || asset == null);
 
   /// Describes the type of data source this [VideoPlayerController]
@@ -32,6 +34,9 @@ class VideoPlayerDataSource {
   ///Configuration of video buffering. Currently only supported in Android
   ///platform.
   final VideoPlayerBufferingConfiguration bufferingConfiguration;
+
+  ///Configuration of remote controls notification
+  final VideoPlayerNotificationConfiguration? notificationConfiguration;
 }
 
 /// The way in which the video was originally loaded.
