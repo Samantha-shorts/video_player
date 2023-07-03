@@ -1,21 +1,35 @@
 package matsune.video_player
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
+import android.util.Log
 import android.view.Surface
+import androidx.lifecycle.Observer
+import androidx.work.*
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
 import com.google.android.exoplayer2.source.hls.HlsMediaSource
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
+import com.google.android.exoplayer2.ui.PlayerNotificationManager
+import com.google.android.exoplayer2.ui.PlayerNotificationManager.BitmapCallback
+import com.google.android.exoplayer2.ui.PlayerNotificationManager.MediaDescriptionAdapter
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.EventChannel.EventSink
 import io.flutter.view.TextureRegistry.SurfaceTextureEntry
+import java.util.UUID
 
 internal class VideoPlayer(
         context: Context,
@@ -36,11 +50,22 @@ internal class VideoPlayer(
     private var handler = Handler(Looper.getMainLooper())
     private val runnable: Runnable
 
+    private var playerNotificationManager: PlayerNotificationManager? = null
+    private var refreshHandler: Handler? = null
+    private var refreshRunnable: Runnable? = null
+    private var exoPlayerEventListener: Player.Listener? = null
+    private var bitmap: Bitmap? = null
+    private val workManager: WorkManager
+    private val workerObserverMap: HashMap<UUID, Observer<WorkInfo?>>
+
     var isMuted: Boolean
         get() = (exoPlayer?.volume ?: 0f) == 0f
         set(value) {
             exoPlayer?.volume = if (value) 0f else 1f
         }
+
+    private val position: Long
+        get() = exoPlayer?.currentPosition ?: 0L
 
     private val duration: Long
         get() = exoPlayer?.duration ?: 0L
@@ -67,21 +92,22 @@ internal class VideoPlayer(
                         .setLoadControl(loadControl)
                         .build()
         setupVideoPlayer(eventChannel, textureEntry)
-
+        workManager = WorkManager.getInstance(context)
+        workerObserverMap = HashMap()
         runnable =
                 object : Runnable {
                     override fun run() {
                         if (exoPlayer.isPlaying) {
                             sendPositionChanged()
                         }
-                        handler.postDelayed(this, 500) 
+                        handler.postDelayed(this, 500)
                     }
                 }
     }
 
     fun dispose() {
         disposeMediaSession()
-        //        disposeRemoteNotifications()
+        disposeRemoteNotifications()
         handler.removeCallbacks(runnable)
         if (isInitialized) {
             exoPlayer?.stop()
@@ -132,10 +158,10 @@ internal class VideoPlayer(
                                 }
                             }
                             Player.STATE_ENDED -> {
-                                //                                val event: MutableMap<String,
-                                // Any?> = HashMap()
-                                //                                event["event"] = "completed"
-                                //                                eventSink.success(event)
+                                //                            val event: MutableMap<String, Any?> =
+                                //                                HashMap()
+                                //                            event["event"] = "completed"
+                                //                            eventSink.success(event)
                             }
                             Player.STATE_IDLE -> {
                                 // no-op
@@ -256,17 +282,6 @@ internal class VideoPlayer(
                             PendingIntent.FLAG_IMMUTABLE
                     )
             val mediaSession = MediaSessionCompat(context, TAG, null, pendingIntent)
-            //            mediaSession.setCallback(
-            //                    object : MediaSessionCompat.Callback() {
-            //                        override fun onSeekTo(pos: Long) {
-            //                            //                    sendSeekToEvent(pos)
-            //                            Log.d(TAG, ">>>mediaSession onSeekTo $pos")
-            //                            super.onSeekTo(pos)
-            //                        }
-            //
-            //                        on
-            //                    }
-            //            )
             mediaSession.isActive = true
             val mediaSessionConnector = MediaSessionConnector(mediaSession)
             mediaSessionConnector.setPlayer(exoPlayer)
@@ -283,6 +298,184 @@ internal class VideoPlayer(
         mediaSession = null
     }
 
+    fun setupPlayerNotification(
+            context: Context,
+            title: String,
+            author: String?,
+            imageUrl: String?,
+            notificationChannelName: String?,
+            activityName: String
+    ) {
+        val mediaDescriptionAdapter: MediaDescriptionAdapter =
+                object : MediaDescriptionAdapter {
+                    override fun getCurrentContentTitle(player: Player): String {
+                        return title
+                    }
+
+                    override fun createCurrentContentIntent(player: Player): PendingIntent? {
+                        val packageName = context.applicationContext.packageName
+                        val notificationIntent = Intent()
+                        notificationIntent.setClassName(packageName, "$packageName.$activityName")
+                        notificationIntent.flags =
+                                (Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                        return PendingIntent.getActivity(
+                                context,
+                                0,
+                                notificationIntent,
+                                PendingIntent.FLAG_IMMUTABLE
+                        )
+                    }
+
+                    override fun getCurrentContentText(player: Player): String? {
+                        return author
+                    }
+
+                    override fun getCurrentLargeIcon(
+                            player: Player,
+                            callback: BitmapCallback
+                    ): Bitmap? {
+                        if (imageUrl == null) {
+                            return null
+                        }
+                        if (bitmap != null) {
+                            return bitmap
+                        }
+                        val imageWorkRequest =
+                                OneTimeWorkRequest.Builder(ImageWorker::class.java)
+                                        .addTag(imageUrl)
+                                        .setInputData(
+                                                Data.Builder().putString("url", imageUrl).build()
+                                        )
+                                        .build()
+                        workManager.enqueue(imageWorkRequest)
+                        val workInfoObserver = Observer { workInfo: WorkInfo? ->
+                            try {
+                                if (workInfo != null) {
+                                    val state = workInfo.state
+                                    if (state == WorkInfo.State.SUCCEEDED) {
+                                        val outputData = workInfo.outputData
+                                        val filePath = outputData.getString("filePath")
+                                        // Bitmap here is already processed and it's very small, so
+                                        // it won't
+                                        // break anything.
+                                        bitmap = BitmapFactory.decodeFile(filePath)
+                                        bitmap?.let { bitmap -> callback.onBitmap(bitmap) }
+                                    }
+                                    if (state == WorkInfo.State.SUCCEEDED ||
+                                                    state == WorkInfo.State.CANCELLED ||
+                                                    state == WorkInfo.State.FAILED
+                                    ) {
+                                        val uuid = imageWorkRequest.id
+                                        val observer = workerObserverMap.remove(uuid)
+                                        if (observer != null) {
+                                            workManager
+                                                    .getWorkInfoByIdLiveData(uuid)
+                                                    .removeObserver(observer)
+                                        }
+                                    }
+                                }
+                            } catch (exception: Exception) {
+                                Log.e(TAG, "Image select error: $exception")
+                            }
+                        }
+                        val workerUuid = imageWorkRequest.id
+                        workManager
+                                .getWorkInfoByIdLiveData(workerUuid)
+                                .observeForever(workInfoObserver)
+                        workerObserverMap[workerUuid] = workInfoObserver
+                        return null
+                    }
+                }
+        var playerNotificationChannelName = notificationChannelName
+        if (notificationChannelName == null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val importance = NotificationManager.IMPORTANCE_LOW
+                val channel =
+                        NotificationChannel(
+                                DEFAULT_NOTIFICATION_CHANNEL,
+                                DEFAULT_NOTIFICATION_CHANNEL,
+                                importance
+                        )
+                channel.description = DEFAULT_NOTIFICATION_CHANNEL
+                val notificationManager = context.getSystemService(NotificationManager::class.java)
+                notificationManager.createNotificationChannel(channel)
+                playerNotificationChannelName = DEFAULT_NOTIFICATION_CHANNEL
+            }
+        }
+
+        playerNotificationManager =
+                PlayerNotificationManager.Builder(
+                                context,
+                                NOTIFICATION_ID,
+                                playerNotificationChannelName!!
+                        )
+                        .setMediaDescriptionAdapter(mediaDescriptionAdapter)
+                        .build()
+
+        playerNotificationManager?.apply {
+            exoPlayer?.let {
+                setPlayer(ForwardingPlayer(exoPlayer))
+                setUseNextAction(false)
+                setUsePreviousAction(false)
+                setUseStopAction(false)
+            }
+            setupMediaSession(context)?.let { setMediaSessionToken(it.sessionToken) }
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            refreshHandler = Handler(Looper.getMainLooper())
+            refreshRunnable = Runnable {
+                val playbackState: PlaybackStateCompat =
+                        if (exoPlayer?.isPlaying == true) {
+                            PlaybackStateCompat.Builder()
+                                    .setActions(PlaybackStateCompat.ACTION_SEEK_TO)
+                                    .setState(PlaybackStateCompat.STATE_PLAYING, position, 1.0f)
+                                    .build()
+                        } else {
+                            PlaybackStateCompat.Builder()
+                                    .setActions(PlaybackStateCompat.ACTION_SEEK_TO)
+                                    .setState(PlaybackStateCompat.STATE_PAUSED, position, 1.0f)
+                                    .build()
+                        }
+                mediaSession?.setPlaybackState(playbackState)
+                refreshHandler?.postDelayed(refreshRunnable!!, 1000)
+            }
+            refreshHandler?.postDelayed(refreshRunnable!!, 0)
+        }
+        exoPlayerEventListener =
+                object : Player.Listener {
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        mediaSession?.setMetadata(
+                                MediaMetadataCompat.Builder()
+                                        .putLong(
+                                                MediaMetadataCompat.METADATA_KEY_DURATION,
+                                                duration
+                                        )
+                                        .build()
+                        )
+                    }
+                }
+        exoPlayerEventListener?.let { exoPlayerEventListener ->
+            exoPlayer?.addListener(exoPlayerEventListener)
+        }
+        exoPlayer?.seekTo(0)
+    }
+
+    fun disposeRemoteNotifications() {
+        exoPlayerEventListener?.let { exoPlayerEventListener ->
+            exoPlayer?.removeListener(exoPlayerEventListener)
+        }
+        if (refreshHandler != null) {
+            refreshHandler?.removeCallbacksAndMessages(null)
+            refreshHandler = null
+            refreshRunnable = null
+        }
+        if (playerNotificationManager != null) {
+            playerNotificationManager?.setPlayer(null)
+        }
+        bitmap = null
+    }
+
     companion object {
         private const val TAG = "VideoPlayer"
 
@@ -293,5 +486,8 @@ internal class VideoPlayer(
         private const val EVENT_PIP_CHANGED = "pipChanged"
         private const val EVENT_MUTE_CHANGED = "muteChanged"
         private const val EVENT_ERROR = "error"
+
+        private const val DEFAULT_NOTIFICATION_CHANNEL = "VIDEO_PLAYER_NOTIFICATION"
+        private const val NOTIFICATION_ID = 10000
     }
 }

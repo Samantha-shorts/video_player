@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.util.LongSparseArray
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -27,6 +28,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
   private var activity: Activity? = null
   private var pipHandler: Handler? = null
   private var pipRunnable: Runnable? = null
+  private var currentNotificationTextureId: Long? = null
 
   override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
     flutterState =
@@ -127,7 +129,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         result.success(null)
       }
       METHOD_PLAY -> {
-        //        setupNotification(player)
+        setupNotification(textureId, player)
         player.play()
         result.success(null)
       }
@@ -172,6 +174,39 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
       else -> {
         result.notImplemented()
       }
+    }
+  }
+
+  private fun setupNotification(textureId: Long, player: VideoPlayer) {
+    try {
+      if (textureId == currentNotificationTextureId) {
+        return
+      }
+      val dataSource = dataSources[textureId]
+      currentNotificationTextureId = textureId
+      removeOtherNotificationListeners()
+      val title = getParameter(dataSource, "title", "")
+      val author = getParameter(dataSource, "author", "")
+      val imageUrl = getParameter(dataSource, "imageUrl", "")
+      val notificationChannelName =
+          getParameter<String?>(dataSource, "notificationChannelName", null)
+      val activityName = getParameter(dataSource, "activityName", "MainActivity")
+      player.setupPlayerNotification(
+          flutterState?.applicationContext!!,
+          title,
+          author,
+          imageUrl,
+          notificationChannelName,
+          activityName
+      )
+    } catch (exception: Exception) {
+      Log.e(TAG, "SetupNotification failed", exception)
+    }
+  }
+
+  private fun removeOtherNotificationListeners() {
+    for (index in 0 until videoPlayers.size()) {
+      videoPlayers.valueAt(index).disposeRemoteNotifications()
     }
   }
 

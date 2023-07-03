@@ -140,24 +140,13 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
       case DataSourceType.network:
         dataSourceDescription = <String, dynamic>{
           'uri': dataSource.uri,
-          // 'formatHint': dataSource.rawFormalHint,
           'headers': dataSource.headers,
-          // 'useCache': dataSource.useCache,
-          // 'maxCacheSize': dataSource.maxCacheSize,
-          // 'maxCacheFileSize': dataSource.maxCacheFileSize,
-          // 'cacheKey': dataSource.cacheKey,
-          // 'showNotification': dataSource.showNotification,
           'title': dataSource.notificationConfiguration?.title,
           'author': dataSource.notificationConfiguration?.author,
           'imageUrl': dataSource.notificationConfiguration?.imageUrl,
-          // 'notificationChannelName': dataSource.notificationChannelName,
-          // 'overriddenDuration': dataSource.overriddenDuration?.inMilliseconds,
-          // 'licenseUrl': dataSource.licenseUrl,
-          // 'certificateUrl': dataSource.certificateUrl,
-          // 'drmHeaders': dataSource.drmHeaders,
-          // 'activityName': dataSource.activityName,
-          // 'clearKey': dataSource.clearKey,
-          // 'videoExtension': dataSource.videoExtension,
+          'notificationChannelName':
+              dataSource.notificationConfiguration?.notificationChannelName,
+          'activityName': dataSource.notificationConfiguration?.activityName,
         };
         break;
     }
