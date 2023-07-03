@@ -3,14 +3,14 @@ import 'package:video_player/configurations/video_player_notification_configurat
 import 'package:video_player/video_player.dart';
 import 'package:video_player_example/constants.dart';
 
-class BasicPlayerPage extends StatefulWidget {
-  const BasicPlayerPage({super.key});
+class SrtSubtitlePage extends StatefulWidget {
+  const SrtSubtitlePage({super.key});
 
   @override
-  State<BasicPlayerPage> createState() => _BasicPlayerPageState();
+  State<SrtSubtitlePage> createState() => _SrtSubtitlePageState();
 }
 
-class _BasicPlayerPageState extends State<BasicPlayerPage> {
+class _SrtSubtitlePageState extends State<SrtSubtitlePage> {
   @override
   Widget build(BuildContext context) {
     final controller =

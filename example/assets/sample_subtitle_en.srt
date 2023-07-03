@@ -1,0 +1,15 @@
+1
+00:00:01,000 --> 00:00:04,000
+<i>This is the first subtitle, displayed in italics.</i>
+
+2
+00:00:05,000 --> 00:00:08,000
+<b>This is the next subtitle, displayed in bold.</b>
+
+3
+00:00:09,000 --> 00:00:12,000
+<u>This is another subtitle, displayed with an underline.</u>
+
+4
+00:00:13,000 --> 00:00:16,000
+<font color="#00FF00">This is the last subtitle, displayed in green.</font>
