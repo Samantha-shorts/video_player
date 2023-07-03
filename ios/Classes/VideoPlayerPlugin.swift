@@ -88,7 +88,7 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 else {
                     fatalError()
                 }
-                player.setDataSource(url: uri)
+                player.setDataSource(url: uri, headers: dataSource["headers"] as? [String: String])
 
                 result(nil)
             case .play:

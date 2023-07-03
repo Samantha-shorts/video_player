@@ -225,13 +225,13 @@ internal class VideoPlayer(
 
     fun setDataSource(
             uri: String?,
-            headers: Map<String, String>?,
+            headers: Map<String, String>,
     ) {
         isInitialized = false
         val dataSourceFactory =
                 DefaultHttpDataSource.Factory()
                         .setAllowCrossProtocolRedirects(true)
-                        .setDefaultRequestProperties(headers ?: emptyMap())
+                        .setDefaultRequestProperties(headers)
         val mediaItem = MediaItem.Builder().setUri(uri).build()
         val mediaSource = HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
         exoPlayer?.setMediaSource(mediaSource)

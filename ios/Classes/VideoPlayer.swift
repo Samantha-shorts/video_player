@@ -128,8 +128,8 @@ class VideoPlayer: NSObject {
         isDisposed = true
     }
 
-    func setDataSource(url: URL) {
-        let asset = AVURLAsset(url: url)
+    func setDataSource(url: URL, headers: [String: String]?) {
+        let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers ?? [:]])
         let item = AVPlayerItem(asset: asset)
         item.add(videoOutput)
         player.replaceCurrentItem(with: item)
