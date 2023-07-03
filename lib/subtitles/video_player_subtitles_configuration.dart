@@ -33,8 +33,8 @@ class VideoPlayerSubtitlesConfiguration {
   final Color backgroundColor;
 
   const VideoPlayerSubtitlesConfiguration({
-    this.fontSize = 14,
-    this.fontSizeInFullscreen = 22,
+    this.fontSize = 13,
+    this.fontSizeInFullscreen = 21,
     this.fontColor = Colors.white,
     this.outlineColor = Colors.black,
     this.outlineSize = 3.0,

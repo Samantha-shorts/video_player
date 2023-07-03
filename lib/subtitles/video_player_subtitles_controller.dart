@@ -56,7 +56,15 @@ class VideoPlayerSubtitlesController {
     _subtitlesStreamController.add(SubtitlesStreamEvent.didReset);
   }
 
-  void setSubtitlesSourceList(List<AbrSubtitle> subtitles) {
+  void setSubtitlesSourceList(List<VideoPlayerSubtitlesSource> subtitles) {
+    _subtitlesSourceList = subtitles;
+    _subtitlesSourceList.add(
+      VideoPlayerSubtitlesSource(type: VideoPlayerSubtitlesSourceType.none),
+    );
+    _subtitlesStreamController.add(SubtitlesStreamEvent.sourceListChanged);
+  }
+
+  void setAbrSubtitlesSourceList(List<AbrSubtitle> subtitles) {
     _subtitlesSourceList = subtitles
         .map((subtitle) => VideoPlayerSubtitlesSource(
               type: VideoPlayerSubtitlesSourceType.network,
@@ -85,6 +93,9 @@ class VideoPlayerSubtitlesController {
   void setSubtitleSource(VideoPlayerSubtitlesSource source) {
     _subtitlesLines = [];
     _selectedSubtitlesSource = source;
+    if (source.asmsIsSegmented != true) {
+      loadAllSubtitleLines();
+    }
     _subtitlesStreamController.add(SubtitlesStreamEvent.selectedSourceChanged);
   }
 

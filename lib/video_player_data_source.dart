@@ -1,11 +1,14 @@
 import 'package:video_player/configurations/video_player_buffering_configuration.dart';
 import 'package:video_player/configurations/video_player_notification_configuration.dart';
+import 'package:video_player/subtitles/video_player_subtitles_source.dart';
 
 class VideoPlayerDataSource {
   VideoPlayerDataSource({
     required this.sourceType,
-    this.uri,
     this.asset,
+    this.uri,
+    this.subtitles,
+    this.useAbrSubtitles,
     this.headers,
     this.bufferingConfiguration = const VideoPlayerBufferingConfiguration(),
     this.notificationConfiguration,
@@ -20,14 +23,19 @@ class VideoPlayerDataSource {
   /// from which the video is fetched from.
   final DataSourceType sourceType;
 
+  /// The name of the asset. Only set for [DataSourceType.asset] videos.
+  final String? asset;
+
   /// The URI to the video file.
   ///
   /// This will be in different formats depending on the [DataSourceType] of
   /// the original video.
   final String? uri;
 
-  /// The name of the asset. Only set for [DataSourceType.asset] videos.
-  final String? asset;
+  ///Subtitles configuration
+  final List<VideoPlayerSubtitlesSource>? subtitles;
+
+  final bool? useAbrSubtitles;
 
   final Map<String, String?>? headers;
 

@@ -9,6 +9,7 @@ import 'package:video_player/configurations/video_player_configuration.dart';
 import 'package:video_player/configurations/video_player_notification_configuration.dart';
 import 'package:video_player/platform_event.dart';
 import 'package:video_player/subtitles/video_player_subtitles_controller.dart';
+import 'package:video_player/subtitles/video_player_subtitles_source.dart';
 import 'package:video_player/utils.dart';
 import 'package:video_player/video_player_data_source.dart';
 import 'package:video_player/video_player_platform_interface.dart';
@@ -164,6 +165,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   /// the network.
   Future<void> setNetworkDataSource(
     String uri, {
+    List<VideoPlayerSubtitlesSource>? subtitles,
+    bool? useAbrSubtitles,
     Map<String, String?>? headers,
     VideoPlayerNotificationConfiguration? notificationConfiguration,
   }) {
@@ -171,6 +174,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       VideoPlayerDataSource(
         sourceType: DataSourceType.network,
         uri: uri,
+        subtitles: subtitles,
+        useAbrSubtitles: useAbrSubtitles,
         headers: headers,
         notificationConfiguration: notificationConfiguration,
       ),
@@ -208,7 +213,11 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     final abrData = await AbrUtils.parse(data, dataSource.uri!);
 
     tracksController.setTracksList(abrData.tracks ?? []);
-    subtitlesController.setSubtitlesSourceList(abrData.subtitles ?? []);
+    if (dataSource.useAbrSubtitles == true) {
+      subtitlesController.setAbrSubtitlesSourceList(abrData.subtitles ?? []);
+    } else {
+      subtitlesController.setSubtitlesSourceList(dataSource.subtitles ?? []);
+    }
     subtitlesController.selectDefaultSource();
 
     if (subtitlesController.isSelectedNone) return;

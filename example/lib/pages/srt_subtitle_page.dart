@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/configurations/video_player_notification_configuration.dart';
+import 'package:video_player/subtitles/video_player_subtitles_source.dart';
+import 'package:video_player/subtitles/video_player_subtitles_source_type.dart';
 import 'package:video_player/video_player.dart';
 import 'package:video_player_example/constants.dart';
 
@@ -13,10 +15,24 @@ class SrtSubtitlePage extends StatefulWidget {
 class _SrtSubtitlePageState extends State<SrtSubtitlePage> {
   @override
   Widget build(BuildContext context) {
-    final controller =
-        VideoPlayerController(configuration: VideoPlayerConfiguration());
+    final controller = VideoPlayerController(
+      configuration: const VideoPlayerConfiguration(),
+    );
     controller.setNetworkDataSource(
       Constants.m3u8_16x9,
+      subtitles: [
+        VideoPlayerSubtitlesSource(
+          type: VideoPlayerSubtitlesSourceType.network,
+          name: "日本語",
+          urls: [Constants.srt_ja],
+          selectedByDefault: true,
+        ),
+        VideoPlayerSubtitlesSource(
+          type: VideoPlayerSubtitlesSourceType.network,
+          name: "English",
+          urls: [Constants.srt_en],
+        ),
+      ],
       notificationConfiguration: const VideoPlayerNotificationConfiguration(
         title: "video example title",
         author: "video author",

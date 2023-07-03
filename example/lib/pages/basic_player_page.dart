@@ -17,6 +17,7 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
         VideoPlayerController(configuration: VideoPlayerConfiguration());
     controller.setNetworkDataSource(
       Constants.m3u8_16x9,
+      useAbrSubtitles: true,
       notificationConfiguration: const VideoPlayerNotificationConfiguration(
         title: "video example title",
         author: "video author",
