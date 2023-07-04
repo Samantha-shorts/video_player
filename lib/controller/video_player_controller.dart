@@ -200,11 +200,11 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     }
 
     await _initializeCompleter.future;
-    if (dataSource.startPosition != null) {
-      await seekTo(dataSource.startPosition);
-    }
     if (configuration.autoPlay) {
       play();
+    }
+    if (dataSource.startPosition != null) {
+      await seekTo(dataSource.startPosition);
     }
     return;
   }
