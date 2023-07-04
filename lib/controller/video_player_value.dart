@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:video_player/platform_event.dart';
+import 'package:video_player/platform/platform.dart';
 
 // reason why value of VideoPlayerController has changed
 enum VideoPlayerEventType {

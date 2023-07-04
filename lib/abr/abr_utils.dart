@@ -1,9 +1,10 @@
 import 'package:flutter_hls_parser/flutter_hls_parser.dart';
-import 'package:video_player/abr/abr_audio_track.dart';
-import 'package:video_player/abr/abr_data_holder.dart';
-import 'package:video_player/abr/abr_subtitle.dart';
-import 'package:video_player/abr/abr_track.dart';
 import 'package:video_player/utils.dart';
+
+import 'abr_audio_track.dart';
+import 'abr_data_holder.dart';
+import 'abr_subtitle.dart';
+import 'abr_track.dart';
 
 class AbrUtils {
   static Future<AbrDataHolder> parse(

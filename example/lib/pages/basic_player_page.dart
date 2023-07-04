@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/configurations/video_player_notification_configuration.dart';
 import 'package:video_player/video_player.dart';
 import 'package:video_player_example/constants.dart';
 

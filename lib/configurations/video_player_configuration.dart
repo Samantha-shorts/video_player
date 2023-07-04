@@ -1,6 +1,5 @@
 import 'package:flutter/services.dart';
-import 'package:video_player/configurations/video_player_controls_configuration.dart';
-import 'package:video_player/subtitles/video_player_subtitles_configuration.dart';
+import 'package:video_player/configurations/configurations.dart';
 
 class VideoPlayerConfiguration {
   /// Play the video as soon as it's displayed

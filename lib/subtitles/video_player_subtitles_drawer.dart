@@ -2,11 +2,9 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
-import 'package:video_player/subtitles/video_player_subtitle.dart';
-import 'package:video_player/subtitles/video_player_subtitles_configuration.dart';
-import 'package:video_player/subtitles/video_player_subtitles_controller.dart';
-import 'package:video_player/video_player_controller_state.dart';
-import 'package:video_player/video_player_value.dart';
+import 'package:video_player/configurations/configurations.dart';
+import 'package:video_player/controller/controller.dart';
+import 'package:video_player/subtitles/subtitles.dart';
 
 class VideoPlayerSubtitlesDrawer extends StatefulWidget {
   const VideoPlayerSubtitlesDrawer({Key? key}) : super(key: key);

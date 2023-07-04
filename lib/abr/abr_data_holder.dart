@@ -1,6 +1,6 @@
-import 'package:video_player/abr/abr_audio_track.dart';
-import 'package:video_player/abr/abr_subtitle.dart';
-import 'package:video_player/abr/abr_track.dart';
+import 'abr_audio_track.dart';
+import 'abr_subtitle.dart';
+import 'abr_track.dart';
 
 class AbrDataHolder {
   List<AbrTrack>? tracks;

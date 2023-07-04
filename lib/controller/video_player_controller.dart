@@ -3,18 +3,15 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:video_player/abr/abr_utils.dart';
-import 'package:video_player/configurations/video_player_buffering_configuration.dart';
-import 'package:video_player/configurations/video_player_configuration.dart';
-import 'package:video_player/configurations/video_player_notification_configuration.dart';
-import 'package:video_player/platform_event.dart';
-import 'package:video_player/subtitles/video_player_subtitles_controller.dart';
-import 'package:video_player/subtitles/video_player_subtitles_source.dart';
+import 'package:video_player/abr/abr.dart';
+import 'package:video_player/configurations/configurations.dart';
+import 'package:video_player/platform/platform.dart';
+import 'package:video_player/subtitles/subtitles.dart';
 import 'package:video_player/utils.dart';
-import 'package:video_player/video_player_data_source.dart';
-import 'package:video_player/video_player_platform_interface.dart';
-import 'package:video_player/video_player_tracks_controller.dart';
-import 'package:video_player/video_player_value.dart';
+
+import 'video_player_data_source.dart';
+import 'video_player_tracks_controller.dart';
+import 'video_player_value.dart';
 
 class VideoPlayerControllerProvider extends InheritedWidget {
   const VideoPlayerControllerProvider({

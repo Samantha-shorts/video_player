@@ -3,14 +3,12 @@ import 'dart:math';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:video_player/abr/abr_track.dart';
-import 'package:video_player/controls/material_video_progress_bar.dart';
-import 'package:video_player/subtitles/video_player_subtitles_source.dart';
-import 'package:video_player/subtitles/video_player_subtitles_source_type.dart';
+import 'package:video_player/abr/abr.dart';
+import 'package:video_player/controller/controller.dart';
+import 'package:video_player/subtitles/subtitles.dart';
 import 'package:video_player/utils.dart';
-import 'package:video_player/video_player.dart';
-import 'package:video_player/video_player_controller_state.dart';
-import 'package:video_player/video_player_value.dart';
+
+import 'material_video_progress_bar.dart';
 
 class MaterialControls extends StatefulWidget {
   const MaterialControls({Key? key}) : super(key: key);

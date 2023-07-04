@@ -1,5 +1,5 @@
-import 'package:video_player/abr/abr_track.dart';
-import 'package:video_player/video_player_platform_interface.dart';
+import 'package:video_player/abr/abr.dart';
+import 'package:video_player/platform/platform.dart';
 
 class VideoPlayerTracksController {
   VideoPlayerTracksController();

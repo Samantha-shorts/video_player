@@ -1,12 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:video_player/configurations/video_player_buffering_configuration.dart';
-import 'package:video_player/platform_event.dart';
+import 'package:video_player/configurations/configurations.dart';
+import 'package:video_player/controller/controller.dart';
+import 'package:video_player/platform/platform.dart';
 import 'package:video_player/utils.dart';
-import 'package:video_player/video_player_data_source.dart';
-
-import 'video_player_platform_interface.dart';
 
 /// An implementation of [VideoPlayerPlatform] that uses method channels.
 class MethodChannelVideoPlayer extends VideoPlayerPlatform {

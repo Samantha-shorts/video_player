@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
-import 'package:video_player/configurations/video_player_buffering_configuration.dart';
-import 'package:video_player/platform_event.dart';
-import 'package:video_player/video_player_data_source.dart';
-
-import 'video_player_method_channel.dart';
+import 'package:video_player/configurations/configurations.dart';
+import 'package:video_player/controller/controller.dart';
+import 'package:video_player/platform/platform.dart';
 
 abstract class VideoPlayerPlatform extends PlatformInterface {
   /// Constructs a VideoPlayerPlatform.

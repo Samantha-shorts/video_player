@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/configurations/video_player_controls_configuration.dart';
-import 'package:video_player/video_player.dart';
-import 'package:video_player/video_player_value.dart';
+import 'package:video_player/configurations/configurations.dart';
+
+import 'video_player_controller.dart';
+import 'video_player_value.dart';
 
 abstract class VideoPlayerControllerState<T extends StatefulWidget>
     extends State<T> {

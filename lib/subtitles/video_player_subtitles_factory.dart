@@ -1,11 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:video_player/subtitles/video_player_subtitles_source.dart';
-import 'package:video_player/subtitles/video_player_subtitles_source_type.dart';
+import 'package:video_player/subtitles/subtitles.dart';
 import 'package:video_player/utils.dart';
-
-import 'video_player_subtitle.dart';
 
 class VideoPlayerSubtitlesFactory {
   static Future<List<VideoPlayerSubtitle>> parseSubtitles(

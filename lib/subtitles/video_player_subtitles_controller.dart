@@ -1,12 +1,13 @@
 import 'dart:async';
 
 import 'package:collection/collection.dart';
-import 'package:video_player/abr/abr_subtitle.dart';
-import 'package:video_player/subtitles/video_player_subtitle.dart';
-import 'package:video_player/subtitles/video_player_subtitles_factory.dart';
-import 'package:video_player/subtitles/video_player_subtitles_source.dart';
-import 'package:video_player/subtitles/video_player_subtitles_source_type.dart';
+import 'package:video_player/abr/abr.dart';
 import 'package:video_player/utils.dart';
+
+import 'video_player_subtitle.dart';
+import 'video_player_subtitles_factory.dart';
+import 'video_player_subtitles_source.dart';
+import 'video_player_subtitles_source_type.dart';
 
 enum SubtitlesStreamEvent {
   didReset,

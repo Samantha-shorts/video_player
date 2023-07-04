@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:video_player/controller/controller.dart';
 import 'package:video_player/controls/progress_colors.dart';
-import 'package:video_player/platform_event.dart';
-import 'package:video_player/video_player_controller_state.dart';
-import 'package:video_player/video_player_value.dart';
+import 'package:video_player/platform/platform.dart';
 
 class MaterialVideoProgressBar extends StatefulWidget {
   MaterialVideoProgressBar({

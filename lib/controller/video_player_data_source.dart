@@ -1,6 +1,5 @@
-import 'package:video_player/configurations/video_player_buffering_configuration.dart';
-import 'package:video_player/configurations/video_player_notification_configuration.dart';
-import 'package:video_player/subtitles/video_player_subtitles_source.dart';
+import 'package:video_player/configurations/configurations.dart';
+import 'package:video_player/subtitles/subtitles.dart';
 
 class VideoPlayerDataSource {
   VideoPlayerDataSource({

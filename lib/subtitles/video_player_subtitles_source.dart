@@ -1,4 +1,4 @@
-import 'package:video_player/abr/abr_subtitle.dart';
+import 'package:video_player/abr/abr.dart';
 
 import 'video_player_subtitles_source_type.dart';
 

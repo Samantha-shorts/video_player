@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/controls/material_controls.dart';
-import 'package:video_player/subtitles/video_player_subtitles_drawer.dart';
-import 'package:video_player/video_player.dart';
-import 'package:video_player/video_player_platform_interface.dart';
+import 'package:video_player/controller/controller.dart';
+import 'package:video_player/controls/controls.dart';
+import 'package:video_player/platform/platform.dart';
+import 'package:video_player/subtitles/subtitles.dart';
 
 class VideoPlayerWithControls extends StatefulWidget {
   final VideoPlayerController? controller;
