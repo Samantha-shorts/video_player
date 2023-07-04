@@ -6,6 +6,7 @@ class VideoPlayerDataSource {
     required this.sourceType,
     this.asset,
     this.uri,
+    this.startPosition,
     this.subtitles,
     this.useAbrSubtitles,
     this.headers,
@@ -30,6 +31,8 @@ class VideoPlayerDataSource {
   /// This will be in different formats depending on the [DataSourceType] of
   /// the original video.
   final String? uri;
+
+  final Duration? startPosition;
 
   ///Subtitles configuration
   final List<VideoPlayerSubtitlesSource>? subtitles;

@@ -19,6 +19,7 @@ class _SrtSubtitlePageState extends State<SrtSubtitlePage> {
     );
     controller.setNetworkDataSource(
       Constants.m3u8_16x9,
+      startPosition: Duration(seconds: 10),
       subtitles: [
         VideoPlayerSubtitlesSource(
           type: VideoPlayerSubtitlesSourceType.network,

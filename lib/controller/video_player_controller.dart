@@ -162,6 +162,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   /// the network.
   Future<void> setNetworkDataSource(
     String uri, {
+    Duration? startPosition,
     List<VideoPlayerSubtitlesSource>? subtitles,
     bool? useAbrSubtitles,
     Map<String, String?>? headers,
@@ -171,6 +172,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       VideoPlayerDataSource(
         sourceType: VideoPlayerDataSourceType.network,
         uri: uri,
+        startPosition: startPosition,
         subtitles: subtitles,
         useAbrSubtitles: useAbrSubtitles,
         headers: headers,
@@ -198,6 +200,9 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     }
 
     await _initializeCompleter.future;
+    if (dataSource.startPosition != null) {
+      await seekTo(dataSource.startPosition);
+    }
     if (configuration.autoPlay) {
       play();
     }
