@@ -158,10 +158,8 @@ internal class VideoPlayer(
                                 }
                             }
                             Player.STATE_ENDED -> {
-                                //                            val event: MutableMap<String, Any?> =
-                                //                                HashMap()
-                                //                            event["event"] = "completed"
-                                //                            eventSink.success(event)
+                                pause()
+                                sendEvent(EVENT_ENDED)
                             }
                             Player.STATE_IDLE -> {
                                 // no-op
@@ -485,6 +483,7 @@ internal class VideoPlayer(
         private const val EVENT_BUFFER_CHANGED = "bufferChanged"
         private const val EVENT_PIP_CHANGED = "pipChanged"
         private const val EVENT_MUTE_CHANGED = "muteChanged"
+        private const val EVENT_ENDED = "ended"
         private const val EVENT_ERROR = "error"
 
         private const val DEFAULT_NOTIFICATION_CHANNEL = "VIDEO_PLAYER_NOTIFICATION"

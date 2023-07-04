@@ -8,6 +8,7 @@ enum PlatformEventType {
   bufferChanged,
   pipChanged,
   muteChanged,
+  ended,
   error,
 }
 

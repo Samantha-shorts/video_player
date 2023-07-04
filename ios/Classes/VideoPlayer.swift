@@ -15,6 +15,7 @@ enum PlatformEventType: String {
     case bufferChanged
     case pipChanged
     case muteChanged
+    case ended
     case error
 }
 
@@ -185,8 +186,15 @@ class VideoPlayer: NSObject {
                     self?.sendEvent(.bufferChanged, ["bufferRange": [start, end]])
                 }
             }
+            NotificationCenter.default.addObserver(self, selector: #selector(playerItemDidPlayToEndTime(_:)), name: .AVPlayerItemDidPlayToEndTime, object: item)
             observersAdded = true
         }
+    }
+
+    @objc
+    private func playerItemDidPlayToEndTime(_ sender: Any?) {
+        pause()
+        sendEvent(.ended)
     }
 
     func removeObservers() {
@@ -199,6 +207,7 @@ class VideoPlayer: NSObject {
             presentationSizeObservation = nil
             rateObservation = nil
             loadedTimeRangesObservation = nil
+            NotificationCenter.default.removeObserver(self)
             isMutedObservation = nil
         }
     }
