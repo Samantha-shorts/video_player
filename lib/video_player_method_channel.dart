@@ -137,7 +137,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
       int? textureId, VideoPlayerDataSource dataSource) async {
     Map<String, dynamic>? dataSourceDescription;
     switch (dataSource.sourceType) {
-      case DataSourceType.network:
+      case VideoPlayerDataSourceType.network:
         dataSourceDescription = <String, dynamic>{
           'uri': dataSource.uri,
           'headers': dataSource.headers,

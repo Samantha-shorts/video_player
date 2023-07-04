@@ -21,7 +21,7 @@ class VideoPlayerDataSource {
   ///
   /// This has nothing to do with the video's file type. It's just the place
   /// from which the video is fetched from.
-  final DataSourceType sourceType;
+  final VideoPlayerDataSourceType sourceType;
 
   /// The name of the asset. Only set for [DataSourceType.asset] videos.
   final String? asset;
@@ -51,7 +51,7 @@ class VideoPlayerDataSource {
 ///
 /// This has nothing to do with the video's file type. It's just the place
 /// from which the video is fetched from.
-enum DataSourceType {
+enum VideoPlayerDataSourceType {
   // /// The video was included in the app's asset files.
   // asset,
 

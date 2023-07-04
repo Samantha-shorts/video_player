@@ -28,7 +28,7 @@ class VideoPlayer extends StatefulWidget {
         controller: VideoPlayerController(
           configuration: configuration ?? const VideoPlayerConfiguration(),
           dataSource: VideoPlayerDataSource(
-            sourceType: DataSourceType.network,
+            sourceType: VideoPlayerDataSourceType.network,
             uri: url,
           ),
         ),

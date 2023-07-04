@@ -172,7 +172,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   }) {
     return _setDataSource(
       VideoPlayerDataSource(
-        sourceType: DataSourceType.network,
+        sourceType: VideoPlayerDataSourceType.network,
         uri: uri,
         subtitles: subtitles,
         useAbrSubtitles: useAbrSubtitles,
