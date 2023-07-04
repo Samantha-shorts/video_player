@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/configurations/video_player_notification_configuration.dart';
-import 'package:video_player/subtitles/video_player_subtitles_source.dart';
-import 'package:video_player/subtitles/video_player_subtitles_source_type.dart';
 import 'package:video_player/video_player.dart';
 import 'package:video_player_example/constants.dart';
 
@@ -16,7 +13,9 @@ class _SrtSubtitlePageState extends State<SrtSubtitlePage> {
   @override
   Widget build(BuildContext context) {
     final controller = VideoPlayerController(
-      configuration: const VideoPlayerConfiguration(),
+      configuration: const VideoPlayerConfiguration(
+        autoPlay: true,
+      ),
     );
     controller.setNetworkDataSource(
       Constants.m3u8_16x9,

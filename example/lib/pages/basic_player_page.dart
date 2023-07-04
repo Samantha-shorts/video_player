@@ -12,8 +12,11 @@ class BasicPlayerPage extends StatefulWidget {
 class _BasicPlayerPageState extends State<BasicPlayerPage> {
   @override
   Widget build(BuildContext context) {
-    final controller =
-        VideoPlayerController(configuration: VideoPlayerConfiguration());
+    final controller = VideoPlayerController(
+      configuration: const VideoPlayerConfiguration(
+        autoPlay: false,
+      ),
+    );
     controller.setNetworkDataSource(
       Constants.m3u8_16x9,
       useAbrSubtitles: true,

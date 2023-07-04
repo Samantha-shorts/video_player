@@ -59,8 +59,6 @@ class VideoPlayerSubtitlesFactory {
         subtitles.addAll(cacheList);
       }
       client.close();
-
-      Utils.log("Parsed total subtitles: ${subtitles.length}");
       return subtitles;
     } catch (exception) {
       Utils.log("Failed to read subtitles from network: $exception");

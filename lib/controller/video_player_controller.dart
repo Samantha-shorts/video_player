@@ -197,7 +197,11 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       _loadAbrManifest(dataSource);
     }
 
-    return _initializeCompleter.future;
+    await _initializeCompleter.future;
+    if (configuration.autoPlay) {
+      play();
+    }
+    return;
   }
 
   Future<void> _loadAbrManifest(VideoPlayerDataSource dataSource) async {
