@@ -119,6 +119,11 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
             isMuted: event.isMuted,
           );
           break;
+        case PlatformEventType.ended:
+          value = value.copyWith(
+            eventType: VideoPlayerEventType.ended,
+          );
+          break;
         default:
           break;
       }

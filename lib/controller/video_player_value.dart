@@ -11,6 +11,7 @@ enum VideoPlayerEventType {
   pipChanged,
   muteChanged,
   fullscreenChanged,
+  ended,
   error,
 }
 
