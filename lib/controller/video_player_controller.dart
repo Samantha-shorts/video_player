@@ -267,7 +267,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   }
 
   void enterFullscreen() {
-    if (!value.initialized || _isDisposed) return;
+    if (!value.initialized || _isDisposed || value.isFullscreen) return;
     value = value.copyWith(
       eventType: VideoPlayerEventType.fullscreenChanged,
       isFullscreen: true,
@@ -275,7 +275,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   }
 
   void exitFullscreen() {
-    if (!value.initialized || _isDisposed) return;
+    if (!value.initialized || _isDisposed || !value.isFullscreen) return;
     VideoPlayerPlatform.instance.willExitFullscreen(_textureId);
     value = value.copyWith(
       eventType: VideoPlayerEventType.fullscreenChanged,
