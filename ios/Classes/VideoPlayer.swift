@@ -157,9 +157,15 @@ class VideoPlayer: NSObject {
                     self?.sendEvent(.positionChanged, ["position": millis])
                 }
             )
-            rateObservation = player.observe(\.rate) { [weak self] player, _ in
-                let isPlaying = player.rate > 0
-                self?.sendEvent(.isPlayingChanged, ["isPlaying": isPlaying])
+            rateObservation = player.observe(\.rate, options: [.old, .new]) { [weak self] _, change in
+                if let oldValue = change.oldValue, let newValue = change.newValue,
+                   oldValue != newValue {
+                    if newValue > 0 {
+                        self?.sendEvent(.isPlayingChanged, ["isPlaying": true])
+                    } else if newValue == 0 {
+                        self?.sendEvent(.isPlayingChanged, ["isPlaying": false])
+                    }
+                }
             }
             isMutedObservation = player.observe(
                 \.isMuted,
