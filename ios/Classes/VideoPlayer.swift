@@ -134,6 +134,10 @@ class VideoPlayer: NSObject {
         let item = AVPlayerItem(asset: asset)
         item.add(videoOutput)
         player.replaceCurrentItem(with: item)
+        if let group = item.asset.mediaSelectionGroup(forMediaCharacteristic: .legible) {
+            // disable AVPlayer's CC
+            player.currentItem?.select(nil, in: group)
+        }
         addObservers(to: item)
     }
 

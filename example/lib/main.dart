@@ -50,10 +50,10 @@ class _WelcomePageState extends State<WelcomePage> {
     return [
       const SizedBox(height: 8),
       _buildExampleElementWidget("Basic player", () {
-        _navigateToPage(BasicPlayerPage());
+        _navigateToPage(const BasicPlayerPage());
       }),
-      _buildExampleElementWidget("Normal player", () {
-        _navigateToPage(SrtSubtitlePage());
+      _buildExampleElementWidget("Subtitles", () {
+        _navigateToPage(const SrtSubtitlePage());
       }),
     ];
   }
@@ -69,7 +69,7 @@ class _WelcomePageState extends State<WelcomePage> {
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Text(
                 name,
-                style: TextStyle(fontSize: 16),
+                style: const TextStyle(fontSize: 16),
               ),
             ),
             Divider(),

@@ -65,6 +65,8 @@ class VideoPlayerValue {
 
   bool get initialized => duration != null;
 
+  bool get isFinished => position.inSeconds == duration?.inSeconds;
+
   /// Returns a new instance that has the same values as this current instance,
   /// except for any overrides passed in as arguments to [copyWidth].
   VideoPlayerValue copyWith({

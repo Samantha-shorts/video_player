@@ -751,18 +751,22 @@ class _ReplayButtonState extends VideoPlayerControllerState<_ReplayButton> {
   @override
   Widget build(BuildContext context) {
     return MaterialClickableWidget(
-      onTap: () {
+      onTap: () async {
         if (lastValue?.isPlaying == true) {
           controller.pause();
+        } else if (lastValue?.isFinished == true) {
+          await controller.seekTo(Duration.zero);
+          controller.play();
         } else {
           controller.play();
         }
       },
       child: Icon(
-        // TODO: show Icons.replay if finished
         lastValue?.isPlaying == true
             ? controlsConfiguration.pauseIcon
-            : controlsConfiguration.playIcon,
+            : lastValue?.isFinished == true
+                ? Icons.replay
+                : controlsConfiguration.playIcon,
         size: 42,
         color: controlsConfiguration.iconsColor,
       ),
@@ -771,7 +775,8 @@ class _ReplayButtonState extends VideoPlayerControllerState<_ReplayButton> {
 
   @override
   bool willRebuild(VideoPlayerValue? oldValue, VideoPlayerValue newValue) {
-    return newValue.eventType == VideoPlayerEventType.isPlayingChanged;
+    return newValue.eventType == VideoPlayerEventType.isPlayingChanged ||
+        newValue.eventType == VideoPlayerEventType.ended;
   }
 }
 

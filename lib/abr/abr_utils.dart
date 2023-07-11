@@ -8,15 +8,17 @@ import 'abr_track.dart';
 
 class AbrUtils {
   static Future<AbrDataHolder> parse(
-      String data, String masterPlaylistUrl) async {
+    String data,
+    String masterPlaylistUrl,
+  ) async {
     List<AbrTrack> tracks = [];
     List<AbrSubtitle> subtitles = [];
     List<AbrAudioTrack> audios = [];
     try {
       final List<List<dynamic>> list = await Future.wait([
-        parseTracks(data, masterPlaylistUrl),
-        parseSubtitles(data, masterPlaylistUrl),
-        parseLanguages(data, masterPlaylistUrl)
+        _parseTracks(data, masterPlaylistUrl),
+        _parseSubtitles(data, masterPlaylistUrl),
+        _parseLanguages(data, masterPlaylistUrl)
       ]);
       tracks = list[0] as List<AbrTrack>;
       subtitles = list[1] as List<AbrSubtitle>;
@@ -27,8 +29,10 @@ class AbrUtils {
     return AbrDataHolder(tracks: tracks, audios: audios, subtitles: subtitles);
   }
 
-  static Future<List<AbrTrack>> parseTracks(
-      String data, String masterPlaylistUrl) async {
+  static Future<List<AbrTrack>> _parseTracks(
+    String data,
+    String masterPlaylistUrl,
+  ) async {
     final List<AbrTrack> tracks = [];
     try {
       final parsedPlaylist = await HlsPlaylistParser.create()
@@ -52,8 +56,10 @@ class AbrUtils {
   }
 
   ///Parse subtitles from provided m3u8 url
-  static Future<List<AbrSubtitle>> parseSubtitles(
-      String data, String masterPlaylistUrl) async {
+  static Future<List<AbrSubtitle>> _parseSubtitles(
+    String data,
+    String masterPlaylistUrl,
+  ) async {
     final List<AbrSubtitle> subtitles = [];
     try {
       final parsedPlaylist = await HlsPlaylistParser.create()
@@ -81,16 +87,17 @@ class AbrUtils {
   ///filled segments list which contains start, end and url of subtitles based
   ///on time in playlist.
   static Future<AbrSubtitle?> _parseSubtitlesPlaylist(
-      Rendition rendition) async {
+    Rendition rendition,
+  ) async {
     try {
-      final HlsPlaylistParser _hlsPlaylistParser = HlsPlaylistParser.create();
+      final HlsPlaylistParser hlsPlaylistParser = HlsPlaylistParser.create();
       final subtitleData = await Utils.getDataFromUrl(rendition.url.toString());
       if (subtitleData == null) {
         return null;
       }
 
       final parsedSubtitle =
-          await _hlsPlaylistParser.parseString(rendition.url!, subtitleData);
+          await hlsPlaylistParser.parseString(rendition.url!, subtitleData);
       final hlsMediaPlaylist = parsedSubtitle as HlsMediaPlaylist;
       final hlsSubtitlesUrls = <String>[];
 
@@ -152,8 +159,10 @@ class AbrUtils {
     }
   }
 
-  static Future<List<AbrAudioTrack>> parseLanguages(
-      String data, String masterPlaylistUrl) async {
+  static Future<List<AbrAudioTrack>> _parseLanguages(
+    String data,
+    String masterPlaylistUrl,
+  ) async {
     final List<AbrAudioTrack> audios = [];
     final parsedPlaylist = await HlsPlaylistParser.create()
         .parseString(Uri.parse(masterPlaylistUrl), data);

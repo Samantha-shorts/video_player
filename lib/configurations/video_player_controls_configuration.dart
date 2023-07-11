@@ -96,7 +96,7 @@ class VideoPlayerControlsConfiguration {
   final Color overflowModalTextColor;
 
   const VideoPlayerControlsConfiguration({
-    this.controlBarColor = Colors.black54,
+    this.controlBarColor = Colors.black26,
     this.textColor = Colors.white,
     this.iconsColor = Colors.white,
     this.playIcon = Icons.play_arrow_outlined,
