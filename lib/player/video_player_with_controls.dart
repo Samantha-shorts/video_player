@@ -36,20 +36,17 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
     );
   }
 
-  Container _buildPlayerWithControls(
+  Widget _buildPlayerWithControls(
     VideoPlayerController videoPlayerController,
     BuildContext context,
   ) {
-    // ignore: avoid_unnecessary_containers
-    return Container(
-      child: Stack(
-        fit: StackFit.passthrough,
-        children: <Widget>[
-          _Player(controller: videoPlayerController),
-          const VideoPlayerSubtitlesDrawer(),
-          const MaterialControls(),
-        ],
-      ),
+    return Stack(
+      fit: StackFit.passthrough,
+      children: <Widget>[
+        _Player(controller: videoPlayerController),
+        const VideoPlayerSubtitlesDrawer(),
+        const MaterialControls(),
+      ],
     );
   }
 }

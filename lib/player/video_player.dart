@@ -34,7 +34,6 @@ class _VideoPlayerState extends State<VideoPlayer> {
   ///State of navigator on widget created
   late NavigatorState _navigatorState;
 
-  ///Flag which determines if widget has initialized
   bool _initialized = false;
 
   bool _isFullscreen = false;

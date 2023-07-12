@@ -34,23 +34,14 @@ class PlatformEvent {
 
   final PlatformEventType eventType;
 
-  /// Duration of the video.
-  ///
-  /// Only used if [eventType] is [PlatformEventType.initialized].
   final Duration? duration;
 
-  /// Size of the video.
-  ///
-  /// Only used if [eventType] is [PlatformEventType.initialized].
   final Size? size;
 
   final bool isPlaying;
 
   final Duration? position;
 
-  /// Buffered parts of the video.
-  ///
-  /// Only used if [eventType] is [PlatformEventType.bufferingUpdate].
   final DurationRange? buffered;
 
   final bool isPip;

@@ -222,7 +222,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     );
     if (data == null) return;
 
-    final abrData = await AbrUtils.parse(data, dataSource.uri!);
+    final abrData = await AbrDataHolder.parse(dataSource.uri!, data);
 
     tracksController.setTracksList(abrData.tracks ?? []);
     if (dataSource.useAbrSubtitles == true) {
