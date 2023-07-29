@@ -19,6 +19,12 @@ enum PlatformEventType: String {
     case error
 }
 
+enum PlatformDownloadEventType: String {
+    case progress
+    case finished
+    case error
+}
+
 class VideoPlayer: NSObject {
 
     private let eventChannel: FlutterEventChannel
@@ -157,9 +163,11 @@ class VideoPlayer: NSObject {
                     self?.sendEvent(.positionChanged, ["position": millis])
                 }
             )
-            rateObservation = player.observe(\.rate, options: [.old, .new]) { [weak self] _, change in
+            rateObservation = player.observe(\.rate, options: [.old, .new]) {
+                [weak self] _, change in
                 if let oldValue = change.oldValue, let newValue = change.newValue,
-                   oldValue != newValue {
+                    oldValue != newValue
+                {
                     if newValue > 0 {
                         self?.sendEvent(.isPlayingChanged, ["isPlaying": true])
                     } else if newValue == 0 {
@@ -196,7 +204,10 @@ class VideoPlayer: NSObject {
                     self?.sendEvent(.bufferChanged, ["bufferRange": [start, end]])
                 }
             }
-            NotificationCenter.default.addObserver(self, selector: #selector(playerItemDidPlayToEndTime(_:)), name: .AVPlayerItemDidPlayToEndTime, object: item)
+            NotificationCenter.default.addObserver(
+                self, selector: #selector(playerItemDidPlayToEndTime(_:)),
+                name: .AVPlayerItemDidPlayToEndTime, object: item
+            )
             observersAdded = true
         }
     }

@@ -4,11 +4,17 @@ import android.app.Activity
 import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.util.LongSparseArray
+import androidx.media3.datasource.cache.*
+import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.offline.*
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.MediaSource
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -19,6 +25,7 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.view.TextureRegistry
+
 
 /** VideoPlayerPlugin */
 class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
@@ -34,6 +41,12 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     flutterState =
         FlutterState(binding.applicationContext, binding.binaryMessenger, binding.textureRegistry)
     flutterState?.startListening(this)
+
+    if (Downloader.eventChannel == null) {
+      Downloader.setupEventChannel(
+        EventChannel(flutterState?.binaryMessenger, DOWNLOAD_EVENTS_CHANNEL)
+      )
+    }
   }
 
   override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -100,6 +113,18 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
       }
       METHOD_IS_PICTURE_IN_PICTURE_SUPPORTED -> {
         result.success(mapOf("isPictureInPictureSupported" to isPictureInPictureSupported()))
+      }
+      METHOD_DOWNLOAD_OFFLINE_ASSET -> {
+        val uri = call.argument<String>("uri")!!
+        val headers: Map<String, String>? = call.argument<Map<String,String>>("headers")
+        val context = flutterState?.applicationContext!!
+        Downloader.startDownload(context, uri, headers)
+        result.success(null)
+      }
+      METHOD_DELETE_OFFLINE_ASSET -> {
+        val uri = call.argument<String>("uri")!!
+        Downloader.removeDownload(Uri.parse(uri))
+        result.success(null)
       }
       else -> {
         val textureId = (call.argument<Any>("textureId") as Number?)!!.toLong()
@@ -226,7 +251,12 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     dataSources.put(textureId, dataSource)
     val headers: Map<String, String> = getParameter(dataSource, "headers", HashMap())
     val uri = getParameter(dataSource, "uri", "")
-    player.setDataSource(uri, headers)
+    val offline = getParameter(dataSource, "offline", false)
+    if (offline) {
+      player.setOfflineDataSource(uri)
+    } else {
+      player.setNetworkDataSource(uri, headers)
+    }
   }
 
   private fun dispose(player: VideoPlayer, textureId: Long) {
@@ -311,10 +341,13 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private const val TAG = "VideoPlayerPlugin"
     private const val CHANNEL = "video_player"
     private const val EVENTS_CHANNEL = "video_player_channel/videoEvents"
+    private const val DOWNLOAD_EVENTS_CHANNEL = "video_player_channel/downloadEvents"
 
     private const val METHOD_INIT = "init"
     private const val METHOD_CREATE = "create"
     private const val METHOD_IS_PICTURE_IN_PICTURE_SUPPORTED = "isPictureInPictureSupported"
+    private const val METHOD_DOWNLOAD_OFFLINE_ASSET = "downloadOfflineAsset"
+    private const val METHOD_DELETE_OFFLINE_ASSET = "deleteOfflineAsset"
     private const val METHOD_SET_DATA_SOURCE = "setDataSource"
     private const val METHOD_PLAY = "play"
     private const val METHOD_PAUSE = "pause"

@@ -40,7 +40,7 @@ class _SrtSubtitlePageState extends State<SrtSubtitlePage> {
     );
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Basic player"),
+        title: const Text("SRT Subtitle"),
       ),
       body: Column(
         children: [

@@ -28,6 +28,20 @@ class VideoPlayer extends StatefulWidget {
           ),
         ),
       );
+
+  factory VideoPlayer.offline(
+    String url, {
+    VideoPlayerConfiguration? configuration,
+  }) =>
+      VideoPlayer(
+        controller: VideoPlayerController(
+          configuration: configuration ?? const VideoPlayerConfiguration(),
+          dataSource: VideoPlayerDataSource(
+            sourceType: VideoPlayerDataSourceType.offline,
+            uri: url,
+          ),
+        ),
+      );
 }
 
 class _VideoPlayerState extends State<VideoPlayer> {

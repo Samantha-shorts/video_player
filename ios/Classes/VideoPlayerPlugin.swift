@@ -9,6 +9,8 @@ enum FlutterMethod: String {
     case `init`
     case create
     case isPictureInPictureSupported
+    case downloadOfflineAsset
+    case deleteOfflineAsset
     case setDataSource
     case play
     case pause
@@ -23,6 +25,19 @@ enum FlutterMethod: String {
 }
 
 typealias TextureId = Int
+
+extension FlutterError {
+    fileprivate static func invalidArgs(message: String? = nil, details: Any? = nil) -> FlutterError
+    {
+        FlutterError(code: "INVLIAD_ARGS", message: message, details: details)
+    }
+
+    fileprivate static func assetNotFound(message: String? = nil, details: Any? = nil)
+        -> FlutterError
+    {
+        FlutterError(code: "ASSET_NOT_FOUND", message: message, details: details)
+    }
+}
 
 public class VideoPlayerPlugin: NSObject, FlutterPlugin {
 
@@ -48,9 +63,12 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
     private var changePlaybackPositionCommand: Any?
     private var timeObservers: [TextureId: Any] = [:]
 
+    private let downloader: Downloader
+
     init(registrar: FlutterPluginRegistrar) {
         self.registrar = registrar
         self.messenger = registrar.messenger()
+        self.downloader = Downloader(binaryMessanger: self.messenger)
     }
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -68,6 +86,29 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 "isPictureInPictureSupported":
                     AVPictureInPictureController.isPictureInPictureSupported()
             ])
+        case .downloadOfflineAsset:
+            guard let args = call.arguments as? [String: Any],
+                let uriString = args["uri"] as? String,
+                let url = URL(string: uriString)
+            else {
+                result(FlutterError.invalidArgs(message: "requires valid uri"))
+                return
+            }
+            downloader.startDownload(
+                url: url,
+                headers: args["headers"] as? [String: String]
+            )
+            result(nil)
+        case .deleteOfflineAsset:
+            guard let args = call.arguments as? [String: Any],
+                let uriString = args["uri"] as? String,
+                let url = URL(string: uriString)
+            else {
+                result(FlutterError.invalidArgs(message: "requires valid uri"))
+                return
+            }
+            downloader.deleteOfflineAsset(url: url)
+            result(nil)
         default:
             guard let args = call.arguments as? [String: Any],
                 let textureId = args["textureId"] as? Int,
@@ -86,9 +127,19 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 guard let uriString = dataSource["uri"] as? String,
                     let uri = URL(string: uriString)
                 else {
-                    fatalError()
+                    result(FlutterError.invalidArgs(message: "requires valid uri"))
+                    return
                 }
-                player.setDataSource(url: uri, headers: dataSource["headers"] as? [String: String])
+                if dataSource["offline"] as? Bool == true {
+                    guard let assetUrl = DownloadPathManager.assetUrl(forUrl: uriString) else {
+                        result(FlutterError.assetNotFound())
+                        return
+                    }
+                    player.setDataSource(url: assetUrl, headers: nil)
+                } else {
+                    player.setDataSource(
+                        url: uri, headers: dataSource["headers"] as? [String: String])
+                }
 
                 result(nil)
             case .play:

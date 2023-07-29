@@ -61,5 +61,7 @@ enum VideoPlayerDataSourceType {
   network,
 
   // /// The video was loaded off of the local filesystem.
-  // file
+  // file,
+
+  offline,
 }

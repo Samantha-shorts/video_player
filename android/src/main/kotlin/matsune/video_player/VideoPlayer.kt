@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -16,30 +17,37 @@ import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.view.Surface
 import androidx.lifecycle.Observer
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE
+import androidx.media3.common.ForwardingPlayer
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.exoplayer.*
+import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import androidx.media3.ui.PlayerNotificationManager
+import androidx.media3.ui.PlayerNotificationManager.BitmapCallback
+import androidx.media3.ui.PlayerNotificationManager.MediaDescriptionAdapter
 import androidx.work.*
-import com.google.android.exoplayer2.*
-import com.google.android.exoplayer2.audio.AudioAttributes
-import com.google.android.exoplayer2.ext.mediasession.MediaSessionConnector
-import com.google.android.exoplayer2.source.hls.HlsMediaSource
-import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
-import com.google.android.exoplayer2.ui.PlayerNotificationManager
-import com.google.android.exoplayer2.ui.PlayerNotificationManager.BitmapCallback
-import com.google.android.exoplayer2.ui.PlayerNotificationManager.MediaDescriptionAdapter
-import com.google.android.exoplayer2.upstream.DefaultHttpDataSource
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.EventChannel.EventSink
 import io.flutter.view.TextureRegistry.SurfaceTextureEntry
 import java.util.UUID
 
 internal class VideoPlayer(
-        context: Context,
+        private val context: Context,
         private val eventChannel: EventChannel,
         private val textureEntry: SurfaceTextureEntry,
         private val customDefaultLoadControl: CustomDefaultLoadControl
 ) {
 
     private val loadControl: LoadControl
-    private val exoPlayer: ExoPlayer?
+    private val exoPlayer: ExoPlayer
     private val eventSink = QueuingEventSink()
     private val trackSelector = DefaultTrackSelector(context)
     private var surface: Surface? = null
@@ -59,21 +67,21 @@ internal class VideoPlayer(
     private val workerObserverMap: HashMap<UUID, Observer<WorkInfo?>>
 
     var isMuted: Boolean
-        get() = (exoPlayer?.volume ?: 0f) == 0f
+        get() = (exoPlayer.volume ?: 0f) == 0f
         set(value) {
-            exoPlayer?.volume = if (value) 0f else 1f
+            exoPlayer.volume = if (value) 0f else 1f
         }
 
     private val position: Long
-        get() = exoPlayer?.currentPosition ?: 0L
+        get() = exoPlayer.currentPosition ?: 0L
 
     private val duration: Long
-        get() = exoPlayer?.duration ?: 0L
+        get() = exoPlayer.duration ?: 0L
 
     var playbackSpeed: Float
-        get() = exoPlayer?.playbackParameters?.speed ?: 1f
+        get() = exoPlayer.playbackParameters?.speed ?: 1f
         set(value) {
-            exoPlayer?.setPlaybackSpeed(value)
+            exoPlayer.setPlaybackSpeed(value)
         }
 
     init {
@@ -110,12 +118,12 @@ internal class VideoPlayer(
         disposeRemoteNotifications()
         handler.removeCallbacks(runnable)
         if (isInitialized) {
-            exoPlayer?.stop()
+            exoPlayer.stop()
         }
         textureEntry.release()
         eventChannel.setStreamHandler(null)
         surface?.release()
-        exoPlayer?.release()
+        exoPlayer.release()
     }
 
     private fun setupVideoPlayer(eventChannel: EventChannel, textureEntry: SurfaceTextureEntry) {
@@ -131,17 +139,17 @@ internal class VideoPlayer(
                 }
         )
         surface = Surface(textureEntry.surfaceTexture())
-        exoPlayer?.setVideoSurface(surface)
-        exoPlayer?.setAudioAttributes(
-                AudioAttributes.Builder().setContentType(C.AUDIO_CONTENT_TYPE_MOVIE).build(),
+        exoPlayer.setVideoSurface(surface)
+        exoPlayer.setAudioAttributes(
+                AudioAttributes.Builder().setContentType(AUDIO_CONTENT_TYPE_MOVIE).build(),
                 true
         )
-        exoPlayer?.addListener(
+        exoPlayer.addListener(
                 object : Player.Listener {
                     override fun onPlaybackStateChanged(playbackState: Int) {
                         when (playbackState) {
                             Player.STATE_BUFFERING -> {
-                                val bufferedPosition = exoPlayer?.bufferedPosition ?: 0L
+                                val bufferedPosition = exoPlayer.bufferedPosition ?: 0L
                                 if (bufferedPosition != lastSendBufferedPosition) {
                                     val range: List<Number?> = listOf(0, bufferedPosition)
                                     sendEvent(
@@ -193,7 +201,7 @@ internal class VideoPlayer(
 
         val event: MutableMap<String, Any> = HashMap()
         event["duration"] = duration
-        if (exoPlayer?.videoFormat != null) {
+        if (exoPlayer.videoFormat != null) {
             val videoFormat = exoPlayer.videoFormat
             var width = videoFormat?.width
             var height = videoFormat?.height
@@ -216,36 +224,46 @@ internal class VideoPlayer(
     }
 
     private fun sendPositionChanged() {
-        exoPlayer?.currentPosition?.let {
+        exoPlayer.currentPosition?.let {
             sendEvent(EVENT_POSITION_CHANGED, mapOf("position" to it))
         }
     }
 
-    fun setDataSource(
-            uri: String?,
-            headers: Map<String, String>,
-    ) {
+    fun setNetworkDataSource(uri: String, headers: Map<String, String>) {
+        val dataSourceFactory = DefaultHttpDataSource.Factory()
+            .setAllowCrossProtocolRedirects(true)
+            .setDefaultRequestProperties(headers)
+        val mediaSourceFactory = HlsMediaSource.Factory(dataSourceFactory)
+        val mediaItem = MediaItem.fromUri(uri)
+        val mediaSource = mediaSourceFactory.createMediaSource(mediaItem)
+        setMediaSource(mediaSource)
+    }
+
+    fun setOfflineDataSource(uri: String) {
+        val download = Downloader.getDownload(Uri.parse(uri))!!
+        val dataSourceFactory = Downloader.getDataSourceFactory(context)
+        val mediaSourceFactory = HlsMediaSource.Factory(dataSourceFactory)
+        val mediaItem = download.request.toMediaItem()
+        val mediaSource = mediaSourceFactory.createMediaSource(mediaItem)
+        setMediaSource(mediaSource)
+    }
+
+    private fun setMediaSource(mediaSource: MediaSource) {
         isInitialized = false
-        val dataSourceFactory =
-                DefaultHttpDataSource.Factory()
-                        .setAllowCrossProtocolRedirects(true)
-                        .setDefaultRequestProperties(headers)
-        val mediaItem = MediaItem.Builder().setUri(uri).build()
-        val mediaSource = HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
-        exoPlayer?.setMediaSource(mediaSource)
-        exoPlayer?.prepare()
+        exoPlayer.setMediaSource(mediaSource)
+        exoPlayer.prepare()
     }
 
     fun play() {
-        exoPlayer?.play()
+        exoPlayer.play()
     }
 
     fun pause() {
-        exoPlayer?.pause()
+        exoPlayer.pause()
     }
 
     fun seekTo(location: Int) {
-        exoPlayer?.seekTo(location.toLong())
+        exoPlayer.seekTo(location.toLong())
         sendPositionChanged()
     }
 
@@ -281,8 +299,6 @@ internal class VideoPlayer(
                     )
             val mediaSession = MediaSessionCompat(context, TAG, null, pendingIntent)
             mediaSession.isActive = true
-            val mediaSessionConnector = MediaSessionConnector(mediaSession)
-            mediaSessionConnector.setPlayer(exoPlayer)
             this.mediaSession = mediaSession
             return mediaSession
         }
@@ -411,7 +427,7 @@ internal class VideoPlayer(
                         .build()
 
         playerNotificationManager?.apply {
-            exoPlayer?.let {
+            exoPlayer.let {
                 setPlayer(ForwardingPlayer(exoPlayer))
                 setUseNextAction(false)
                 setUsePreviousAction(false)
@@ -424,7 +440,7 @@ internal class VideoPlayer(
             refreshHandler = Handler(Looper.getMainLooper())
             refreshRunnable = Runnable {
                 val playbackState: PlaybackStateCompat =
-                        if (exoPlayer?.isPlaying == true) {
+                        if (exoPlayer.isPlaying == true) {
                             PlaybackStateCompat.Builder()
                                     .setActions(PlaybackStateCompat.ACTION_SEEK_TO)
                                     .setState(PlaybackStateCompat.STATE_PLAYING, position, 1.0f)
@@ -454,14 +470,14 @@ internal class VideoPlayer(
                     }
                 }
         exoPlayerEventListener?.let { exoPlayerEventListener ->
-            exoPlayer?.addListener(exoPlayerEventListener)
+            exoPlayer.addListener(exoPlayerEventListener)
         }
-        exoPlayer?.seekTo(0)
+        exoPlayer.seekTo(0)
     }
 
     fun disposeRemoteNotifications() {
         exoPlayerEventListener?.let { exoPlayerEventListener ->
-            exoPlayer?.removeListener(exoPlayerEventListener)
+            exoPlayer.removeListener(exoPlayerEventListener)
         }
         if (refreshHandler != null) {
             refreshHandler?.removeCallbacksAndMessages(null)

@@ -73,7 +73,6 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
 
           return PlatformEvent(
             eventType: eventType,
-            // key: key,
             duration: Duration(milliseconds: map['duration'] as int),
             size: size,
           );
@@ -120,6 +119,41 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
   }
 
   @override
+  Stream<PlatformDownloadEvent> downloadEventStream() {
+    return const EventChannel('video_player_channel/downloadEvents')
+        .receiveBroadcastStream()
+        .map((dynamic event) {
+      late Map<dynamic, dynamic> map;
+      if (event is Map) {
+        map = event;
+      }
+      final eventType =
+          platformDownloadEventTypeFromString(map["event"] as String);
+      switch (eventType) {
+        case PlatformDownloadEventType.progress:
+          return PlatformDownloadEvent(
+            eventType: eventType,
+            url: map["url"] as String?,
+            progress: map["progress"] as double,
+          );
+        case PlatformDownloadEventType.finished:
+          return PlatformDownloadEvent(
+            eventType: eventType,
+            url: map["url"] as String?,
+          );
+        case PlatformDownloadEventType.error:
+          return PlatformDownloadEvent(
+            eventType: eventType,
+            url: map["url"] as String?,
+            error: map["error"] as String,
+          );
+        case PlatformDownloadEventType.unknown:
+          throw "Unknown event type";
+      }
+    });
+  }
+
+  @override
   Widget buildView(int? textureId, bool isFullscreen) {
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       return UiKitView(
@@ -133,12 +167,31 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
   }
 
   @override
-  Future<void> setDataSource(
-      int? textureId, VideoPlayerDataSource dataSource) async {
-    Map<String, dynamic>? dataSourceDescription;
+  Future<void> downloadOfflineAsset(
+    String uri,
+    Map<String, String?>? headers,
+  ) async {
+    await methodChannel.invokeMethod(
+      'downloadOfflineAsset',
+      <String, dynamic>{
+        'uri': uri,
+        'headers': headers,
+      },
+    );
+  }
+
+  @override
+  Future<void> deleteOfflineAsset(String uri) async {
+    methodChannel.invokeMethod('deleteOfflineAsset', <String, dynamic>{
+      'uri': uri,
+    });
+  }
+
+  Map<String, dynamic> getDataSourceDescription(
+      VideoPlayerDataSource dataSource) {
     switch (dataSource.sourceType) {
       case VideoPlayerDataSourceType.network:
-        dataSourceDescription = <String, dynamic>{
+        return {
           'uri': dataSource.uri,
           'headers': dataSource.headers,
           'title': dataSource.notificationConfiguration?.title,
@@ -148,8 +201,24 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
               dataSource.notificationConfiguration?.notificationChannelName,
           'activityName': dataSource.notificationConfiguration?.activityName,
         };
-        break;
+      case VideoPlayerDataSourceType.offline:
+        return {
+          'uri': dataSource.uri,
+          'offline': true,
+          'title': dataSource.notificationConfiguration?.title,
+          'author': dataSource.notificationConfiguration?.author,
+          'imageUrl': dataSource.notificationConfiguration?.imageUrl,
+          'notificationChannelName':
+              dataSource.notificationConfiguration?.notificationChannelName,
+          'activityName': dataSource.notificationConfiguration?.activityName,
+        };
     }
+  }
+
+  @override
+  Future<void> setDataSource(
+      int? textureId, VideoPlayerDataSource dataSource) async {
+    final dataSourceDescription = getDataSourceDescription(dataSource);
     await methodChannel.invokeMethod<void>(
       'setDataSource',
       <String, dynamic>{

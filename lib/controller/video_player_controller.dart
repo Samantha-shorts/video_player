@@ -187,6 +187,27 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     );
   }
 
+  Future<void> setOfflineDataSource(
+    String uri, {
+    Duration? startPosition,
+    List<VideoPlayerSubtitlesSource>? subtitles,
+    bool? useAbrSubtitles,
+    Map<String, String?>? headers,
+    VideoPlayerNotificationConfiguration? notificationConfiguration,
+  }) {
+    return _setDataSource(
+      VideoPlayerDataSource(
+        sourceType: VideoPlayerDataSourceType.offline,
+        uri: uri,
+        startPosition: startPosition,
+        subtitles: subtitles,
+        useAbrSubtitles: useAbrSubtitles,
+        headers: headers,
+        notificationConfiguration: notificationConfiguration,
+      ),
+    );
+  }
+
   Future<void> _setDataSource(VideoPlayerDataSource dataSource) async {
     if (_isDisposed) {
       return;
@@ -201,8 +222,10 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     tracksController.reset();
     subtitlesController.reset();
 
-    if (Utils.isDataSourceHls(dataSource.uri)) {
-      _loadAbrManifest(dataSource);
+    if (dataSource.sourceType == VideoPlayerDataSourceType.network) {
+      if (Utils.isDataSourceHls(dataSource.uri)) {
+        _loadAbrManifest(dataSource);
+      }
     }
 
     await _initializeCompleter.future;

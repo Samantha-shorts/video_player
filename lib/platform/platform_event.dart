@@ -96,7 +96,6 @@ class DurationRange {
   }
 
   @override
-  // ignore: no_runtimetype_tostring
   String toString() => '$runtimeType(start: $start, end: $end)';
 
   @override
@@ -109,4 +108,50 @@ class DurationRange {
 
   @override
   int get hashCode => start.hashCode ^ end.hashCode;
+}
+
+enum PlatformDownloadEventType { unknown, progress, finished, error }
+
+PlatformDownloadEventType platformDownloadEventTypeFromString(String value) {
+  return PlatformDownloadEventType.values.firstWhere(
+    (type) => type.toString().split('.')[1] == value,
+    orElse: () => PlatformDownloadEventType.unknown,
+  );
+}
+
+class PlatformDownloadEvent {
+  PlatformDownloadEvent({
+    required this.eventType,
+    this.url,
+    this.progress,
+    this.error,
+  });
+
+  final PlatformDownloadEventType eventType;
+  final String? url;
+  final double? progress;
+  final String? error;
+
+  @override
+  String toString() {
+    return '$runtimeType('
+        'eventType: $eventType, '
+        'url: $url, '
+        'progress: $progress, '
+        'error: $error)';
+  }
+}
+
+class PlatformDownloadTask {
+  final String url;
+  // 0: running
+  // 1: suspended
+  // 2: canceling
+  // 3: completed
+  final int state;
+
+  PlatformDownloadTask({
+    required this.url,
+    required this.state,
+  });
 }
