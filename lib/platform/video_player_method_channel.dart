@@ -119,41 +119,6 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
   }
 
   @override
-  Stream<PlatformDownloadEvent> downloadEventStream() {
-    return const EventChannel('video_player_channel/downloadEvents')
-        .receiveBroadcastStream()
-        .map((dynamic event) {
-      late Map<dynamic, dynamic> map;
-      if (event is Map) {
-        map = event;
-      }
-      final eventType =
-          platformDownloadEventTypeFromString(map["event"] as String);
-      switch (eventType) {
-        case PlatformDownloadEventType.progress:
-          return PlatformDownloadEvent(
-            eventType: eventType,
-            url: map["url"] as String?,
-            progress: map["progress"] as double,
-          );
-        case PlatformDownloadEventType.finished:
-          return PlatformDownloadEvent(
-            eventType: eventType,
-            url: map["url"] as String?,
-          );
-        case PlatformDownloadEventType.error:
-          return PlatformDownloadEvent(
-            eventType: eventType,
-            url: map["url"] as String?,
-            error: map["error"] as String,
-          );
-        case PlatformDownloadEventType.unknown:
-          throw "Unknown event type";
-      }
-    });
-  }
-
-  @override
   Widget buildView(int? textureId, bool isFullscreen) {
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       return UiKitView(
@@ -164,27 +129,6 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
     } else {
       return Texture(textureId: textureId!);
     }
-  }
-
-  @override
-  Future<void> downloadOfflineAsset(
-    String uri,
-    Map<String, String?>? headers,
-  ) async {
-    await methodChannel.invokeMethod(
-      'downloadOfflineAsset',
-      <String, dynamic>{
-        'uri': uri,
-        'headers': headers,
-      },
-    );
-  }
-
-  @override
-  Future<void> deleteOfflineAsset(String uri) async {
-    methodChannel.invokeMethod('deleteOfflineAsset', <String, dynamic>{
-      'uri': uri,
-    });
   }
 
   Map<String, dynamic> getDataSourceDescription(
@@ -203,7 +147,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
         };
       case VideoPlayerDataSourceType.offline:
         return {
-          'uri': dataSource.uri,
+          'key': dataSource.offlineKey,
           'offline': true,
           'title': dataSource.notificationConfiguration?.title,
           'author': dataSource.notificationConfiguration?.author,
@@ -324,5 +268,79 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
         'bitrate': bitrate,
       },
     );
+  }
+
+  @override
+  Stream<PlatformDownloadEvent> downloadEventStream() {
+    return const EventChannel('video_player_channel/downloadEvents')
+        .receiveBroadcastStream()
+        .map((dynamic event) {
+      late Map<dynamic, dynamic> map;
+      if (event is Map) {
+        map = event;
+      }
+      final eventType =
+          platformDownloadEventTypeFromString(map["event"] as String);
+      switch (eventType) {
+        case PlatformDownloadEventType.progress:
+          return PlatformDownloadEvent(
+            eventType: eventType,
+            key: map["key"] as String?,
+            progress: map["progress"] as double,
+          );
+        case PlatformDownloadEventType.finished:
+          return PlatformDownloadEvent(
+            eventType: eventType,
+            key: map["key"] as String?,
+          );
+        case PlatformDownloadEventType.error:
+          return PlatformDownloadEvent(
+            eventType: eventType,
+            key: map["key"] as String?,
+            error: map["error"] as String,
+          );
+        case PlatformDownloadEventType.unknown:
+          throw "Unknown event type";
+      }
+    });
+  }
+
+  @override
+  Future<void> downloadOfflineAsset({
+    required String key,
+    required String uri,
+    Map<String, String?>? headers,
+  }) async {
+    await methodChannel.invokeMethod(
+      'downloadOfflineAsset',
+      <String, dynamic>{
+        'key': key,
+        'uri': uri,
+        'headers': headers,
+      },
+    );
+  }
+
+  @override
+  Future<void> deleteOfflineAsset(String key) async {
+    methodChannel.invokeMethod('deleteOfflineAsset', <String, dynamic>{
+      'key': key,
+    });
+  }
+
+  @override
+  Future<Map<String, Map<String, dynamic>>> getDownloads() async {
+    final res = await methodChannel.invokeMethod(
+      'getDownloads',
+      null,
+    );
+    final map = Map<String, dynamic>.from(res);
+    return map.map((key, value) {
+      if (value is Map) {
+        return MapEntry(key, Map<String, dynamic>.from(value));
+      } else {
+        throw Exception('Expected a Map but got $value');
+      }
+    });
   }
 }

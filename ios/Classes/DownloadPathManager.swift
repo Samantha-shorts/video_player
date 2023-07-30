@@ -10,7 +10,9 @@ import Foundation
 class DownloadPathManager {
     private init() {}
 
-    private static let PLIST_NAME = "downloads.plist"
+    private static let PLIST_NAME = "video_player_downloads.plist"
+    typealias Value = [String: String]
+    typealias KeyValue = [String: Value]
 
     private static var plistUrl: URL {
         try! FileManager.default.url(
@@ -22,57 +24,75 @@ class DownloadPathManager {
     }
 
     static func createPlistIfNotExist() {
-        if !FileManager.default.fileExists(atPath: Self.plistUrl.absoluteString) {
+        if !FileManager.default.fileExists(atPath: Self.plistUrl.path) {
             FileManager.default.createFile(
                 atPath: Self.plistUrl.path, contents: nil, attributes: nil)
         }
     }
 
-    private static func read() -> [String: String] {
+    static func read() -> KeyValue {
         var format = PropertyListSerialization.PropertyListFormat.xml
         guard let plistData = try? Data(contentsOf: Self.plistUrl),
             let dict = try? PropertyListSerialization.propertyList(
                 from: plistData,
                 options: .mutableContainersAndLeaves,
                 format: &format
-            ) as? [String: String]
+            ) as? KeyValue
         else {
             return [:]
         }
         return dict
     }
 
-    private static func write(dict: [String: String]) {
+    private static func write(_ kv: KeyValue) {
         let newData = try? PropertyListSerialization.data(
-            fromPropertyList: dict, format: .xml, options: 0)
+            fromPropertyList: kv, format: .xml, options: 0)
         try? newData?.write(to: Self.plistUrl)
     }
 
-    static func write(url: String, path: String) {
+    static func add(key: String, url: String) {
         createPlistIfNotExist()
 
         var dict = read()
-        dict[url] = path
-        write(dict: dict)
+        let value: Value = ["url": url]
+        dict[key] = value
+        write(dict)
     }
 
-    static func remove(url: String) -> URL? {
+    static func remove(_ key: String) -> Value? {
         var dict = read()
-        let path = dict.removeValue(forKey: url)
-        write(dict: dict)
-        return path.map {
-            URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent($0)
-        }
+        let value = dict.removeValue(forKey: key)
+        write(dict)
+        return value
     }
 
-    static func assetPath(forUrl url: String) -> String? {
-        let dict = read()
-        return dict[url]
+    static func key(forUrl url: String) -> String? {
+        var dict = read()
+        return dict.first(where: { $0.value["url"] == url })?.key
     }
 
-    static func assetUrl(forUrl url: String) -> URL? {
-        assetPath(forUrl: url).map {
-            URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent($0)
+    static func writePath(forUrl url: String, path: String) {
+        var dict = read()
+        if let key = key(forUrl: url) {
+            dict[key]?["path"] = path
         }
+        write(dict)
+    }
+
+    static func assetPath(forKey key: String) -> String? {
+        let value = read()[key]
+        return value?["path"]
+    }
+
+    static func sync() {
+        let dict = read().filter { (key, value) in
+            if let path = value["path"] {
+                // remove if downloaded asset is already removed
+                let url = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(path)
+                return FileManager.default.fileExists(atPath: url.path)
+            }
+            return true
+        }
+        write(dict)
     }
 }

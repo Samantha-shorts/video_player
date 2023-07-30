@@ -15,18 +15,16 @@ class DownloadHlsPage extends StatefulWidget {
   State<DownloadHlsPage> createState() => _DownloadHlsPageState();
 }
 
-enum DownloadState { notDownloaded, loading, progress, finished, error }
+enum DownloadStatus { notDownloaded, loading, progress, finished, error }
 
-class DownloadStateValue {
-  DownloadStateValue({
-    required this.state,
+class DownloadState {
+  DownloadState({
+    required this.status,
     this.progress,
-    this.downloadingUrl,
   });
 
-  DownloadState state;
+  DownloadStatus status;
   double? progress;
-  String? downloadingUrl;
 }
 
 class _DownloadHlsPageState extends State<DownloadHlsPage> {
@@ -63,12 +61,14 @@ class _DownloadHlsPageState extends State<DownloadHlsPage> {
     },
   ];
 
-  List<DownloadStateValue> states = list
-      .map((_) => DownloadStateValue(state: DownloadState.notDownloaded))
-      .toList();
-
-  static final HttpClient _httpClient = HttpClient()
-    ..connectionTimeout = const Duration(seconds: 5);
+  Map<String, DownloadState> states = Map.fromEntries(
+    list.map(
+      (map) => MapEntry(
+        map["uri"] as String,
+        DownloadState(status: DownloadStatus.notDownloaded),
+      ),
+    ),
+  );
 
   late StreamSubscription<PlatformDownloadEvent> _subscription;
 
@@ -80,24 +80,42 @@ class _DownloadHlsPageState extends State<DownloadHlsPage> {
         .listen((event) async {
       switch (event.eventType) {
         case PlatformDownloadEventType.finished:
-          final url = event.url!;
-          final value =
-              states.firstWhere((element) => element.downloadingUrl == url);
+          final key = event.key!;
           setState(() {
-            value.state = DownloadState.finished;
+            states[key]?.progress = null;
+            states[key]?.status = DownloadStatus.finished;
           });
         case PlatformDownloadEventType.progress:
-          final url = event.url!;
-          final value =
-              states.firstWhere((element) => element.downloadingUrl == url);
+          final key = event.key!;
           setState(() {
-            value.state = DownloadState.progress;
-            value.progress = event.progress;
+            states[key]?.progress = event.progress;
+            states[key]?.status = DownloadStatus.progress;
           });
         default:
           break;
       }
     });
+    loadDownloadedURLs();
+  }
+
+  Future<void> loadDownloadedURLs() async {
+    final downloads = await VideoPlayerPlatform.instance.getDownloads();
+    for (final entry in downloads.entries) {
+      final key = entry.key;
+      final status = entry.value["state"] as int;
+      final state = states[key]!;
+      switch (status) {
+        case 0:
+          state.status = DownloadStatus.progress;
+          break;
+        case 3:
+          state.status = DownloadStatus.finished;
+          break;
+        default:
+          break;
+      }
+    }
+    setState(() {});
   }
 
   @override
@@ -119,37 +137,37 @@ class _DownloadHlsPageState extends State<DownloadHlsPage> {
           thickness: 0.5,
         ),
         itemBuilder: (context, index) {
+          final key = list[index]["uri"]!;
+          final state = states[key]!;
           return ListTile(
             title: Text(list[index]['name']!),
-            trailing: states[index].state == DownloadState.loading ||
-                    states[index].state == DownloadState.progress
+            trailing: state.status == DownloadStatus.loading ||
+                    state.status == DownloadStatus.progress
                 ? SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(
-                      value: states[index].state == DownloadState.progress
-                          ? states[index].progress
+                      value: state.status == DownloadStatus.progress
+                          ? state.progress
                           : null,
                     ),
                   )
                 : IconButton(
                     icon: Icon(
-                      states[index].state == DownloadState.notDownloaded
+                      state.status == DownloadStatus.notDownloaded
                           ? Icons.download
                           : Icons.delete,
                     ),
                     onPressed: () async {
-                      switch (states[index].state) {
-                        case DownloadState.notDownloaded:
-                          await onTapDownload(
-                              list[index]['uri']!, states[index]);
+                      switch (state.status) {
+                        case DownloadStatus.notDownloaded:
+                          await onTapDownload(list[index]['uri']!, state);
                           break;
-                        case DownloadState.finished:
-                          await VideoPlayerPlatform.instance.deleteOfflineAsset(
-                              states[index].downloadingUrl!);
+                        case DownloadStatus.finished:
+                          await VideoPlayerPlatform.instance
+                              .deleteOfflineAsset(key);
                           setState(() {
-                            states[index].downloadingUrl = null;
-                            states[index].state = DownloadState.notDownloaded;
+                            state.status = DownloadStatus.notDownloaded;
                           });
                           break;
                         default:
@@ -157,13 +175,15 @@ class _DownloadHlsPageState extends State<DownloadHlsPage> {
                       }
                     },
                   ),
-            onTap: () {
-              switch (states[index].state) {
-                case DownloadState.finished:
+            onTap: () async {
+              switch (state.status) {
+                case DownloadStatus.notDownloaded:
+                  await onTapDownload(list[index]['uri']!, state);
+                  break;
+                case DownloadStatus.finished:
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (context) =>
-                          _PlayPage(url: states[index].downloadingUrl!),
+                      builder: (context) => _PlayPage(offlineKey: key),
                     ),
                   );
                   break;
@@ -177,58 +197,85 @@ class _DownloadHlsPageState extends State<DownloadHlsPage> {
     );
   }
 
-  Future<void> onTapDownload(String uri, DownloadStateValue value) async {
+  Future<void> onTapDownload(String uri, DownloadState state) async {
     setState(() {
-      value.state = DownloadState.loading;
+      state.status = DownloadStatus.loading;
     });
 
-    final data = await getDataFromUrlString(uri, null);
-    final url = Uri.parse(uri);
-    final playlist = await HlsPlaylistParser.create().parseString(url, data);
-    if (playlist is HlsMasterPlaylist) {
-      final uri = await selectQuality<Uri>(playlist);
-      if (uri == null) {
-        setState(() {
-          value.state = DownloadState.notDownloaded;
-        });
-      } else {
-        VideoPlayerPlatform.instance.downloadOfflineAsset(uri.toString(), null);
-        value.downloadingUrl = uri.toString();
-      }
-    } else if (playlist is HlsMediaPlaylist) {
-      VideoPlayerPlatform.instance.downloadOfflineAsset(uri.toString(), null);
-      value.downloadingUrl = uri.toString();
+    final url = await VariantSelector.select(uri, (variants) async {
+      return showCupertinoModalPopup(
+        context: context,
+        builder: (context) => CupertinoActionSheet(
+          actions: variants.map(
+            (variant) {
+              return CupertinoActionSheetAction(
+                onPressed: () async {
+                  Navigator.of(context).pop(variant);
+                },
+                child: Text(formatVariant(variant)),
+              );
+            },
+          ).toList(),
+        ),
+      );
+    });
+    if (url != null) {
+      await VideoPlayerPlatform.instance.downloadOfflineAsset(
+        key: uri,
+        uri: url.toString(),
+      );
+    } else {
+      setState(() {
+        state.status = DownloadStatus.notDownloaded;
+      });
     }
   }
 
-  bool containsVideoCodec(String codecs) {
+  static bool containsVideoCodec(String codecs) {
     var videoCodecs = ['avc1', 'hev1', 'hvc1', 'vp9', 'av01'];
     return videoCodecs.any((codec) => codecs.contains(codec));
   }
 
-  Future<T?> selectQuality<T>(HlsMasterPlaylist playlist) async {
-    final tracks = playlist.variants
-        .where((variant) => containsVideoCodec(variant.format.codecs ?? ''));
-    return showCupertinoModalPopup(
-      context: context,
-      builder: (context) => CupertinoActionSheet(
-        title: const Text("Download movie"),
-        message: const Text("Select resolution"),
-        actions: tracks
-            .map(
-              (variant) => CupertinoActionSheetAction(
-                onPressed: () async {
-                  Navigator.of(context).pop(variant.url);
-                },
-                child: Text(
-                    variant.format.height != null && variant.format.height! > 0
-                        ? "${variant.format.height}p"
-                        : "Bitrate ${variant.format.bitrate}"),
-              ),
-            )
-            .toList(),
-      ),
-    );
+  static String formatBitrate(int bitrate) {
+    if (bitrate < 1000) {
+      return '$bitrate bps';
+    } else if (bitrate < 1000000) {
+      return '${(bitrate / 1000).toStringAsFixed(1)} kbps';
+    } else {
+      return '${(bitrate / 1000000).toStringAsFixed(2)} Mbps';
+    }
+  }
+
+  static String formatVariant(Variant variant) {
+    final containsVideo = containsVideoCodec(variant.format.codecs ?? '');
+    String text = variant.format.height != null && variant.format.height! > 0
+        ? "${variant.format.height}p"
+        : formatBitrate(variant.format.bitrate ?? 0);
+    if (!containsVideo) {
+      text += " (Audio)";
+    }
+    return text;
+  }
+}
+
+class VariantSelector {
+  static final HttpClient _httpClient = HttpClient()
+    ..connectionTimeout = const Duration(seconds: 5);
+
+  static Future<String?> select<T>(
+    String uri,
+    Future<Variant?> Function(List<Variant> variants) fn,
+  ) async {
+    final data = await getDataFromUrlString(uri, null);
+    final url = Uri.parse(uri);
+    final playlist = await HlsPlaylistParser.create().parseString(url, data);
+    if (playlist is HlsMasterPlaylist) {
+      final variant = await fn(playlist.variants);
+      return variant?.url.toString();
+    } else if (playlist is HlsMediaPlaylist) {
+      return uri;
+    }
+    return null;
   }
 
   static Future<String> getDataFromUrlString(
@@ -260,10 +307,10 @@ class _DownloadHlsPageState extends State<DownloadHlsPage> {
 class _PlayPage extends StatelessWidget {
   const _PlayPage({
     super.key,
-    required this.url,
+    required this.offlineKey,
   });
 
-  final String url;
+  final String offlineKey;
 
   @override
   Widget build(BuildContext context) {
@@ -272,7 +319,7 @@ class _PlayPage extends StatelessWidget {
       body: Column(children: [
         AspectRatio(
           aspectRatio: 16 / 9,
-          child: VideoPlayer.offline(url),
+          child: VideoPlayer.offline(offlineKey),
         ),
       ]),
     );

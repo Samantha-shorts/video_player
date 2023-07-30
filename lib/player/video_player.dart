@@ -30,7 +30,7 @@ class VideoPlayer extends StatefulWidget {
       );
 
   factory VideoPlayer.offline(
-    String url, {
+    String offlineKey, {
     VideoPlayerConfiguration? configuration,
   }) =>
       VideoPlayer(
@@ -38,7 +38,7 @@ class VideoPlayer extends StatefulWidget {
           configuration: configuration ?? const VideoPlayerConfiguration(),
           dataSource: VideoPlayerDataSource(
             sourceType: VideoPlayerDataSourceType.offline,
-            uri: url,
+            offlineKey: offlineKey,
           ),
         ),
       );

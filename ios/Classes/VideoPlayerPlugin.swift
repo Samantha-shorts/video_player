@@ -9,8 +9,6 @@ enum FlutterMethod: String {
     case `init`
     case create
     case isPictureInPictureSupported
-    case downloadOfflineAsset
-    case deleteOfflineAsset
     case setDataSource
     case play
     case pause
@@ -22,6 +20,10 @@ enum FlutterMethod: String {
     case setMuted
     case setPlaybackRate
     case setTrackParameters
+    // download
+    case downloadOfflineAsset
+    case deleteOfflineAsset
+    case getDownloads
 }
 
 typealias TextureId = Int
@@ -88,27 +90,50 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
             ])
         case .downloadOfflineAsset:
             guard let args = call.arguments as? [String: Any],
+                let key = args["key"] as? String,
                 let uriString = args["uri"] as? String,
                 let url = URL(string: uriString)
             else {
-                result(FlutterError.invalidArgs(message: "requires valid uri"))
+                result(FlutterError.invalidArgs(message: "requires key and valid uri"))
                 return
             }
             downloader.startDownload(
+                key: key,
                 url: url,
                 headers: args["headers"] as? [String: String]
             )
             result(nil)
         case .deleteOfflineAsset:
             guard let args = call.arguments as? [String: Any],
-                let uriString = args["uri"] as? String,
-                let url = URL(string: uriString)
+                let key = args["key"] as? String
             else {
-                result(FlutterError.invalidArgs(message: "requires valid uri"))
+                result(FlutterError.invalidArgs(message: "requires key"))
                 return
             }
-            downloader.deleteOfflineAsset(url: url)
+            downloader.deleteOfflineAsset(key: key)
             result(nil)
+        case .getDownloads:
+            DownloadPathManager.sync()
+            let items = DownloadPathManager.read()
+            let downloadedKeys: [String] = Array(items.filter { $0.value["path"] != nil }.keys)
+            let downloadings = items.filter { $0.value["path"] == nil }
+            downloader.getAllDownloadTasks { tasks in
+                var downloads: [String: [String: Any]] = [:]
+                downloadedKeys.forEach {
+                    downloads[$0] = ["state": URLSessionTask.State.completed.rawValue]
+                }
+                downloadings.forEach {
+                    let key = $0.key
+                    let url = $0.value["url"]
+                    if let task = tasks.first(where: { $0.urlAsset.url.absoluteString == url }) {
+                        downloads[key] =
+                            [
+                                "state": task.state.rawValue
+                            ] as [String: Any]
+                    }
+                }
+                result(downloads)
+            }
         default:
             guard let args = call.arguments as? [String: Any],
                 let textureId = args["textureId"] as? Int,
@@ -124,19 +149,27 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 let dataSource = args["dataSource"] as! DataSource
                 dataSources[textureId] = dataSource
 
-                guard let uriString = dataSource["uri"] as? String,
-                    let uri = URL(string: uriString)
-                else {
-                    result(FlutterError.invalidArgs(message: "requires valid uri"))
-                    return
-                }
                 if dataSource["offline"] as? Bool == true {
-                    guard let assetUrl = DownloadPathManager.assetUrl(forUrl: uriString) else {
+                    guard let key = dataSource["key"] as? String
+                    else {
+                        result(FlutterError.invalidArgs(message: "requires key"))
+                        return
+                    }
+                    guard let path = DownloadPathManager.assetPath(forKey: key)
+                    else {
                         result(FlutterError.assetNotFound())
                         return
                     }
-                    player.setDataSource(url: assetUrl, headers: nil)
+                    let assetURL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(
+                        path)
+                    player.setDataSource(url: assetURL, headers: nil)
                 } else {
+                    guard let uriString = dataSource["uri"] as? String,
+                        let uri = URL(string: uriString)
+                    else {
+                        result(FlutterError.invalidArgs(message: "requires valid uri"))
+                        return
+                    }
                     player.setDataSource(
                         url: uri, headers: dataSource["headers"] as? [String: String])
                 }

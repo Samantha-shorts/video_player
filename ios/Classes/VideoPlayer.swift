@@ -241,26 +241,25 @@ class VideoPlayer: NSObject {
         else {
             return
         }
+        var duration = TimeUtils.FLTCMTimeToMillis(item.duration)
         let size = item.presentationSize
-        let width = size.width
-        let height = size.height
+        var width = size.width
+        var height = size.height
         let onlyAudio = item.asset.tracks(withMediaType: .video).isEmpty
+
+        if let assetTrack = item.tracks.first?.assetTrack {
+            let naturalSize = assetTrack.naturalSize
+            let prefTrans = assetTrack.preferredTransform
+            let realSize = naturalSize.applying(prefTrans)
+            duration = TimeUtils.FLTCMTimeToMillis(item.asset.duration)
+            width = abs(realSize.width) != 0 ? realSize.width : width
+            height = abs(realSize.height) != 0 ? realSize.height : height
+        }
 
         // The player has not yet initialized.
         if !onlyAudio && height == 0 && width == 0 {
             return
         }
-
-        // Fix from https://github.com/flutter/flutter/issues/66413
-        guard let track = item.tracks.first,
-            let assetTrack = track.assetTrack
-        else {
-            return
-        }
-        let naturalSize = assetTrack.naturalSize
-        let prefTrans = assetTrack.preferredTransform
-        let realSize = naturalSize.applying(prefTrans)
-        let duration = TimeUtils.FLTCMTimeToMillis(item.asset.duration)
 
         try? AVAudioSession.sharedInstance().setActive(true)
         try? AVAudioSession.sharedInstance().setCategory(.playback)
@@ -271,8 +270,8 @@ class VideoPlayer: NSObject {
             .initialized,
             [
                 "duration": duration,
-                "width": abs(realSize.width) != 0 ? realSize.width : width,
-                "height": abs(realSize.height) != 0 ? realSize.height : height,
+                "width": width,
+                "height": height,
             ]
         )
     }

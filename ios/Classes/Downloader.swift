@@ -38,7 +38,7 @@ class Downloader: NSObject {
         eventChannel.setStreamHandler(nil)
     }
 
-    func startDownload(url: URL, headers: [String: String]?) {
+    func startDownload(key: String, url: URL, headers: [String: String]?) {
         let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers ?? [:]])
         let assetTitle = url.lastPathComponent
         let downloadTask = downloadSession.makeAssetDownloadTask(
@@ -48,25 +48,22 @@ class Downloader: NSObject {
             options: nil
         )
         downloadTask?.resume()
+        DownloadPathManager.add(key: key, url: url.absoluteString)
     }
 
-    //    func getAllDownloadTasks(_ completion: @escaping ([AVAssetDownloadTask]) -> Void) {
-    //        downloadSession.getAllTasks { tasks in
-    //            completion(tasks.compactMap { $0 as? AVAssetDownloadTask })
-    //        }
-    //    }
-    //
-    //    func getDownloadTask(url: URL, _ completion: @escaping (AVAssetDownloadTask?) -> Void) {
-    //        getAllDownloadTasks { tasks in
-    //            completion(tasks.first(where: { $0.urlAsset.url == url }))
-    //        }
-    //    }
+    func getAllDownloadTasks(_ completion: @escaping ([AVAssetDownloadTask]) -> Void) {
+        downloadSession.getAllTasks { tasks in
+            completion(tasks.compactMap { $0 as? AVAssetDownloadTask })
+        }
+    }
 
-    /// url is a requested http url, **not a path to local file**.
-    func deleteOfflineAsset(url: URL) {
-        guard let assetURL = DownloadPathManager.remove(url: url.absoluteString) else {
+    func deleteOfflineAsset(key: String) {
+        guard let value = DownloadPathManager.remove(key),
+            let path = value["path"]
+        else {
             return
         }
+        let assetURL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(path)
         do {
             if FileManager.default.fileExists(atPath: assetURL.path) {
                 try FileManager.default.removeItem(at: assetURL)
@@ -83,6 +80,11 @@ extension Downloader: AVAssetDownloadDelegate {
         didLoad timeRange: CMTimeRange, totalTimeRangesLoaded loadedTimeRanges: [NSValue],
         timeRangeExpectedToLoad: CMTimeRange
     ) {
+        let url = assetDownloadTask.urlAsset.url.absoluteString
+        guard let key = DownloadPathManager.key(forUrl: url) else {
+            fatalError("key not found for url \(url)")
+        }
+
         var percentComplete = 0.0
         // Iterate through the loaded time ranges
         for value in loadedTimeRanges {
@@ -95,7 +97,7 @@ extension Downloader: AVAssetDownloadDelegate {
         sendEvent(
             .progress,
             [
-                "url": assetDownloadTask.urlAsset.url.absoluteString,
+                "key": key,
                 "progress": percentComplete,
             ])
     }
@@ -103,10 +105,12 @@ extension Downloader: AVAssetDownloadDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?)
     {
         if let error = error {
+            let url = task.originalRequest?.url?.absoluteString
+            let key = url.flatMap { DownloadPathManager.key(forUrl: $0) }
             sendEvent(
                 .error,
                 [
-                    "url": (task as? AVAssetDownloadTask)?.urlAsset.url.absoluteString as Any,
+                    "key": key as Any,
                     "error": error.localizedDescription as Any,
                 ])
         }
@@ -116,12 +120,18 @@ extension Downloader: AVAssetDownloadDelegate {
         _ session: URLSession, assetDownloadTask: AVAssetDownloadTask,
         didFinishDownloadingTo location: URL
     ) {
-        DownloadPathManager.write(
-            url: assetDownloadTask.urlAsset.url.absoluteString, path: location.relativePath)
+        DownloadPathManager.writePath(
+            forUrl: assetDownloadTask.urlAsset.url.absoluteString,
+            path: location.relativePath
+        )
+        let url = assetDownloadTask.urlAsset.url.absoluteString
+        guard let key = DownloadPathManager.key(forUrl: url) else {
+            fatalError("key not found for url \(url)")
+        }
         sendEvent(
             .finished,
             [
-                "url": assetDownloadTask.urlAsset.url.absoluteString
+                "key": key
             ])
     }
 }

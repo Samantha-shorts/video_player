@@ -155,12 +155,13 @@ object Downloader {
                 ) {
                     when (download.state) {
                         Download.STATE_DOWNLOADING -> {
-                            startDownloadTimer(download)
+                            startDownloadTimer(context, download)
                         }
                         Download.STATE_COMPLETED -> {
                             stopDownloadTimer(download)
                             downloadHelpers.remove(download.request.uri)?.release()
-                            sendEvent(DOWNLOAD_EVENT_FINISHED, mapOf("url" to download.request.uri.toString()))
+                            val key = getKeyByDownloadId(context, download.request.id)!!
+                            sendEvent(DOWNLOAD_EVENT_FINISHED, mapOf("key" to key))
                         }
                         Download.STATE_FAILED -> {
                             stopDownloadTimer(download)
@@ -183,7 +184,8 @@ object Downloader {
         }
     }
 
-    fun startDownload(context: Context, uri: String, headers: Map<String, String>?) {
+    fun startDownload(context: Context, key: String, uri: String, headers: Map<String, String>?) {
+        val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit()
         val downloadManager = getDownloadManager(context)
         val downloadHelper = DownloadHelper.forMediaItem(
             context,
@@ -196,6 +198,9 @@ object Downloader {
                 val request = helper.getDownloadRequest(null)
                 downloadHelpers[request.uri] = helper
                 downloadManager.addDownload(request)
+                // save uri for key
+                prefs?.putString(key, request.id)
+                prefs?.apply()
                 downloadManager.resumeDownloads()
             }
 
@@ -205,13 +210,14 @@ object Downloader {
         })
     }
 
-    private fun startDownloadTimer(download: Download) {
+    private fun startDownloadTimer(context: Context, download: Download) {
         val runnable = object : Runnable {
             override fun run() {
                 // maybe called after download completed so check download is still going here
                 if (downloadHelpers.containsKey(download.request.uri)) {
                     val progress = download.percentDownloaded / 100
-                    sendEvent(DOWNLOAD_EVENT_PROGRESS, mapOf("url" to download.request.uri.toString(), "progress" to progress))
+                    val key = getKeyByDownloadId(context, download.request.id)!!
+                    sendEvent(DOWNLOAD_EVENT_PROGRESS, mapOf("key" to key, "progress" to progress))
                     handler.postDelayed(this, 1000)
                 } else {
                     stopDownloadTimer(download)
@@ -228,26 +234,52 @@ object Downloader {
         }
     }
 
-    fun removeDownload(uri: Uri) {
-        downloadIndex?.getDownloads()?.use {
-            while (it.moveToNext()) {
-                if (it.download.request.uri == uri) {
-                    downloadManager?.removeDownload(it.download.request.id)
-                }
-            }
+    fun removeDownload(context: Context, key: String) {
+        ensureDownloadManagerInitialized(context)
+        val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE)
+        val editor = prefs.edit()
+        prefs.getString(key, "")?.let {
+            downloadManager?.removeDownload(it)
         }
+        editor.remove(key)
+        editor.apply()
     }
 
-    fun getDownload(uri: Uri): Download? {
-        downloadIndex?.getDownloads()?.use {
-            while (it.moveToNext()) {
-                if (it.download.request.uri == uri) {
-                    return it.download
-                }
+    fun getDownloadKeys(context: Context): List<String> {
+        ensureDownloadManagerInitialized(context)
+        val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE)
+        val editor = prefs.edit()
+        for (entry in prefs.all) {
+            val key = entry.key
+            val id = entry.value as String
+            if (downloadIndex?.getDownload(id) == null) {
+                editor.remove(key)
+            }
+        }
+        editor.apply()
+        return prefs.all.keys.toList()
+    }
+
+    fun getDownloadByKey(context: Context, key: String): Download? {
+        val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE)
+        return prefs.getString(key, "")?.let { getDownload(it) }
+    }
+
+    fun getDownload(id: String): Download? {
+        return downloadIndex?.getDownload(id)
+    }
+
+    fun getKeyByDownloadId(context: Context, id: String): String? {
+        val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE)
+        for (entry in prefs.all) {
+            if (entry.value == id) {
+                return entry.key
             }
         }
         return null
     }
+
+    private const val PREFERENCES_KEY = "video_player_preferences"
 
     private const val DOWNLOAD_CONTENT_DIRECTORY = "downloads"
 

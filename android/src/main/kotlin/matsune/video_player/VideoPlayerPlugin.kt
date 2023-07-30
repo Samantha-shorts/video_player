@@ -115,16 +115,39 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         result.success(mapOf("isPictureInPictureSupported" to isPictureInPictureSupported()))
       }
       METHOD_DOWNLOAD_OFFLINE_ASSET -> {
+        val key = call.argument<String>("key")!!
         val uri = call.argument<String>("uri")!!
         val headers: Map<String, String>? = call.argument<Map<String,String>>("headers")
         val context = flutterState?.applicationContext!!
-        Downloader.startDownload(context, uri, headers)
+        Downloader.startDownload(context, key, uri, headers)
         result.success(null)
       }
       METHOD_DELETE_OFFLINE_ASSET -> {
-        val uri = call.argument<String>("uri")!!
-        Downloader.removeDownload(Uri.parse(uri))
+        val context = flutterState?.applicationContext!!
+        val key = call.argument<String>("key")!!
+        Downloader.removeDownload(context, key)
         result.success(null)
+      }
+      METHOD_GET_DOWNLOADS -> {
+        val context = flutterState?.applicationContext!!
+        val keys = Downloader.getDownloadKeys(context)
+        var res = mutableMapOf<String, Map<String, Any>>()
+        keys.forEach {
+          val key = it
+          val download = Downloader.getDownloadByKey(context, key)
+          when (download?.state) {
+            Download.STATE_COMPLETED -> {
+              res[key] = mapOf("state" to DOWNLOAD_STATE_COMPLETED)
+            }
+            Download.STATE_DOWNLOADING, Download.STATE_QUEUED, Download.STATE_RESTARTING -> {
+              res[key] = mapOf("state" to DOWNLOAD_STATE_RUNNING)
+            }
+            else -> {
+              res[key] = mapOf("state" to DOWNLOAD_STATE_CANCELING)
+            }
+          }
+        }
+        result.success(res)
       }
       else -> {
         val textureId = (call.argument<Any>("textureId") as Number?)!!.toLong()
@@ -249,12 +272,13 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
   private fun setDataSource(call: MethodCall, textureId: Long, player: VideoPlayer) {
     val dataSource = call.argument<Map<String, Any?>>("dataSource")!!
     dataSources.put(textureId, dataSource)
-    val headers: Map<String, String> = getParameter(dataSource, "headers", HashMap())
-    val uri = getParameter(dataSource, "uri", "")
     val offline = getParameter(dataSource, "offline", false)
     if (offline) {
-      player.setOfflineDataSource(uri)
+      val offlineKey = getParameter(dataSource, "key", "")
+      player.setOfflineDataSource(offlineKey)
     } else {
+      val headers: Map<String, String> = getParameter(dataSource, "headers", HashMap())
+      val uri = getParameter(dataSource, "uri", "")
       player.setNetworkDataSource(uri, headers)
     }
   }
@@ -346,8 +370,6 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private const val METHOD_INIT = "init"
     private const val METHOD_CREATE = "create"
     private const val METHOD_IS_PICTURE_IN_PICTURE_SUPPORTED = "isPictureInPictureSupported"
-    private const val METHOD_DOWNLOAD_OFFLINE_ASSET = "downloadOfflineAsset"
-    private const val METHOD_DELETE_OFFLINE_ASSET = "deleteOfflineAsset"
     private const val METHOD_SET_DATA_SOURCE = "setDataSource"
     private const val METHOD_PLAY = "play"
     private const val METHOD_PAUSE = "pause"
@@ -359,5 +381,13 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private const val METHOD_SET_MUTED = "setMuted"
     private const val METHOD_SET_PLAYBACK_RATE = "setPlaybackRate"
     private const val METHOD_SET_TRACK_PARAMETERS = "setTrackParameters"
+    private const val METHOD_DOWNLOAD_OFFLINE_ASSET = "downloadOfflineAsset"
+    private const val METHOD_DELETE_OFFLINE_ASSET = "deleteOfflineAsset"
+    private const val METHOD_GET_DOWNLOADS = "getDownloads"
+
+    private const val DOWNLOAD_STATE_RUNNING = 0
+    private const val DOWNLOAD_STATE_SUSPENDED = 1
+    private const val DOWNLOAD_STATE_CANCELING = 2
+    private const val DOWNLOAD_STATE_COMPLETED = 3
   }
 }

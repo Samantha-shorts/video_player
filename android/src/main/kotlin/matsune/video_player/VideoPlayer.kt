@@ -239,8 +239,8 @@ internal class VideoPlayer(
         setMediaSource(mediaSource)
     }
 
-    fun setOfflineDataSource(uri: String) {
-        val download = Downloader.getDownload(Uri.parse(uri))!!
+    fun setOfflineDataSource(offlineKey: String) {
+        val download = Downloader.getDownloadByKey(context, offlineKey)!!
         val dataSourceFactory = Downloader.getDataSourceFactory(context)
         val mediaSourceFactory = HlsMediaSource.Factory(dataSourceFactory)
         val mediaItem = download.request.toMediaItem()

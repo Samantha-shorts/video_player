@@ -188,7 +188,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   }
 
   Future<void> setOfflineDataSource(
-    String uri, {
+    String offlineKey, {
     Duration? startPosition,
     List<VideoPlayerSubtitlesSource>? subtitles,
     bool? useAbrSubtitles,
@@ -198,7 +198,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     return _setDataSource(
       VideoPlayerDataSource(
         sourceType: VideoPlayerDataSourceType.offline,
-        uri: uri,
+        offlineKey: offlineKey,
         startPosition: startPosition,
         subtitles: subtitles,
         useAbrSubtitles: useAbrSubtitles,

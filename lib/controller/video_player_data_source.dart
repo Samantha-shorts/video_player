@@ -6,6 +6,7 @@ class VideoPlayerDataSource {
     required this.sourceType,
     this.asset,
     this.uri,
+    this.offlineKey,
     this.startPosition,
     this.subtitles,
     this.useAbrSubtitles,
@@ -31,6 +32,8 @@ class VideoPlayerDataSource {
   /// This will be in different formats depending on the [DataSourceType] of
   /// the original video.
   final String? uri;
+
+  final String? offlineKey;
 
   final Duration? startPosition;
 

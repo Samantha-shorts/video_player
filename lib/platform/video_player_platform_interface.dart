@@ -45,22 +45,9 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
   Stream<PlatformEvent> eventStreamFor(int? textureId) =>
       throw UnimplementedError('eventStreamFor() has not been implemented.');
 
-  /// Returns a Stream of [PlatformEventType]s.
-  Stream<PlatformDownloadEvent> downloadEventStream() =>
-      throw UnimplementedError(
-          'downloadEventStreamFor() has not been implemented.');
-
   /// Returns a widget displaying the video with a given textureID.
   Widget buildView(int? textureId, bool isFullscreen) =>
       throw UnimplementedError('buildView() has not been implemented.');
-
-  Future<void> downloadOfflineAsset(
-          String uri, Map<String, String?>? headers) =>
-      throw UnimplementedError(
-          'downloadOfflineAsset() has not been implemented.');
-
-  Future<void> deleteOfflineAsset(String uri) => throw UnimplementedError(
-      'deleteOfflineAsset() has not been implemented.');
 
   Future<void> setDataSource(
           int? textureId, VideoPlayerDataSource dataSource) =>
@@ -101,4 +88,23 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
       int? textureId, int? width, int? height, int? bitrate) {
     throw UnimplementedError('setTrackParameters() has not been implemented.');
   }
+
+  /// Returns a Stream of [PlatformEventType]s.
+  Stream<PlatformDownloadEvent> downloadEventStream() =>
+      throw UnimplementedError(
+          'downloadEventStreamFor() has not been implemented.');
+
+  Future<void> downloadOfflineAsset({
+    required String key,
+    required String uri,
+    Map<String, String?>? headers,
+  }) =>
+      throw UnimplementedError(
+          'downloadOfflineAsset() has not been implemented.');
+
+  Future<void> deleteOfflineAsset(String key) => throw UnimplementedError(
+      'deleteOfflineAsset() has not been implemented.');
+
+  Future<Map<String, Map<String, dynamic>>> getDownloads() =>
+      throw UnimplementedError('getDownloads() has not been implemented.');
 }

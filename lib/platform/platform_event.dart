@@ -122,13 +122,13 @@ PlatformDownloadEventType platformDownloadEventTypeFromString(String value) {
 class PlatformDownloadEvent {
   PlatformDownloadEvent({
     required this.eventType,
-    this.url,
+    this.key,
     this.progress,
     this.error,
   });
 
   final PlatformDownloadEventType eventType;
-  final String? url;
+  final String? key;
   final double? progress;
   final String? error;
 
@@ -136,7 +136,7 @@ class PlatformDownloadEvent {
   String toString() {
     return '$runtimeType('
         'eventType: $eventType, '
-        'url: $url, '
+        'key: $key, '
         'progress: $progress, '
         'error: $error)';
   }
