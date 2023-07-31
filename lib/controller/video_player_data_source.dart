@@ -4,8 +4,7 @@ import 'package:video_player/subtitles/subtitles.dart';
 class VideoPlayerDataSource {
   VideoPlayerDataSource({
     required this.sourceType,
-    this.asset,
-    this.uri,
+    this.url,
     this.offlineKey,
     this.startPosition,
     this.subtitles,
@@ -13,7 +12,7 @@ class VideoPlayerDataSource {
     this.headers,
     this.bufferingConfiguration = const VideoPlayerBufferingConfiguration(),
     this.notificationConfiguration,
-  }) : assert(uri == null || asset == null);
+  });
 
   /// Describes the type of data source this [VideoPlayerController]
   /// is constructed with.
@@ -24,15 +23,10 @@ class VideoPlayerDataSource {
   /// from which the video is fetched from.
   final VideoPlayerDataSourceType sourceType;
 
-  /// The name of the asset. Only set for [DataSourceType.asset] videos.
-  final String? asset;
+  /// The URL to the video file. Only set for [DataSourceType.network] videos.
+  final String? url;
 
-  /// The URI to the video file.
-  ///
-  /// This will be in different formats depending on the [DataSourceType] of
-  /// the original video.
-  final String? uri;
-
+  /// The key of the downloaded video file. Only set for [DataSourceType.offline] videos.
   final String? offlineKey;
 
   final Duration? startPosition;
@@ -57,14 +51,8 @@ class VideoPlayerDataSource {
 /// This has nothing to do with the video's file type. It's just the place
 /// from which the video is fetched from.
 enum VideoPlayerDataSourceType {
-  // /// The video was included in the app's asset files.
-  // asset,
-
   /// The video was downloaded from the internet.
   network,
-
-  // /// The video was loaded off of the local filesystem.
-  // file,
 
   offline,
 }

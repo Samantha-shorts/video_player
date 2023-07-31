@@ -40,10 +40,10 @@ import io.flutter.view.TextureRegistry.SurfaceTextureEntry
 import java.util.UUID
 
 internal class VideoPlayer(
-        private val context: Context,
-        private val eventChannel: EventChannel,
-        private val textureEntry: SurfaceTextureEntry,
-        private val customDefaultLoadControl: CustomDefaultLoadControl
+    private val context: Context,
+    private val eventChannel: EventChannel,
+    private val textureEntry: SurfaceTextureEntry,
+    private val customDefaultLoadControl: CustomDefaultLoadControl
 ) {
 
     private val loadControl: LoadControl
@@ -86,31 +86,31 @@ internal class VideoPlayer(
 
     init {
         loadControl =
-                DefaultLoadControl.Builder()
-                        .setBufferDurationsMs(
-                                this.customDefaultLoadControl.minBufferMs,
-                                this.customDefaultLoadControl.maxBufferMs,
-                                this.customDefaultLoadControl.bufferForPlaybackMs,
-                                this.customDefaultLoadControl.bufferForPlaybackAfterRebufferMs
-                        )
-                        .build()
+            DefaultLoadControl.Builder()
+                .setBufferDurationsMs(
+                    this.customDefaultLoadControl.minBufferMs,
+                    this.customDefaultLoadControl.maxBufferMs,
+                    this.customDefaultLoadControl.bufferForPlaybackMs,
+                    this.customDefaultLoadControl.bufferForPlaybackAfterRebufferMs
+                )
+                .build()
         exoPlayer =
-                ExoPlayer.Builder(context)
-                        .setTrackSelector(trackSelector)
-                        .setLoadControl(loadControl)
-                        .build()
+            ExoPlayer.Builder(context)
+                .setTrackSelector(trackSelector)
+                .setLoadControl(loadControl)
+                .build()
         setupVideoPlayer(eventChannel, textureEntry)
         workManager = WorkManager.getInstance(context)
         workerObserverMap = HashMap()
         runnable =
-                object : Runnable {
-                    override fun run() {
-                        if (exoPlayer.isPlaying) {
-                            sendPositionChanged()
-                        }
-                        handler.postDelayed(this, 500)
+            object : Runnable {
+                override fun run() {
+                    if (exoPlayer.isPlaying) {
+                        sendPositionChanged()
                     }
+                    handler.postDelayed(this, 500)
                 }
+            }
     }
 
     fun dispose() {
@@ -128,70 +128,70 @@ internal class VideoPlayer(
 
     private fun setupVideoPlayer(eventChannel: EventChannel, textureEntry: SurfaceTextureEntry) {
         eventChannel.setStreamHandler(
-                object : EventChannel.StreamHandler {
-                    override fun onListen(o: Any?, sink: EventSink) {
-                        eventSink.setDelegate(sink)
-                    }
-
-                    override fun onCancel(o: Any?) {
-                        eventSink.setDelegate(null)
-                    }
+            object : EventChannel.StreamHandler {
+                override fun onListen(o: Any?, sink: EventSink) {
+                    eventSink.setDelegate(sink)
                 }
+
+                override fun onCancel(o: Any?) {
+                    eventSink.setDelegate(null)
+                }
+            }
         )
         surface = Surface(textureEntry.surfaceTexture())
         exoPlayer.setVideoSurface(surface)
         exoPlayer.setAudioAttributes(
-                AudioAttributes.Builder().setContentType(AUDIO_CONTENT_TYPE_MOVIE).build(),
-                true
+            AudioAttributes.Builder().setContentType(AUDIO_CONTENT_TYPE_MOVIE).build(),
+            true
         )
         exoPlayer.addListener(
-                object : Player.Listener {
-                    override fun onPlaybackStateChanged(playbackState: Int) {
-                        when (playbackState) {
-                            Player.STATE_BUFFERING -> {
-                                val bufferedPosition = exoPlayer.bufferedPosition ?: 0L
-                                if (bufferedPosition != lastSendBufferedPosition) {
-                                    val range: List<Number?> = listOf(0, bufferedPosition)
-                                    sendEvent(
-                                            EVENT_BUFFER_CHANGED,
-                                            mapOf("bufferRange" to listOf(range))
-                                    )
-                                    lastSendBufferedPosition = bufferedPosition
-                                }
-                            }
-                            Player.STATE_READY -> {
-                                if (!isInitialized) {
-                                    setInitialized()
-                                    return
-                                }
-                            }
-                            Player.STATE_ENDED -> {
-                                pause()
-                                sendEvent(EVENT_ENDED)
-                            }
-                            Player.STATE_IDLE -> {
-                                // no-op
+            object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    when (playbackState) {
+                        Player.STATE_BUFFERING -> {
+                            val bufferedPosition = exoPlayer.bufferedPosition ?: 0L
+                            if (bufferedPosition != lastSendBufferedPosition) {
+                                val range: List<Number?> = listOf(0, bufferedPosition)
+                                sendEvent(
+                                    EVENT_BUFFER_CHANGED,
+                                    mapOf("bufferRange" to listOf(range))
+                                )
+                                lastSendBufferedPosition = bufferedPosition
                             }
                         }
-                    }
-
-                    override fun onPlayerError(error: PlaybackException) {
-                        sendEvent(EVENT_ERROR, mapOf("error" to error))
-                    }
-
-                    override fun onIsPlayingChanged(isPlaying: Boolean) {
-                        if (isPlaying) {
-                            handler.post(runnable)
-                        } else {
-                            handler.removeCallbacks(runnable)
+                        Player.STATE_READY -> {
+                            if (!isInitialized) {
+                                setInitialized()
+                                return
+                            }
                         }
-                        sendEvent(EVENT_IS_PLAYING_CHANGED, mapOf("isPlaying" to isPlaying))
-                    }
-
-                    override fun onVolumeChanged(volume: Float) {
-                        sendEvent(EVENT_MUTE_CHANGED, mapOf("isMuted" to (volume == 0f)))
+                        Player.STATE_ENDED -> {
+                            pause()
+                            sendEvent(EVENT_ENDED)
+                        }
+                        Player.STATE_IDLE -> {
+                            // no-op
+                        }
                     }
                 }
+
+                override fun onPlayerError(error: PlaybackException) {
+                    sendEvent(EVENT_ERROR, mapOf("error" to error))
+                }
+
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    if (isPlaying) {
+                        handler.post(runnable)
+                    } else {
+                        handler.removeCallbacks(runnable)
+                    }
+                    sendEvent(EVENT_IS_PLAYING_CHANGED, mapOf("isPlaying" to isPlaying))
+                }
+
+                override fun onVolumeChanged(volume: Float) {
+                    sendEvent(EVENT_MUTE_CHANGED, mapOf("isMuted" to (volume == 0f)))
+                }
+            }
         )
     }
 
@@ -291,12 +291,12 @@ internal class VideoPlayer(
         context?.let {
             val mediaButtonIntent = Intent(Intent.ACTION_MEDIA_BUTTON)
             val pendingIntent =
-                    PendingIntent.getBroadcast(
-                            context,
-                            0,
-                            mediaButtonIntent,
-                            PendingIntent.FLAG_IMMUTABLE
-                    )
+                PendingIntent.getBroadcast(
+                    context,
+                    0,
+                    mediaButtonIntent,
+                    PendingIntent.FLAG_IMMUTABLE
+                )
             val mediaSession = MediaSessionCompat(context, TAG, null, pendingIntent)
             mediaSession.isActive = true
             this.mediaSession = mediaSession
@@ -313,103 +313,103 @@ internal class VideoPlayer(
     }
 
     fun setupPlayerNotification(
-            context: Context,
-            title: String,
-            author: String?,
-            imageUrl: String?,
-            notificationChannelName: String?,
-            activityName: String
+        context: Context,
+        title: String,
+        author: String?,
+        imageUrl: String?,
+        notificationChannelName: String?,
+        activityName: String
     ) {
         val mediaDescriptionAdapter: MediaDescriptionAdapter =
-                object : MediaDescriptionAdapter {
-                    override fun getCurrentContentTitle(player: Player): String {
-                        return title
-                    }
+            object : MediaDescriptionAdapter {
+                override fun getCurrentContentTitle(player: Player): String {
+                    return title
+                }
 
-                    override fun createCurrentContentIntent(player: Player): PendingIntent? {
-                        val packageName = context.applicationContext.packageName
-                        val notificationIntent = Intent()
-                        notificationIntent.setClassName(packageName, "$packageName.$activityName")
-                        notificationIntent.flags =
-                                (Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-                        return PendingIntent.getActivity(
-                                context,
-                                0,
-                                notificationIntent,
-                                PendingIntent.FLAG_IMMUTABLE
-                        )
-                    }
+                override fun createCurrentContentIntent(player: Player): PendingIntent? {
+                    val packageName = context.applicationContext.packageName
+                    val notificationIntent = Intent()
+                    notificationIntent.setClassName(packageName, "$packageName.$activityName")
+                    notificationIntent.flags =
+                        (Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    return PendingIntent.getActivity(
+                        context,
+                        0,
+                        notificationIntent,
+                        PendingIntent.FLAG_IMMUTABLE
+                    )
+                }
 
-                    override fun getCurrentContentText(player: Player): String? {
-                        return author
-                    }
+                override fun getCurrentContentText(player: Player): String? {
+                    return author
+                }
 
-                    override fun getCurrentLargeIcon(
-                            player: Player,
-                            callback: BitmapCallback
-                    ): Bitmap? {
-                        if (imageUrl == null) {
-                            return null
-                        }
-                        if (bitmap != null) {
-                            return bitmap
-                        }
-                        val imageWorkRequest =
-                                OneTimeWorkRequest.Builder(ImageWorker::class.java)
-                                        .addTag(imageUrl)
-                                        .setInputData(
-                                                Data.Builder().putString("url", imageUrl).build()
-                                        )
-                                        .build()
-                        workManager.enqueue(imageWorkRequest)
-                        val workInfoObserver = Observer { workInfo: WorkInfo? ->
-                            try {
-                                if (workInfo != null) {
-                                    val state = workInfo.state
-                                    if (state == WorkInfo.State.SUCCEEDED) {
-                                        val outputData = workInfo.outputData
-                                        val filePath = outputData.getString("filePath")
-                                        // Bitmap here is already processed and it's very small, so
-                                        // it won't
-                                        // break anything.
-                                        bitmap = BitmapFactory.decodeFile(filePath)
-                                        bitmap?.let { bitmap -> callback.onBitmap(bitmap) }
-                                    }
-                                    if (state == WorkInfo.State.SUCCEEDED ||
-                                                    state == WorkInfo.State.CANCELLED ||
-                                                    state == WorkInfo.State.FAILED
-                                    ) {
-                                        val uuid = imageWorkRequest.id
-                                        val observer = workerObserverMap.remove(uuid)
-                                        if (observer != null) {
-                                            workManager
-                                                    .getWorkInfoByIdLiveData(uuid)
-                                                    .removeObserver(observer)
-                                        }
-                                    }
-                                }
-                            } catch (exception: Exception) {
-                                Log.e(TAG, "Image select error: $exception")
-                            }
-                        }
-                        val workerUuid = imageWorkRequest.id
-                        workManager
-                                .getWorkInfoByIdLiveData(workerUuid)
-                                .observeForever(workInfoObserver)
-                        workerObserverMap[workerUuid] = workInfoObserver
+                override fun getCurrentLargeIcon(
+                    player: Player,
+                    callback: BitmapCallback
+                ): Bitmap? {
+                    if (imageUrl == null) {
                         return null
                     }
+                    if (bitmap != null) {
+                        return bitmap
+                    }
+                    val imageWorkRequest =
+                        OneTimeWorkRequest.Builder(ImageWorker::class.java)
+                            .addTag(imageUrl)
+                            .setInputData(
+                                Data.Builder().putString("url", imageUrl).build()
+                            )
+                            .build()
+                    workManager.enqueue(imageWorkRequest)
+                    val workInfoObserver = Observer { workInfo: WorkInfo? ->
+                        try {
+                            if (workInfo != null) {
+                                val state = workInfo.state
+                                if (state == WorkInfo.State.SUCCEEDED) {
+                                    val outputData = workInfo.outputData
+                                    val filePath = outputData.getString("filePath")
+                                    // Bitmap here is already processed and it's very small, so
+                                    // it won't
+                                    // break anything.
+                                    bitmap = BitmapFactory.decodeFile(filePath)
+                                    bitmap?.let { bitmap -> callback.onBitmap(bitmap) }
+                                }
+                                if (state == WorkInfo.State.SUCCEEDED ||
+                                    state == WorkInfo.State.CANCELLED ||
+                                    state == WorkInfo.State.FAILED
+                                ) {
+                                    val uuid = imageWorkRequest.id
+                                    val observer = workerObserverMap.remove(uuid)
+                                    if (observer != null) {
+                                        workManager
+                                            .getWorkInfoByIdLiveData(uuid)
+                                            .removeObserver(observer)
+                                    }
+                                }
+                            }
+                        } catch (exception: Exception) {
+                            Log.e(TAG, "Image select error: $exception")
+                        }
+                    }
+                    val workerUuid = imageWorkRequest.id
+                    workManager
+                        .getWorkInfoByIdLiveData(workerUuid)
+                        .observeForever(workInfoObserver)
+                    workerObserverMap[workerUuid] = workInfoObserver
+                    return null
                 }
+            }
         var playerNotificationChannelName = notificationChannelName
         if (notificationChannelName == null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val importance = NotificationManager.IMPORTANCE_LOW
                 val channel =
-                        NotificationChannel(
-                                DEFAULT_NOTIFICATION_CHANNEL,
-                                DEFAULT_NOTIFICATION_CHANNEL,
-                                importance
-                        )
+                    NotificationChannel(
+                        DEFAULT_NOTIFICATION_CHANNEL,
+                        DEFAULT_NOTIFICATION_CHANNEL,
+                        importance
+                    )
                 channel.description = DEFAULT_NOTIFICATION_CHANNEL
                 val notificationManager = context.getSystemService(NotificationManager::class.java)
                 notificationManager.createNotificationChannel(channel)
@@ -418,13 +418,13 @@ internal class VideoPlayer(
         }
 
         playerNotificationManager =
-                PlayerNotificationManager.Builder(
-                                context,
-                                NOTIFICATION_ID,
-                                playerNotificationChannelName!!
-                        )
-                        .setMediaDescriptionAdapter(mediaDescriptionAdapter)
-                        .build()
+            PlayerNotificationManager.Builder(
+                context,
+                NOTIFICATION_ID,
+                playerNotificationChannelName!!
+            )
+                .setMediaDescriptionAdapter(mediaDescriptionAdapter)
+                .build()
 
         playerNotificationManager?.apply {
             exoPlayer.let {
@@ -440,35 +440,35 @@ internal class VideoPlayer(
             refreshHandler = Handler(Looper.getMainLooper())
             refreshRunnable = Runnable {
                 val playbackState: PlaybackStateCompat =
-                        if (exoPlayer.isPlaying == true) {
-                            PlaybackStateCompat.Builder()
-                                    .setActions(PlaybackStateCompat.ACTION_SEEK_TO)
-                                    .setState(PlaybackStateCompat.STATE_PLAYING, position, 1.0f)
-                                    .build()
-                        } else {
-                            PlaybackStateCompat.Builder()
-                                    .setActions(PlaybackStateCompat.ACTION_SEEK_TO)
-                                    .setState(PlaybackStateCompat.STATE_PAUSED, position, 1.0f)
-                                    .build()
-                        }
+                    if (exoPlayer.isPlaying == true) {
+                        PlaybackStateCompat.Builder()
+                            .setActions(PlaybackStateCompat.ACTION_SEEK_TO)
+                            .setState(PlaybackStateCompat.STATE_PLAYING, position, 1.0f)
+                            .build()
+                    } else {
+                        PlaybackStateCompat.Builder()
+                            .setActions(PlaybackStateCompat.ACTION_SEEK_TO)
+                            .setState(PlaybackStateCompat.STATE_PAUSED, position, 1.0f)
+                            .build()
+                    }
                 mediaSession?.setPlaybackState(playbackState)
                 refreshHandler?.postDelayed(refreshRunnable!!, 1000)
             }
             refreshHandler?.postDelayed(refreshRunnable!!, 0)
         }
         exoPlayerEventListener =
-                object : Player.Listener {
-                    override fun onPlaybackStateChanged(playbackState: Int) {
-                        mediaSession?.setMetadata(
-                                MediaMetadataCompat.Builder()
-                                        .putLong(
-                                                MediaMetadataCompat.METADATA_KEY_DURATION,
-                                                duration
-                                        )
-                                        .build()
-                        )
-                    }
+            object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    mediaSession?.setMetadata(
+                        MediaMetadataCompat.Builder()
+                            .putLong(
+                                MediaMetadataCompat.METADATA_KEY_DURATION,
+                                duration
+                            )
+                            .build()
+                    )
                 }
+            }
         exoPlayerEventListener?.let { exoPlayerEventListener ->
             exoPlayer.addListener(exoPlayerEventListener)
         }

@@ -136,7 +136,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
     switch (dataSource.sourceType) {
       case VideoPlayerDataSourceType.network:
         return {
-          'uri': dataSource.uri,
+          'url': dataSource.url,
           'headers': dataSource.headers,
           'title': dataSource.notificationConfiguration?.title,
           'author': dataSource.notificationConfiguration?.author,
@@ -147,8 +147,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
         };
       case VideoPlayerDataSourceType.offline:
         return {
-          'key': dataSource.offlineKey,
-          'offline': true,
+          'offlineKey': dataSource.offlineKey,
           'title': dataSource.notificationConfiguration?.title,
           'author': dataSource.notificationConfiguration?.author,
           'imageUrl': dataSource.notificationConfiguration?.imageUrl,
@@ -323,14 +322,14 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
   @override
   Future<void> downloadOfflineAsset({
     required String key,
-    required String uri,
+    required String url,
     Map<String, String?>? headers,
   }) async {
     await methodChannel.invokeMethod(
       'downloadOfflineAsset',
       <String, dynamic>{
         'key': key,
-        'uri': uri,
+        'url': url,
         'headers': headers,
       },
     );

@@ -19,11 +19,11 @@ class ImageWorker(context: Context, params: WorkerParameters) : Worker(context, 
         return try {
             val imageUrl = inputData.getString("url") ?: return Result.failure()
             val bitmap: Bitmap? =
-                    if (DataSourceUtils.isHTTP(Uri.parse(imageUrl))) {
-                        getBitmapFromExternalURL(imageUrl)
-                    } else {
-                        getBitmapFromInternalURL(imageUrl)
-                    }
+                if (DataSourceUtils.isHTTP(Uri.parse(imageUrl))) {
+                    getBitmapFromExternalURL(imageUrl)
+                } else {
+                    getBitmapFromInternalURL(imageUrl)
+                }
             val fileName = imageUrl.hashCode().toString() + IMAGE_EXTENSION
             val filePath = applicationContext.cacheDir.absolutePath + fileName
             if (bitmap == null) {
@@ -71,12 +71,13 @@ class ImageWorker(context: Context, params: WorkerParameters) : Worker(context, 
         val width = options.outWidth
         var inSampleSize = 1
         if (height > DEFAULT_NOTIFICATION_IMAGE_SIZE_PX ||
-                        width > DEFAULT_NOTIFICATION_IMAGE_SIZE_PX
+            width > DEFAULT_NOTIFICATION_IMAGE_SIZE_PX
         ) {
             val halfHeight = height / 2
             val halfWidth = width / 2
             while (halfHeight / inSampleSize >= DEFAULT_NOTIFICATION_IMAGE_SIZE_PX &&
-                    halfWidth / inSampleSize >= DEFAULT_NOTIFICATION_IMAGE_SIZE_PX) {
+                halfWidth / inSampleSize >= DEFAULT_NOTIFICATION_IMAGE_SIZE_PX
+            ) {
                 inSampleSize *= 2
             }
         }

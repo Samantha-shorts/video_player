@@ -1,6 +1,5 @@
 import AVKit
 import Flutter
-import MediaPlayer
 import UIKit
 
 typealias DataSource = [String: Any]
@@ -38,20 +37,19 @@ enum DownloadState: String {
 }
 
 extension FlutterError {
-    fileprivate static func invalidArgs(message: String? = nil, details: Any? = nil) -> FlutterError
-    {
+    fileprivate static func unknownMethod(message: String? = nil, details: Any? = nil) -> FlutterError {
+        FlutterError(code: "UNKNOWN_METHOD", message: message, details: details)
+    }
+
+    fileprivate static func invalidArgs(message: String? = nil, details: Any? = nil) -> FlutterError {
         FlutterError(code: "INVLIAD_ARGS", message: message, details: details)
     }
 
-    fileprivate static func assetNotFound(message: String? = nil, details: Any? = nil)
-        -> FlutterError
-    {
+    fileprivate static func assetNotFound(message: String? = nil, details: Any? = nil) -> FlutterError {
         FlutterError(code: "ASSET_NOT_FOUND", message: message, details: details)
     }
 
-    fileprivate static func keyNotFound(message: String? = nil, details: Any? = nil)
-        -> FlutterError
-    {
+    fileprivate static func keyNotFound(message: String? = nil, details: Any? = nil) -> FlutterError {
         FlutterError(code: "KEY_NOT_FOUND", message: message, details: details)
     }
 }
@@ -59,8 +57,7 @@ extension FlutterError {
 public class VideoPlayerPlugin: NSObject, FlutterPlugin {
 
     public static func register(with registrar: FlutterPluginRegistrar) {
-        let channel = FlutterMethodChannel(
-            name: "video_player", binaryMessenger: registrar.messenger())
+        let channel = FlutterMethodChannel(name: "video_player", binaryMessenger: registrar.messenger())
         let instance = VideoPlayerPlugin(registrar: registrar)
         registrar.addMethodCallDelegate(instance, channel: channel)
         registrar.register(instance, withId: "matsune/video_player")
@@ -72,24 +69,22 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
     private var dataSources: [TextureId: DataSource] = [:]
 
     private let artworkManager = ArtworkManager(thumbnailRefreshSec: 60)
-    private var remotePlayer: VideoPlayer?
-    private var didSetupRemoteCommands = false
-    private var togglePlayPauseCommandTarget: Any?
-    private var playCommandTarget: Any?
-    private var pauseCommandTarget: Any?
-    private var changePlaybackPositionCommand: Any?
-    private var timeObservers: [TextureId: Any] = [:]
+    private let remoteControlManager: RemoteControlManager
 
     private let downloader: Downloader
 
     init(registrar: FlutterPluginRegistrar) {
         self.registrar = registrar
         self.messenger = registrar.messenger()
-        self.downloader = Downloader(binaryMessanger: self.messenger)
+        self.remoteControlManager = RemoteControlManager()
+        self.downloader = Downloader(binaryMessanger: messenger)
     }
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-        let method = FlutterMethod(rawValue: call.method)
+        guard let method = FlutterMethod(rawValue: call.method) else {
+            result(FlutterError.unknownMethod(message: call.method))
+            return
+        }
         switch method {
         case .`init`:
             players.forEach { $0.value.dispose() }
@@ -100,16 +95,142 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
             result(["textureId": textureId])
         case .isPictureInPictureSupported:
             result([
-                "isPictureInPictureSupported":
-                    AVPictureInPictureController.isPictureInPictureSupported()
+                "isPictureInPictureSupported": AVPictureInPictureController.isPictureInPictureSupported()
             ])
-        case .downloadOfflineAsset:
+        case .downloadOfflineAsset,
+             .pauseDownload,
+             .resumeDownload,
+             .cancelDownload,
+             .deleteOfflineAsset,
+             .getDownloads:
+            let args = call.arguments as? [String: Any] ?? [:]
+            handleDownloadMethods(method: method, args: args, result: result)
+        default:
             guard let args = call.arguments as? [String: Any],
-                let key = args["key"] as? String,
-                let uriString = args["uri"] as? String,
-                let url = URL(string: uriString)
+                    let textureId = args["textureId"] as? Int,
+                    let player = players[textureId] else {
+                result(FlutterError.invalidArgs(message: "invalid textureId"))
+                return
+            }
+            handlePlayerMethods(
+                method: method,
+                args: args,
+                textureId: textureId,
+                player: player,
+                result: result
+            )
+        }
+    }
+
+    private func handlePlayerMethods(
+        method: FlutterMethod,
+        args: [String: Any],
+        textureId: TextureId,
+        player: VideoPlayer,
+        result: @escaping FlutterResult
+    ) {
+        switch method {
+        case .setDataSource:
+            player.clear()
+
+            let dataSource = args["dataSource"] as! DataSource
+            dataSources[textureId] = dataSource
+
+            if let key = dataSource["offlineKey"] as? String {
+                guard let path = DownloadPathManager.assetPath(forKey: key)
+                else {
+                    result(FlutterError.assetNotFound())
+                    return
+                }
+                let assetURL = URL(fileURLWithPath: NSHomeDirectory())
+                    .appendingPathComponent(path)
+                player.setDataSource(url: assetURL, headers: nil)
+            } else {
+                guard let urlString = dataSource["url"] as? String,
+                    let url = URL(string: urlString)
+                else {
+                    result(FlutterError.invalidArgs(message: "requires valid url"))
+                    return
+                }
+                player.setDataSource(
+                    url: url,
+                    headers: dataSource["headers"] as? [String: String]
+                )
+            }
+            result(nil)
+        case .play:
+            player.play()
+            let dataSource = dataSources[textureId]
+            let title = dataSource?["title"] as? String
+            let author = dataSource?["author"] as? String
+            let imageUrl = dataSource?["imageUrl"] as? String
+            remoteControlManager.setupRemoteNotification(
+                textureId: textureId,
+                player: player,
+                title: title,
+                author: author,
+                imageUrl: imageUrl
+            )
+            result(nil)
+        case .pause:
+            player.pause()
+            result(nil)
+        case .seekTo:
+            let position = args["position"] as! Int64
+            player.seekTo(millis: position) {
+                result(nil)
+            }
+        case .dispose:
+            remoteControlManager.disposePlayer(textureId: textureId, player: player)
+            players.removeValue(forKey: textureId)
+            player.dispose()
+            if players.isEmpty {
+                try? AVAudioSession.sharedInstance().setActive(
+                    false,
+                    options: [.notifyOthersOnDeactivation]
+                )
+            }
+            result(nil)
+        case .willExitFullscreen:
+            player.setPlayerViewActive(player.playerView)
+            result(nil)
+        case .enablePictureInPicture:
+            player.enablePictureInPicture()
+            result(nil)
+        case .disablePictureInPicture:
+            player.disablePictureInPicture()
+            result(nil)
+        case .setMuted:
+            let isMuted = args["muted"] as! Bool
+            player.isMuted = isMuted
+            result(nil)
+        case .setPlaybackRate:
+            let rate = args["rate"] as! Float
+            player.playbackRate = rate
+            result(nil)
+        case .setTrackParameters:
+            let width = args["width"] as! Int
+            let height = args["height"] as! Int
+            let bitrate = args["bitrate"] as! Double
+            player.setTrackParameters(width: width, height: height, bitrate: bitrate)
+            result(nil)
+        default:
+            result(FlutterMethodNotImplemented)
+        }
+    }
+
+    private func handleDownloadMethods(
+        method: FlutterMethod,
+        args: [String: Any],
+        result: @escaping FlutterResult
+    ) {
+        switch method {
+        case .downloadOfflineAsset:
+            guard let key = args["key"] as? String,
+                let urlString = args["url"] as? String,
+                let url = URL(string: urlString)
             else {
-                result(FlutterError.invalidArgs(message: "requires key and valid uri"))
+                result(FlutterError.invalidArgs(message: "requires key and valid url"))
                 return
             }
             downloader.startDownload(
@@ -119,8 +240,7 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
             )
             result(nil)
         case .pauseDownload:
-            guard let args = call.arguments as? [String: Any],
-                let key = args["key"] as? String
+            guard let key = args["key"] as? String
             else {
                 result(FlutterError.invalidArgs(message: "requires key"))
                 return
@@ -133,8 +253,7 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 result(nil)
             }
         case .resumeDownload:
-            guard let args = call.arguments as? [String: Any],
-                let key = args["key"] as? String
+            guard let key = args["key"] as? String
             else {
                 result(FlutterError.invalidArgs(message: "requires key"))
                 return
@@ -147,8 +266,7 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 result(nil)
             }
         case .cancelDownload:
-            guard let args = call.arguments as? [String: Any],
-                let key = args["key"] as? String
+            guard let key = args["key"] as? String
             else {
                 result(FlutterError.invalidArgs(message: "requires key"))
                 return
@@ -161,8 +279,7 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 result(nil)
             }
         case .deleteOfflineAsset:
-            guard let args = call.arguments as? [String: Any],
-                let key = args["key"] as? String
+            guard let key = args["key"] as? String
             else {
                 result(FlutterError.invalidArgs(message: "requires key"))
                 return
@@ -197,108 +314,24 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                             fatalError("unreachable")
                         }
                         downloads[key] = ["state": state.rawValue]
+                    } else {
+                        // still downloading but download task not found
+                        DownloadPathManager.remove(key)
                     }
                 }
                 result(downloads)
             }
         default:
-            guard let args = call.arguments as? [String: Any],
-                let textureId = args["textureId"] as? Int,
-                let player = players[textureId]
-            else {
-                result(nil)
-                return
-            }
-            switch method {
-            case .setDataSource:
-                player.clear()
-
-                let dataSource = args["dataSource"] as! DataSource
-                dataSources[textureId] = dataSource
-
-                if dataSource["offline"] as? Bool == true {
-                    guard let key = dataSource["key"] as? String
-                    else {
-                        result(FlutterError.invalidArgs(message: "requires key"))
-                        return
-                    }
-                    guard let path = DownloadPathManager.assetPath(forKey: key)
-                    else {
-                        result(FlutterError.assetNotFound())
-                        return
-                    }
-                    let assetURL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(
-                        path)
-                    player.setDataSource(url: assetURL, headers: nil)
-                } else {
-                    guard let uriString = dataSource["uri"] as? String,
-                        let uri = URL(string: uriString)
-                    else {
-                        result(FlutterError.invalidArgs(message: "requires valid uri"))
-                        return
-                    }
-                    player.setDataSource(
-                        url: uri, headers: dataSource["headers"] as? [String: String])
-                }
-
-                result(nil)
-            case .play:
-                setupRemoteNotification(textureId: textureId)
-                player.play()
-                result(nil)
-            case .pause:
-                player.pause()
-                result(nil)
-            case .seekTo:
-                let position = args["position"] as! Int64
-                player.seekTo(millis: position) {
-                    result(nil)
-                }
-            case .dispose:
-                endReceivingRemoteControlEvents()
-                disposeNotificationData(textureId: textureId)
-                players.removeValue(forKey: textureId)
-                player.dispose()
-                if players.isEmpty {
-                    try? AVAudioSession.sharedInstance().setActive(
-                        false, options: [.notifyOthersOnDeactivation])
-                }
-                result(nil)
-            case .willExitFullscreen:
-                player.setPlayerViewActive(player.playerView)
-                result(nil)
-            case .enablePictureInPicture:
-                player.enablePictureInPicture()
-                result(nil)
-            case .disablePictureInPicture:
-                player.disablePictureInPicture()
-                result(nil)
-            case .setMuted:
-                let isMuted = args["muted"] as! Bool
-                player.isMuted = isMuted
-                result(nil)
-            case .setPlaybackRate:
-                let rate = args["rate"] as! Float
-                player.playbackRate = rate
-                result(nil)
-            case .setTrackParameters:
-                let width = args["width"] as! Int
-                let height = args["height"] as! Int
-                let bitrate = args["bitrate"] as! Double
-                player.setTrackParameters(width: width, height: height, bitrate: bitrate)
-                result(nil)
-            default:
-                result(FlutterMethodNotImplemented)
-            }
+            result(FlutterMethodNotImplemented)
         }
     }
 
-    var nextTextureId: Int {
+    private var nextTextureId: Int {
         players.count + 1
     }
 
     /// returns: texture id
-    func createVideoPlayer() -> TextureId {
+    private func createVideoPlayer() -> TextureId {
         let textureId = nextTextureId
         let eventChannel = FlutterEventChannel(
             name: "video_player_channel/videoEvents\(textureId)",
@@ -306,153 +339,6 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
         )
         players[textureId] = VideoPlayer(eventChannel: eventChannel)
         return textureId
-    }
-
-    func setupRemoteNotification(textureId: Int) {
-        guard let player = players[textureId],
-            let dataSource = dataSources[textureId]
-        else {
-            return
-        }
-        let title = dataSource["title"] as? String
-        let author = dataSource["author"] as? String
-        let imageUrl = dataSource["imageUrl"] as? String
-        remotePlayer = player
-        setupRemoteCommands(player: player)
-        beginReceivingRemoteControlEvents()
-        setupRemoteCommandNotification(
-            textureId: textureId,
-            title: title,
-            author: author,
-            imageUrl: imageUrl
-        )
-        setupUpdateListener(
-            textureId: textureId,
-            title: title,
-            author: author,
-            imageUrl: imageUrl
-        )
-    }
-
-    private func beginReceivingRemoteControlEvents() {
-        try? AVAudioSession.sharedInstance().setActive(true)
-        UIApplication.shared.beginReceivingRemoteControlEvents()
-    }
-
-    private func endReceivingRemoteControlEvents() {
-        if players.isEmpty {
-            try? AVAudioSession.sharedInstance().setActive(false)
-        }
-        UIApplication.shared.endReceivingRemoteControlEvents()
-    }
-
-    private func setupRemoteCommands(player: VideoPlayer) {
-        if didSetupRemoteCommands {
-            return
-        }
-        let commandCenter = MPRemoteCommandCenter.shared()
-        commandCenter.togglePlayPauseCommand.isEnabled = true
-        commandCenter.playCommand.isEnabled = true
-        commandCenter.pauseCommand.isEnabled = true
-        commandCenter.nextTrackCommand.isEnabled = false
-        commandCenter.previousTrackCommand.isEnabled = false
-        commandCenter.changePlaybackPositionCommand.isEnabled = true
-        togglePlayPauseCommandTarget = commandCenter.togglePlayPauseCommand.addTarget {
-            [weak self] _ in
-            guard let player = self?.remotePlayer else {
-                return .noActionableNowPlayingItem
-            }
-            if player.isPlaying {
-                player.pause()
-            } else {
-                player.play()
-            }
-            return .success
-        }
-        playCommandTarget = commandCenter.playCommand.addTarget { [weak self] _ in
-            guard let player = self?.remotePlayer else {
-                return .noActionableNowPlayingItem
-            }
-            player.play()
-            return .success
-        }
-        pauseCommandTarget = commandCenter.pauseCommand.addTarget { [weak self] _ in
-            guard let player = self?.remotePlayer else {
-                return .noActionableNowPlayingItem
-            }
-            player.pause()
-            return .success
-        }
-        changePlaybackPositionCommand = commandCenter.changePlaybackPositionCommand.addTarget {
-            [weak self] event in
-            guard let player = self?.remotePlayer,
-                let positionCommandEvent = event as? MPChangePlaybackPositionCommandEvent
-            else {
-                return .commandFailed
-            }
-            let millis = TimeUtils.FLTNSTimeIntervalToMillis(positionCommandEvent.positionTime)
-            player.seekTo(millis: Int64(millis))
-            return .success
-        }
-        didSetupRemoteCommands = true
-    }
-
-    private func setupRemoteCommandNotification(
-        textureId: Int, title: String?, author: String?, imageUrl: String?
-    ) {
-        guard let player = players[textureId], let duration = player.duration else {
-            return
-        }
-        let positionInSeconds = CMTimeGetSeconds(player.currentTime)
-        let durationInSeconds = CMTimeGetSeconds(duration)
-
-        var nowPlayingInfoDict: [String: Any] = [
-            MPMediaItemPropertyArtist: author ?? "",
-            MPMediaItemPropertyTitle: title ?? "",
-            MPNowPlayingInfoPropertyElapsedPlaybackTime: positionInSeconds,
-            MPMediaItemPropertyPlaybackDuration: durationInSeconds,
-            MPNowPlayingInfoPropertyPlaybackRate: 1,
-        ]
-
-        artworkManager.fetchArtwork(textureId: textureId, player: player, imageUrl: imageUrl) {
-            artwork in
-            nowPlayingInfoDict[MPMediaItemPropertyArtwork] = artwork
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfoDict
-        }
-    }
-
-    private func setupUpdateListener(
-        textureId: Int, title: String?, author: String?, imageUrl: String?
-    ) {
-        guard let player = players[textureId] else { return }
-        let timeObserver = player.player.addPeriodicTimeObserver(
-            forInterval: CMTimeMake(value: 1, timescale: 1), queue: .global()
-        ) { [weak self] _ in
-            self?.setupRemoteCommandNotification(
-                textureId: textureId, title: title, author: author, imageUrl: imageUrl)
-        }
-        timeObservers[textureId] = timeObserver
-    }
-
-    private func disposeNotificationData(textureId: Int) {
-        guard let player = players[textureId] else {
-            return
-        }
-        if player == remotePlayer {
-            remotePlayer = nil
-            let commandCenter = MPRemoteCommandCenter.shared()
-            commandCenter.togglePlayPauseCommand.removeTarget(togglePlayPauseCommandTarget)
-            commandCenter.playCommand.removeTarget(playCommandTarget)
-            commandCenter.pauseCommand.removeTarget(pauseCommandTarget)
-            commandCenter.changePlaybackPositionCommand.removeTarget(changePlaybackPositionCommand)
-            didSetupRemoteCommands = false
-        }
-        if let timeObserver = timeObservers[textureId] {
-            player.player.removeTimeObserver(timeObserver)
-        }
-        timeObservers.removeValue(forKey: textureId)
-        artworkManager.removeCache(textureId: textureId)
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 }
 

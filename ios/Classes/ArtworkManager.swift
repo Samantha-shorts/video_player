@@ -49,10 +49,9 @@ class ArtworkManager {
             if let cache = cache as? UrlArtwork, cache.url == imageUrl {
                 result(cache.artwork)
                 return
-            } else if let cache = cache as? ThumbnailArtwork, imageUrl == nil,
-                cache.stillValid(
-                    currentTime: player.currentTime, thumbnailRefreshSec: thumbnailRefreshSec)
-            {
+            } else if let cache = cache as? ThumbnailArtwork,
+                        imageUrl == nil,
+                        cache.stillValid(currentTime: player.currentTime, thumbnailRefreshSec: thumbnailRefreshSec) {
                 result(cache.artwork)
                 return
             }
@@ -72,7 +71,10 @@ class ArtworkManager {
             var artwork: Artwork?
             if let imageUrl = imageUrl {
                 artwork = fetchArtworkImageUrl(
-                    textureId: textureId, player: player, imageUrl: imageUrl)
+                    textureId: textureId,
+                    player: player,
+                    imageUrl: imageUrl
+                )
             } else {
                 artwork = fetchArtworkThumbnail(textureId: textureId, player: player)
             }
@@ -80,7 +82,6 @@ class ArtworkManager {
             self.isFetching = false
             result(artwork?.artwork)
         }
-
     }
 
     private func fetchArtworkImageUrl(textureId: Int, player: VideoPlayer, imageUrl: String)
@@ -114,8 +115,7 @@ class ArtworkManager {
         if playerItem.loadedTimeRanges.first?.timeRangeValue.containsTime(time) == true,
             player.videoOutput.hasNewPixelBuffer(forItemTime: time),
             let pixelBuffer = player.videoOutput.copyPixelBuffer(
-                forItemTime: time, itemTimeForDisplay: nil)
-        {
+                forItemTime: time, itemTimeForDisplay: nil) {
             let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
             let uiImage = UIImage(ciImage: ciImage)
             let artwork = MPMediaItemArtwork(boundsSize: uiImage.size) { _ in uiImage }

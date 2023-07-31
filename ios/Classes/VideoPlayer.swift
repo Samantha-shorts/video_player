@@ -168,9 +168,7 @@ class VideoPlayer: NSObject {
             )
             rateObservation = player.observe(\.rate, options: [.old, .new]) {
                 [weak self] _, change in
-                if let oldValue = change.oldValue, let newValue = change.newValue,
-                    oldValue != newValue
-                {
+                if let oldValue = change.oldValue, let newValue = change.newValue, oldValue != newValue {
                     if newValue > 0 {
                         self?.sendEvent(.isPlayingChanged, ["isPlaying": true])
                     } else if newValue == 0 {
@@ -178,11 +176,9 @@ class VideoPlayer: NSObject {
                     }
                 }
             }
-            isMutedObservation = player.observe(
-                \.isMuted,
-                changeHandler: { [weak self] player, _ in
-                    self?.sendEvent(.muteChanged, ["isMuted": player.isMuted])
-                })
+            isMutedObservation = player.observe(\.isMuted, changeHandler: { [weak self] player, _ in
+                self?.sendEvent(.muteChanged, ["isMuted": player.isMuted])
+            })
             statusObservation = item.observe(\.status) { [weak self] item, _ in
                 switch item.status {
                 case .failed:
@@ -237,11 +233,8 @@ class VideoPlayer: NSObject {
     }
 
     func readyToPlay() {
-        guard eventSink != nil,
-            !isInitialized,
-            player.status == .readyToPlay,
-            let item = player.currentItem
-        else {
+        guard eventSink != nil, !isInitialized, player.status == .readyToPlay,
+                let item = player.currentItem else {
             return
         }
         var duration = TimeUtils.FLTCMTimeToMillis(item.duration)
@@ -269,14 +262,11 @@ class VideoPlayer: NSObject {
 
         isInitialized = true
 
-        sendEvent(
-            .initialized,
-            [
-                "duration": duration,
-                "width": width,
-                "height": height,
-            ]
-        )
+        sendEvent(.initialized, [
+            "duration": duration,
+            "width": width,
+            "height": height,
+        ])
     }
 
     func enablePictureInPicture() {
@@ -304,9 +294,7 @@ extension VideoPlayer: FlutterPlatformView {
 }
 
 extension VideoPlayer: FlutterStreamHandler {
-    func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink)
-        -> FlutterError?
-    {
+    func onListen(withArguments arguments: Any?, eventSink events: @escaping FlutterEventSink) -> FlutterError? {
         eventSink = events
         return nil
     }

@@ -37,8 +37,7 @@ class DownloadPathManager {
                 from: plistData,
                 options: .mutableContainersAndLeaves,
                 format: &format
-            ) as? KeyValue
-        else {
+            ) as? KeyValue else {
             return [:]
         }
         return dict

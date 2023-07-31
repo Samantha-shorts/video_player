@@ -30,7 +30,6 @@ class Downloader: NSObject {
             assetDownloadDelegate: self,
             delegateQueue: OperationQueue.main
         )
-
         eventChannel.setStreamHandler(self)
     }
 
@@ -101,8 +100,7 @@ class Downloader: NSObject {
 
     func deleteOfflineAsset(key: String) {
         guard let value = DownloadPathManager.remove(key),
-            let path = value["path"]
-        else {
+            let path = value["path"] else {
             return
         }
         let assetURL = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(path)
@@ -136,12 +134,10 @@ extension Downloader: AVAssetDownloadDelegate {
             percentComplete +=
                 loadedTimeRange.duration.seconds / timeRangeExpectedToLoad.duration.seconds
         }
-        sendEvent(
-            .progress,
-            [
-                "key": key,
-                "progress": percentComplete,
-            ])
+        sendEvent(.progress, [
+            "key": key,
+            "progress": percentComplete,
+        ])
     }
 
     private func isCancelError(error: Error) -> Bool {
@@ -160,18 +156,14 @@ extension Downloader: AVAssetDownloadDelegate {
             if let key = key {
                 DownloadPathManager.remove(key)
             }
-            sendEvent(
-                .canceled,
-                [
-                    "key": key as Any
-                ])
+            sendEvent(.canceled, [
+                "key": key as Any
+            ])
         } else {
-            sendEvent(
-                .error,
-                [
-                    "key": key as Any,
-                    "error": error.localizedDescription as Any,
-                ])
+            sendEvent(.error, [
+                "key": key as Any,
+                "error": error.localizedDescription as Any,
+            ])
         }
     }
 
@@ -187,11 +179,7 @@ extension Downloader: AVAssetDownloadDelegate {
         guard let key = DownloadPathManager.key(forUrl: url) else {
             fatalError("key not found for url \(url)")
         }
-        sendEvent(
-            .finished,
-            [
-                "key": key
-            ])
+        sendEvent(.finished, ["key": key])
     }
 }
 

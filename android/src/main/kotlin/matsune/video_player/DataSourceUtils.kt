@@ -22,20 +22,20 @@ internal object DataSourceUtils {
 
     @JvmStatic
     fun getDataSourceFactory(
-            userAgent: String?,
-            headers: Map<String, String>?
+        userAgent: String?,
+        headers: Map<String, String>?
     ): DataSource.Factory {
         val dataSourceFactory: DataSource.Factory =
-                DefaultHttpDataSource.Factory()
-                        .setUserAgent(userAgent)
-                        .setAllowCrossProtocolRedirects(true)
-                        .setConnectTimeoutMs(DefaultHttpDataSource.DEFAULT_CONNECT_TIMEOUT_MILLIS)
-                        .setReadTimeoutMs(DefaultHttpDataSource.DEFAULT_READ_TIMEOUT_MILLIS)
+            DefaultHttpDataSource.Factory()
+                .setUserAgent(userAgent)
+                .setAllowCrossProtocolRedirects(true)
+                .setConnectTimeoutMs(DefaultHttpDataSource.DEFAULT_CONNECT_TIMEOUT_MILLIS)
+                .setReadTimeoutMs(DefaultHttpDataSource.DEFAULT_READ_TIMEOUT_MILLIS)
         if (headers != null) {
             val notNullHeaders = mutableMapOf<String, String>()
             headers.forEach { entry -> notNullHeaders[entry.key] = entry.value }
             (dataSourceFactory as DefaultHttpDataSource.Factory).setDefaultRequestProperties(
-                    notNullHeaders
+                notNullHeaders
             )
         }
         return dataSourceFactory

@@ -50,6 +50,7 @@ object Downloader {
             override fun onListen(arguments: Any?, sink: EventChannel.EventSink) {
                 eventSink.setDelegate(sink)
             }
+
             override fun onCancel(arguments: Any?) {
                 eventSink.setDelegate(null)
             }
@@ -89,7 +90,8 @@ object Downloader {
 
     private fun getDownloadCache(context: Context): Cache {
         if (downloadCache == null) {
-            val downloadContentDirectory = File(getDownloadDirectory(context), DOWNLOAD_CONTENT_DIRECTORY)
+            val downloadContentDirectory =
+                File(getDownloadDirectory(context), DOWNLOAD_CONTENT_DIRECTORY)
             downloadCache = SimpleCache(
                 downloadContentDirectory, NoOpCacheEvictor(), getDatabaseProvider(context)
             )
@@ -186,12 +188,12 @@ object Downloader {
         }
     }
 
-    fun startDownload(context: Context, key: String, uri: String, headers: Map<String, String>?) {
+    fun startDownload(context: Context, key: String, url: String, headers: Map<String, String>?) {
         val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit()
         val downloadManager = getDownloadManager(context)
         val downloadHelper = DownloadHelper.forMediaItem(
             context,
-            MediaItem.fromUri(uri),
+            MediaItem.fromUri(url),
             buildRenderersFactory(context),
             getHttpDataSourceFactory(headers)
         )
