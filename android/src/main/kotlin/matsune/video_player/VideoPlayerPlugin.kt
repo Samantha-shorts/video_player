@@ -128,6 +128,24 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         Downloader.removeDownload(context, key)
         result.success(null)
       }
+      METHOD_PAUSE_DOWNLOAD -> {
+        val context = flutterState?.applicationContext!!
+        val key = call.argument<String>("key")!!
+        Downloader.pauseDownload(context, key)
+        result.success(null)
+      }
+      METHOD_RESUME_DOWNLOAD -> {
+        val context = flutterState?.applicationContext!!
+        val key = call.argument<String>("key")!!
+        Downloader.resumeDownload(context, key)
+        result.success(null)
+      }
+      METHOD_CANCEL_DOWNLOAD -> {
+        val context = flutterState?.applicationContext!!
+        val key = call.argument<String>("key")!!
+        Downloader.cancelDownload(context, key)
+        result.success(null)
+      }
       METHOD_GET_DOWNLOADS -> {
         val context = flutterState?.applicationContext!!
         val keys = Downloader.getDownloadKeys(context)
@@ -142,9 +160,10 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             Download.STATE_DOWNLOADING, Download.STATE_QUEUED, Download.STATE_RESTARTING -> {
               res[key] = mapOf("state" to DOWNLOAD_STATE_RUNNING)
             }
-            else -> {
-              res[key] = mapOf("state" to DOWNLOAD_STATE_CANCELING)
+            Download.STATE_STOPPED -> {
+              res[key] = mapOf("state" to DOWNLOAD_STATE_SUSPENDED)
             }
+            else -> {}
           }
         }
         result.success(res)
@@ -383,11 +402,13 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private const val METHOD_SET_TRACK_PARAMETERS = "setTrackParameters"
     private const val METHOD_DOWNLOAD_OFFLINE_ASSET = "downloadOfflineAsset"
     private const val METHOD_DELETE_OFFLINE_ASSET = "deleteOfflineAsset"
+    private const val METHOD_PAUSE_DOWNLOAD = "pauseDownload"
+    private const val METHOD_RESUME_DOWNLOAD = "resumeDownload"
+    private const val METHOD_CANCEL_DOWNLOAD = "cancelDownload"
     private const val METHOD_GET_DOWNLOADS = "getDownloads"
 
-    private const val DOWNLOAD_STATE_RUNNING = 0
-    private const val DOWNLOAD_STATE_SUSPENDED = 1
-    private const val DOWNLOAD_STATE_CANCELING = 2
-    private const val DOWNLOAD_STATE_COMPLETED = 3
+    private const val DOWNLOAD_STATE_RUNNING = "running"
+    private const val DOWNLOAD_STATE_SUSPENDED = "suspended"
+    private const val DOWNLOAD_STATE_COMPLETED = "completed"
   }
 }

@@ -59,6 +59,7 @@ class DownloadPathManager {
         write(dict)
     }
 
+    @discardableResult
     static func remove(_ key: String) -> Value? {
         var dict = read()
         let value = dict.removeValue(forKey: key)
@@ -67,8 +68,13 @@ class DownloadPathManager {
     }
 
     static func key(forUrl url: String) -> String? {
-        var dict = read()
+        let dict = read()
         return dict.first(where: { $0.value["url"] == url })?.key
+    }
+
+    static func url(forKey key: String) -> String? {
+        let dict = read()
+        return dict.first(where: { $0.key == key })?.value["url"]
     }
 
     static func writePath(forUrl url: String, path: String) {
@@ -87,7 +93,7 @@ class DownloadPathManager {
     static func sync() {
         let dict = read().filter { (key, value) in
             if let path = value["path"] {
-                // remove if downloaded asset is already removed
+                // remove if downloaded asset doesn't exist
                 let url = URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(path)
                 return FileManager.default.fileExists(atPath: url.path)
             }

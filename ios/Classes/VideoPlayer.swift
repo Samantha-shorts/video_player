@@ -22,6 +22,9 @@ enum PlatformEventType: String {
 enum PlatformDownloadEventType: String {
     case progress
     case finished
+    case canceled
+    case paused
+    case resumed
     case error
 }
 

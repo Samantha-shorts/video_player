@@ -22,11 +22,20 @@ enum FlutterMethod: String {
     case setTrackParameters
     // download
     case downloadOfflineAsset
+    case pauseDownload
+    case resumeDownload
+    case cancelDownload
     case deleteOfflineAsset
     case getDownloads
 }
 
 typealias TextureId = Int
+
+enum DownloadState: String {
+    case running
+    case suspended
+    case completed
+}
 
 extension FlutterError {
     fileprivate static func invalidArgs(message: String? = nil, details: Any? = nil) -> FlutterError
@@ -38,6 +47,12 @@ extension FlutterError {
         -> FlutterError
     {
         FlutterError(code: "ASSET_NOT_FOUND", message: message, details: details)
+    }
+
+    fileprivate static func keyNotFound(message: String? = nil, details: Any? = nil)
+        -> FlutterError
+    {
+        FlutterError(code: "KEY_NOT_FOUND", message: message, details: details)
     }
 }
 
@@ -103,6 +118,48 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 headers: args["headers"] as? [String: String]
             )
             result(nil)
+        case .pauseDownload:
+            guard let args = call.arguments as? [String: Any],
+                let key = args["key"] as? String
+            else {
+                result(FlutterError.invalidArgs(message: "requires key"))
+                return
+            }
+            downloader.pauseDownload(key: key) { task in
+                if task == nil {
+                    result(FlutterError.keyNotFound())
+                    return
+                }
+                result(nil)
+            }
+        case .resumeDownload:
+            guard let args = call.arguments as? [String: Any],
+                let key = args["key"] as? String
+            else {
+                result(FlutterError.invalidArgs(message: "requires key"))
+                return
+            }
+            downloader.resumeDownload(key: key) { task in
+                if task == nil {
+                    result(FlutterError.keyNotFound())
+                    return
+                }
+                result(nil)
+            }
+        case .cancelDownload:
+            guard let args = call.arguments as? [String: Any],
+                let key = args["key"] as? String
+            else {
+                result(FlutterError.invalidArgs(message: "requires key"))
+                return
+            }
+            downloader.cancelDownload(key: key) { task in
+                if task == nil {
+                    result(FlutterError.keyNotFound())
+                    return
+                }
+                result(nil)
+            }
         case .deleteOfflineAsset:
             guard let args = call.arguments as? [String: Any],
                 let key = args["key"] as? String
@@ -120,16 +177,26 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
             downloader.getAllDownloadTasks { tasks in
                 var downloads: [String: [String: Any]] = [:]
                 downloadedKeys.forEach {
-                    downloads[$0] = ["state": URLSessionTask.State.completed.rawValue]
+                    downloads[$0] = ["state": DownloadState.completed.rawValue]
                 }
                 downloadings.forEach {
                     let key = $0.key
                     let url = $0.value["url"]
-                    if let task = tasks.first(where: { $0.urlAsset.url.absoluteString == url }) {
-                        downloads[key] =
-                            [
-                                "state": task.state.rawValue
-                            ] as [String: Any]
+                    if let task = tasks
+                        .filter({ $0.state != .canceling })
+                        .first(where: { $0.urlAsset.url.absoluteString == url }) {
+                        let state: DownloadState
+                        switch task.state {
+                        case .running:
+                            state = .running
+                        case .suspended:
+                            state = .suspended
+                        case .completed:
+                            state = .completed
+                        default:
+                            fatalError("unreachable")
+                        }
+                        downloads[key] = ["state": state.rawValue]
                     }
                 }
                 result(downloads)

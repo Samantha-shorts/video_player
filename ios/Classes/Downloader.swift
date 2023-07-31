@@ -57,6 +57,48 @@ class Downloader: NSObject {
         }
     }
 
+    private func getDownloadTask(key: String, completion: @escaping (AVAssetDownloadTask?) -> Void)
+    {
+        guard let url = DownloadPathManager.url(forKey: key) else {
+            completion(nil)
+            return
+        }
+        getAllDownloadTasks { tasks in
+            let task = tasks.first(where: { $0.urlAsset.url.absoluteString == url })
+            completion(task)
+        }
+    }
+
+    func pauseDownload(key: String, completion: ((AVAssetDownloadTask?) -> Void)? = nil) {
+        getDownloadTask(key: key) { [weak self] task in
+            task?.suspend()
+            if task != nil {
+                self?.sendEvent(.paused, ["key": key])
+            }
+            completion?(task)
+        }
+    }
+
+    func resumeDownload(key: String, completion: ((AVAssetDownloadTask?) -> Void)? = nil) {
+        getDownloadTask(key: key) { [weak self] task in
+            task?.resume()
+            if task != nil {
+                self?.sendEvent(.resumed, ["key": key])
+            }
+            completion?(task)
+        }
+    }
+
+    func cancelDownload(key: String, completion: ((AVAssetDownloadTask?) -> Void)? = nil) {
+        getDownloadTask(key: key) { [weak self] task in
+            task?.cancel()
+            if task != nil {
+                self?.sendEvent(.canceled, ["key": key])
+            }
+            completion?(task)
+        }
+    }
+
     func deleteOfflineAsset(key: String) {
         guard let value = DownloadPathManager.remove(key),
             let path = value["path"]
@@ -102,11 +144,28 @@ extension Downloader: AVAssetDownloadDelegate {
             ])
     }
 
+    private func isCancelError(error: Error) -> Bool {
+        let nsError = error as NSError
+        return nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
+    }
+
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?)
     {
-        if let error = error {
-            let url = task.originalRequest?.url?.absoluteString
-            let key = url.flatMap { DownloadPathManager.key(forUrl: $0) }
+        guard let error = error else {
+            return
+        }
+        let url = (task as? AVAssetDownloadTask)?.urlAsset.url.absoluteString
+        let key = url.flatMap { DownloadPathManager.key(forUrl: $0) }
+        if isCancelError(error: error) {
+            if let key = key {
+                DownloadPathManager.remove(key)
+            }
+            sendEvent(
+                .canceled,
+                [
+                    "key": key as Any
+                ])
+        } else {
             sendEvent(
                 .error,
                 [

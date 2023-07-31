@@ -18,6 +18,7 @@ import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.RenderersFactory
 import androidx.media3.exoplayer.offline.*
+import androidx.media3.exoplayer.scheduler.Requirements
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import io.flutter.plugin.common.EventChannel
 import java.io.File
@@ -147,6 +148,7 @@ object Downloader {
                 Executors.newFixedThreadPool( /* nThreads= */6)
             )
             downloadIndex = downloadManager?.downloadIndex
+            downloadManager?.resumeDownloads()
             downloadManager?.addListener(object : DownloadManager.Listener {
                 override fun onDownloadChanged(
                     downloadManager: DownloadManager,
@@ -201,7 +203,6 @@ object Downloader {
                 // save uri for key
                 prefs?.putString(key, request.id)
                 prefs?.apply()
-                downloadManager.resumeDownloads()
             }
 
             override fun onPrepareError(helper: DownloadHelper, e: IOException) {
@@ -252,8 +253,12 @@ object Downloader {
         for (entry in prefs.all) {
             val key = entry.key
             val id = entry.value as String
-            if (downloadIndex?.getDownload(id) == null) {
-                editor.remove(key)
+            val download = downloadIndex?.getDownload(id)
+            when (download?.state) {
+                Download.STATE_COMPLETED, Download.STATE_DOWNLOADING, Download.STATE_QUEUED, Download.STATE_RESTARTING, Download.STATE_STOPPED -> {}
+                else -> {
+                    editor.remove(key)
+                }
             }
         }
         editor.apply()
@@ -262,11 +267,7 @@ object Downloader {
 
     fun getDownloadByKey(context: Context, key: String): Download? {
         val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE)
-        return prefs.getString(key, "")?.let { getDownload(it) }
-    }
-
-    fun getDownload(id: String): Download? {
-        return downloadIndex?.getDownload(id)
+        return prefs.getString(key, "")?.let { downloadIndex?.getDownload(it) }
     }
 
     fun getKeyByDownloadId(context: Context, id: String): String? {
@@ -279,11 +280,40 @@ object Downloader {
         return null
     }
 
+    fun pauseDownload(context: Context, key: String) {
+        getDownloadByKey(context, key)?.let {
+            downloadManager?.setStopReason(it.request.id, DOWNLOAD_STOP_REASON_PAUSE)
+            stopDownloadTimer(it)
+            sendEvent(DOWNLOAD_EVENT_PAUSED, mapOf("key" to key))
+        }
+    }
+
+    fun resumeDownload(context: Context, key: String) {
+        getDownloadByKey(context, key)?.let {
+            downloadManager?.setStopReason(it.request.id, Download.STOP_REASON_NONE)
+            startDownloadTimer(context, it)
+            sendEvent(DOWNLOAD_EVENT_RESUMED, mapOf("key" to key))
+        }
+    }
+
+    fun cancelDownload(context: Context, key: String) {
+        getDownloadByKey(context, key)?.let {
+            downloadManager?.removeDownload(it.request.id)
+            stopDownloadTimer(it)
+            sendEvent(DOWNLOAD_EVENT_CANCELED, mapOf("key" to key))
+        }
+    }
+
     private const val PREFERENCES_KEY = "video_player_preferences"
 
     private const val DOWNLOAD_CONTENT_DIRECTORY = "downloads"
 
     private const val DOWNLOAD_EVENT_PROGRESS = "progress"
     private const val DOWNLOAD_EVENT_FINISHED = "finished"
+    private const val DOWNLOAD_EVENT_CANCELED = "canceled"
+    private const val DOWNLOAD_EVENT_PAUSED = "paused"
+    private const val DOWNLOAD_EVENT_RESUMED = "resumed"
     private const val DOWNLOAD_EVENT_ERROR = "error"
+
+    private const val DOWNLOAD_STOP_REASON_PAUSE = 1
 }

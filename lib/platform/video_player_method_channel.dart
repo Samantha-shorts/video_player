@@ -293,6 +293,21 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
             eventType: eventType,
             key: map["key"] as String?,
           );
+        case PlatformDownloadEventType.canceled:
+          return PlatformDownloadEvent(
+            eventType: eventType,
+            key: map["key"] as String?,
+          );
+        case PlatformDownloadEventType.paused:
+          return PlatformDownloadEvent(
+            eventType: eventType,
+            key: map["key"] as String?,
+          );
+        case PlatformDownloadEventType.resumed:
+          return PlatformDownloadEvent(
+            eventType: eventType,
+            key: map["key"] as String?,
+          );
         case PlatformDownloadEventType.error:
           return PlatformDownloadEvent(
             eventType: eventType,
@@ -318,6 +333,30 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
         'uri': uri,
         'headers': headers,
       },
+    );
+  }
+
+  @override
+  Future<void> pauseDownload(String key) async {
+    await methodChannel.invokeMethod(
+      'pauseDownload',
+      <String, dynamic>{'key': key},
+    );
+  }
+
+  @override
+  Future<void> resumeDownload(String key) async {
+    await methodChannel.invokeMethod(
+      'resumeDownload',
+      <String, dynamic>{'key': key},
+    );
+  }
+
+  @override
+  Future<void> cancelDownload(String key) async {
+    await methodChannel.invokeMethod(
+      'cancelDownload',
+      <String, dynamic>{'key': key},
     );
   }
 

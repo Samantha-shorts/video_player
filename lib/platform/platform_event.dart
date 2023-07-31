@@ -110,7 +110,15 @@ class DurationRange {
   int get hashCode => start.hashCode ^ end.hashCode;
 }
 
-enum PlatformDownloadEventType { unknown, progress, finished, error }
+enum PlatformDownloadEventType {
+  unknown,
+  progress,
+  finished,
+  canceled,
+  paused,
+  resumed,
+  error
+}
 
 PlatformDownloadEventType platformDownloadEventTypeFromString(String value) {
   return PlatformDownloadEventType.values.firstWhere(
@@ -142,16 +150,19 @@ class PlatformDownloadEvent {
   }
 }
 
-class PlatformDownloadTask {
-  final String url;
-  // 0: running
-  // 1: suspended
-  // 2: canceling
-  // 3: completed
-  final int state;
+enum PlatformDownloadState { running, suspended, canceling, completed }
 
-  PlatformDownloadTask({
-    required this.url,
-    required this.state,
-  });
+PlatformDownloadState? platformDownloadStateFromString(String s) {
+  switch (s) {
+    case "running":
+      return PlatformDownloadState.running;
+    case "suspended":
+      return PlatformDownloadState.suspended;
+    case "canceling":
+      return PlatformDownloadState.canceling;
+    case "completed":
+      return PlatformDownloadState.completed;
+    default:
+      return null;
+  }
 }

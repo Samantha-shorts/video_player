@@ -102,6 +102,15 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
       throw UnimplementedError(
           'downloadOfflineAsset() has not been implemented.');
 
+  Future<void> pauseDownload(String key) =>
+      throw UnimplementedError('pauseDownload() has not been implemented.');
+
+  Future<void> resumeDownload(String key) =>
+      throw UnimplementedError('resumeDownload() has not been implemented.');
+
+  Future<void> cancelDownload(String key) =>
+      throw UnimplementedError('cancelDownload() has not been implemented.');
+
   Future<void> deleteOfflineAsset(String key) => throw UnimplementedError(
       'deleteOfflineAsset() has not been implemented.');
 

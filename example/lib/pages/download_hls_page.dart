@@ -15,7 +15,15 @@ class DownloadHlsPage extends StatefulWidget {
   State<DownloadHlsPage> createState() => _DownloadHlsPageState();
 }
 
-enum DownloadStatus { notDownloaded, loading, progress, finished, error }
+enum DownloadStatus {
+  notDownloaded,
+  loading,
+  running,
+  suspended,
+  canceling,
+  completed,
+  error
+}
 
 class DownloadState {
   DownloadState({
@@ -83,14 +91,35 @@ class _DownloadHlsPageState extends State<DownloadHlsPage> {
           final key = event.key!;
           setState(() {
             states[key]?.progress = null;
-            states[key]?.status = DownloadStatus.finished;
+            states[key]?.status = DownloadStatus.completed;
           });
+          break;
         case PlatformDownloadEventType.progress:
           final key = event.key!;
           setState(() {
             states[key]?.progress = event.progress;
-            states[key]?.status = DownloadStatus.progress;
+            states[key]?.status = DownloadStatus.running;
           });
+          break;
+        case PlatformDownloadEventType.canceled:
+          final key = event.key!;
+          setState(() {
+            states[key]?.progress = null;
+            states[key]?.status = DownloadStatus.notDownloaded;
+          });
+          break;
+        case PlatformDownloadEventType.paused:
+          final key = event.key!;
+          setState(() {
+            states[key]?.status = DownloadStatus.suspended;
+          });
+          break;
+        case PlatformDownloadEventType.resumed:
+          final key = event.key!;
+          setState(() {
+            states[key]?.status = DownloadStatus.loading;
+          });
+          break;
         default:
           break;
       }
@@ -98,22 +127,26 @@ class _DownloadHlsPageState extends State<DownloadHlsPage> {
     loadDownloadedURLs();
   }
 
+  DownloadStatus downloadStatusFromState(PlatformDownloadState state) {
+    switch (state) {
+      case PlatformDownloadState.running:
+        return DownloadStatus.running;
+      case PlatformDownloadState.suspended:
+        return DownloadStatus.suspended;
+      case PlatformDownloadState.canceling:
+        return DownloadStatus.canceling;
+      case PlatformDownloadState.completed:
+        return DownloadStatus.completed;
+    }
+  }
+
   Future<void> loadDownloadedURLs() async {
     final downloads = await VideoPlayerPlatform.instance.getDownloads();
     for (final entry in downloads.entries) {
       final key = entry.key;
-      final status = entry.value["state"] as int;
-      final state = states[key]!;
-      switch (status) {
-        case 0:
-          state.status = DownloadStatus.progress;
-          break;
-        case 3:
-          state.status = DownloadStatus.finished;
-          break;
-        default:
-          break;
-      }
+      final downloadState =
+          platformDownloadStateFromString(entry.value["state"] as String)!;
+      states[key]!.status = downloadStatusFromState(downloadState);
     }
     setState(() {});
   }
@@ -122,6 +155,64 @@ class _DownloadHlsPageState extends State<DownloadHlsPage> {
   void dispose() {
     _subscription.cancel();
     super.dispose();
+  }
+
+  Future<void> tapAction(int index) async {
+    final key = list[index]["uri"]!;
+    final state = states[key]!;
+    switch (state.status) {
+      case DownloadStatus.notDownloaded:
+        await onTapDownload(list[index]['uri']!, state);
+        break;
+      case DownloadStatus.running:
+        await VideoPlayerPlatform.instance.pauseDownload(key);
+        break;
+      case DownloadStatus.suspended:
+        await VideoPlayerPlatform.instance.resumeDownload(key);
+        break;
+      case DownloadStatus.completed:
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => _PlayPage(offlineKey: key),
+          ),
+        );
+        break;
+      default:
+        break;
+    }
+  }
+
+  Future<void> longTapAction(int index) async {
+    final key = list[index]["uri"]!;
+    final state = states[key]!;
+    switch (state.status) {
+      case DownloadStatus.running:
+      case DownloadStatus.suspended:
+        showCupertinoDialog(
+          context: context,
+          builder: (context) => CupertinoAlertDialog(
+            title: const Text("Cancel download?"),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: const Text("Cancel"),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await VideoPlayerPlatform.instance.cancelDownload(key);
+                },
+                child: const Text("OK"),
+              ),
+            ],
+          ),
+        );
+        break;
+      default:
+        break;
+    }
   }
 
   @override
@@ -142,55 +233,42 @@ class _DownloadHlsPageState extends State<DownloadHlsPage> {
           return ListTile(
             title: Text(list[index]['name']!),
             trailing: state.status == DownloadStatus.loading ||
-                    state.status == DownloadStatus.progress
+                    state.status == DownloadStatus.running
                 ? SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(
-                      value: state.status == DownloadStatus.progress
-                          ? state.progress
-                          : null,
-                    ),
+                    child: state.status == DownloadStatus.running
+                        ? Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              CircularProgressIndicator(value: state.progress),
+                              const Icon(Icons.pause),
+                            ],
+                          )
+                        : const CircularProgressIndicator(),
                   )
                 : IconButton(
                     icon: Icon(
                       state.status == DownloadStatus.notDownloaded
                           ? Icons.download
-                          : Icons.delete,
+                          : state.status == DownloadStatus.completed
+                              ? Icons.delete
+                              : state.status == DownloadStatus.suspended
+                                  ? Icons.restart_alt
+                                  : Icons.error,
                     ),
                     onPressed: () async {
-                      switch (state.status) {
-                        case DownloadStatus.notDownloaded:
-                          await onTapDownload(list[index]['uri']!, state);
-                          break;
-                        case DownloadStatus.finished:
-                          await VideoPlayerPlatform.instance
-                              .deleteOfflineAsset(key);
-                          setState(() {
-                            state.status = DownloadStatus.notDownloaded;
-                          });
-                          break;
-                        default:
-                          break;
+                      if (state.status == DownloadStatus.completed) {
+                        await VideoPlayerPlatform.instance
+                            .deleteOfflineAsset(key);
+                        setState(() {
+                          state.status = DownloadStatus.notDownloaded;
+                        });
+                      } else {
+                        await tapAction(index);
                       }
                     },
                   ),
-            onTap: () async {
-              switch (state.status) {
-                case DownloadStatus.notDownloaded:
-                  await onTapDownload(list[index]['uri']!, state);
-                  break;
-                case DownloadStatus.finished:
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => _PlayPage(offlineKey: key),
-                    ),
-                  );
-                  break;
-                default:
-                  break;
-              }
-            },
+            onTap: () => tapAction(index),
+            onLongPress: () => longTapAction(index),
           );
         },
       ),
