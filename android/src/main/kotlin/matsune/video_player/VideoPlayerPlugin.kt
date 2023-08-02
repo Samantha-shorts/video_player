@@ -10,6 +10,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.util.LongSparseArray
+import androidx.annotation.RequiresApi
 import androidx.media3.datasource.cache.*
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.offline.*
@@ -37,19 +38,30 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private var pipRunnable: Runnable? = null
     private var currentNotificationTextureId: Long? = null
 
+    private val isAndroidHigherM: Boolean
+        get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+
+    private val isAndroidHigherO: Boolean
+        get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+
+    private val isAndroidHigherN: Boolean
+        get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
+
+    private val isPictureInPictureSupported: Boolean
+        get() = isAndroidHigherO && activity?.packageManager?.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) ==
+                true
+
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        flutterState =
-            FlutterState(
-                binding.applicationContext,
-                binding.binaryMessenger,
-                binding.textureRegistry
-            )
+        flutterState = FlutterState(
+            binding.applicationContext,
+            binding.binaryMessenger,
+            binding.textureRegistry
+        )
         flutterState?.startListening(this)
 
         if (Downloader.eventChannel == null) {
-            Downloader.setupEventChannel(
-                EventChannel(flutterState?.binaryMessenger, DOWNLOAD_EVENTS_CHANNEL)
-            )
+            val eventChannel = EventChannel(flutterState?.binaryMessenger, DOWNLOAD_EVENTS_CHANNEL)
+            Downloader.setupEventChannel(eventChannel)
         }
     }
 
@@ -69,6 +81,52 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     override fun onDetachedFromActivity() {}
 
+    override fun onMethodCall(call: MethodCall, result: Result) {
+        if (flutterState == null) {
+            result.error(ERR_CODE_PLUGIN_NOT_ATTACHED, null, null)
+            return
+        }
+        val flutterState = flutterState!!
+        when (call.method) {
+            METHOD_INIT -> {
+                disposeAllPlayers()
+                result.success(null)
+            }
+            METHOD_CREATE -> {
+                val textureId = createPlayer(flutterState, call)
+                result.success(mapOf("textureId" to textureId))
+            }
+            METHOD_IS_PICTURE_IN_PICTURE_SUPPORTED -> {
+                result.success(mapOf("isPictureInPictureSupported" to isPictureInPictureSupported))
+            }
+            METHOD_DOWNLOAD_OFFLINE_ASSET,
+            METHOD_DELETE_OFFLINE_ASSET,
+            METHOD_PAUSE_DOWNLOAD,
+            METHOD_RESUME_DOWNLOAD,
+            METHOD_CANCEL_DOWNLOAD,
+            METHOD_GET_DOWNLOADS -> {
+                onDownloadMethodCall(flutterState, call, result)
+            }
+            else -> {
+                val textureId = (call.argument<Any>("textureId") as Number?)?.toLong()
+                if (textureId == null) {
+                    result.error(ERR_CODE_INVALID_TEXTURE_ID, "textureId is null", null)
+                    return
+                }
+                val player = videoPlayers[textureId]
+                if (player == null) {
+                    result.error(
+                        ERR_CODE_INVALID_TEXTURE_ID,
+                        "No video player associated with texture id $textureId",
+                        null
+                    )
+                    return
+                }
+                onPlayerMethodCall(flutterState, call, result, textureId, player)
+            }
+        }
+    }
+
     private fun disposeAllPlayers() {
         for (i in 0 until videoPlayers.size()) {
             videoPlayers.valueAt(i).dispose()
@@ -77,84 +135,73 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         dataSources.clear()
     }
 
-    override fun onMethodCall(call: MethodCall, result: Result) {
-        if (flutterState == null || flutterState?.textureRegistry == null) {
-            result.error("no_activity", "better_player plugin requires a foreground activity", null)
-            return
+    private fun createPlayer(flutterState: FlutterState, call: MethodCall): Long {
+        val textureEntry = flutterState.textureRegistry.createSurfaceTexture()
+        val textureId = textureEntry.id()
+        val eventChannel =
+            EventChannel(flutterState.binaryMessenger, EVENTS_CHANNEL + textureId)
+        var customDefaultLoadControl = CustomDefaultLoadControl()
+        if (call.hasArgument("minBufferMs") &&
+            call.hasArgument("maxBufferMs") &&
+            call.hasArgument("bufferForPlaybackMs") &&
+            call.hasArgument("bufferForPlaybackAfterRebufferMs")
+        ) {
+            customDefaultLoadControl =
+                CustomDefaultLoadControl(
+                    call.argument("minBufferMs"),
+                    call.argument("maxBufferMs"),
+                    call.argument("bufferForPlaybackMs"),
+                    call.argument("bufferForPlaybackAfterRebufferMs")
+                )
         }
+        val player =
+            VideoPlayer(
+                flutterState.applicationContext,
+                eventChannel,
+                textureEntry,
+                customDefaultLoadControl,
+            )
+        videoPlayers.put(textureId, player)
+        return textureId
+    }
+
+    private fun onDownloadMethodCall(
+        flutterState: FlutterState,
+        call: MethodCall,
+        result: MethodChannel.Result,
+    ) {
+        val context = flutterState.applicationContext
         when (call.method) {
-            METHOD_INIT -> {
-                disposeAllPlayers()
-                result.success(null)
-            }
-            METHOD_CREATE -> {
-                val textureEntry = flutterState!!.textureRegistry!!.createSurfaceTexture()
-                val textureId = textureEntry.id()
-                val eventChannel =
-                    EventChannel(flutterState?.binaryMessenger, EVENTS_CHANNEL + textureId)
-                var customDefaultLoadControl = CustomDefaultLoadControl()
-                if (call.hasArgument("minBufferMs") &&
-                    call.hasArgument("maxBufferMs") &&
-                    call.hasArgument("bufferForPlaybackMs") &&
-                    call.hasArgument("bufferForPlaybackAfterRebufferMs")
-                ) {
-                    customDefaultLoadControl =
-                        CustomDefaultLoadControl(
-                            call.argument("minBufferMs"),
-                            call.argument("maxBufferMs"),
-                            call.argument("bufferForPlaybackMs"),
-                            call.argument("bufferForPlaybackAfterRebufferMs")
-                        )
-                }
-                val player =
-                    VideoPlayer(
-                        flutterState?.applicationContext!!,
-                        eventChannel,
-                        textureEntry,
-                        customDefaultLoadControl,
-                    )
-                videoPlayers.put(textureId, player)
-                result.success(mapOf("textureId" to textureId))
-            }
-            METHOD_IS_PICTURE_IN_PICTURE_SUPPORTED -> {
-                result.success(mapOf("isPictureInPictureSupported" to isPictureInPictureSupported()))
-            }
             METHOD_DOWNLOAD_OFFLINE_ASSET -> {
                 val key = call.argument<String>("key")!!
                 val url = call.argument<String>("url")!!
                 val headers: Map<String, String>? = call.argument<Map<String, String>>("headers")
-                val context = flutterState?.applicationContext!!
                 Downloader.startDownload(context, key, url, headers)
                 result.success(null)
             }
             METHOD_DELETE_OFFLINE_ASSET -> {
-                val context = flutterState?.applicationContext!!
                 val key = call.argument<String>("key")!!
                 Downloader.removeDownload(context, key)
                 result.success(null)
             }
             METHOD_PAUSE_DOWNLOAD -> {
-                val context = flutterState?.applicationContext!!
                 val key = call.argument<String>("key")!!
                 Downloader.pauseDownload(context, key)
                 result.success(null)
             }
             METHOD_RESUME_DOWNLOAD -> {
-                val context = flutterState?.applicationContext!!
                 val key = call.argument<String>("key")!!
                 Downloader.resumeDownload(context, key)
                 result.success(null)
             }
             METHOD_CANCEL_DOWNLOAD -> {
-                val context = flutterState?.applicationContext!!
                 val key = call.argument<String>("key")!!
                 Downloader.cancelDownload(context, key)
                 result.success(null)
             }
             METHOD_GET_DOWNLOADS -> {
-                val context = flutterState?.applicationContext!!
                 val keys = Downloader.getDownloadKeys(context)
-                var res = mutableMapOf<String, Map<String, Any>>()
+                val res = mutableMapOf<String, Map<String, Any>>()
                 keys.forEach {
                     val key = it
                     val download = Downloader.getDownloadByKey(context, key)
@@ -174,22 +221,13 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 result.success(res)
             }
             else -> {
-                val textureId = (call.argument<Any>("textureId") as Number?)!!.toLong()
-                val player = videoPlayers[textureId]
-                if (player == null) {
-                    result.error(
-                        "Unknown textureId",
-                        "No video player associated with texture id $textureId",
-                        null
-                    )
-                    return
-                }
-                onPlayerMethodCall(call, result, textureId, player)
+                result.notImplemented()
             }
         }
     }
 
     private fun onPlayerMethodCall(
+        flutterState: FlutterState,
         call: MethodCall,
         result: MethodChannel.Result,
         textureId: Long,
@@ -201,7 +239,9 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 result.success(null)
             }
             METHOD_PLAY -> {
-                setupNotification(textureId, player)
+                if (isAndroidHigherM) {
+                    setupNotification(flutterState.applicationContext, textureId, player)
+                }
                 player.play()
                 result.success(null)
             }
@@ -220,7 +260,13 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             }
             METHOD_WILL_EXIT_FULLSCREEN -> {}
             METHOD_ENABLE_PICTURE_IN_PICTURE -> {
-                enablePictureInPicture(player)
+                if (isAndroidHigherO) {
+                    if (activity == null) {
+                        result.error(ERR_CODE_NO_ACTIVITY, null, null)
+                        return
+                    }
+                    enablePictureInPicture(flutterState.applicationContext, activity!!, player)
+                }
                 result.success(null)
             }
             METHOD_DISABLE_PICTURE_IN_PICTURE -> {
@@ -249,31 +295,29 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         }
     }
 
-    private fun setupNotification(textureId: Long, player: VideoPlayer) {
-        try {
-            if (textureId == currentNotificationTextureId) {
-                return
-            }
-            val dataSource = dataSources[textureId]
-            currentNotificationTextureId = textureId
-            removeOtherNotificationListeners()
-            val title = getParameter(dataSource, "title", "")
-            val author = getParameter(dataSource, "author", "")
-            val imageUrl = getParameter(dataSource, "imageUrl", "")
-            val notificationChannelName =
-                getParameter<String?>(dataSource, "notificationChannelName", null)
-            val activityName = getParameter(dataSource, "activityName", "MainActivity")
-            player.setupPlayerNotification(
-                flutterState?.applicationContext!!,
-                title,
-                author,
-                imageUrl,
-                notificationChannelName,
-                activityName
-            )
-        } catch (exception: Exception) {
-            Log.e(TAG, "SetupNotification failed", exception)
+    @RequiresApi(Build.VERSION_CODES.M)
+    private fun setupNotification(context: Context, textureId: Long, player: VideoPlayer) {
+        if (textureId == currentNotificationTextureId) {
+            return
         }
+        val dataSource = dataSources[textureId]
+        currentNotificationTextureId = textureId
+        removeOtherNotificationListeners()
+        val title = DataSourceUtils.getParameter(dataSource, "title", "")
+        val author = DataSourceUtils.getParameter<String?>(dataSource, "author", null)
+        val imageUrl = DataSourceUtils.getParameter<String?>(dataSource, "imageUrl", null)
+        val notificationChannelName =
+            DataSourceUtils.getParameter<String?>(dataSource, "notificationChannelName", null)
+        val activityName =
+            DataSourceUtils.getParameter(dataSource, "activityName", "MainActivity")
+        player.setupPlayerNotification(
+            context,
+            title,
+            author,
+            imageUrl,
+            notificationChannelName,
+            activityName
+        )
     }
 
     private fun removeOtherNotificationListeners() {
@@ -282,26 +326,16 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         }
     }
 
-    @Suppress("UNCHECKED_CAST")
-    private fun <T> getParameter(parameters: Map<String, Any?>?, key: String, defaultValue: T): T {
-        if (parameters?.containsKey(key) == true) {
-            val value = parameters[key]
-            if (value != null) {
-                return value as T
-            }
-        }
-        return defaultValue
-    }
-
     private fun setDataSource(call: MethodCall, textureId: Long, player: VideoPlayer) {
         val dataSource = call.argument<Map<String, Any?>>("dataSource")!!
         dataSources.put(textureId, dataSource)
-        val offlineKey = getParameter<String?>(dataSource, "offlineKey", null)
+        val offlineKey = DataSourceUtils.getParameter<String?>(dataSource, "offlineKey", null)
         if (offlineKey != null) {
             player.setOfflineDataSource(offlineKey)
         } else {
-            val headers: Map<String, String> = getParameter(dataSource, "headers", HashMap())
-            val url = getParameter(dataSource, "url", "")
+            val headers: Map<String, String> =
+                DataSourceUtils.getParameter(dataSource, "headers", HashMap())
+            val url = DataSourceUtils.getParameter(dataSource, "url", "")
             player.setNetworkDataSource(url, headers)
         }
     }
@@ -313,24 +347,11 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         dataSources.remove(textureId)
     }
 
-    private val isAndroidOreoOrHigher: Boolean
-        get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-
-    private val isAndroidNougatOrHigher: Boolean
-        get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
-
-    private fun isPictureInPictureSupported(): Boolean {
-        return isAndroidOreoOrHigher &&
-                activity?.packageManager?.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) ==
-                true
-    }
-
-    private fun enablePictureInPicture(player: VideoPlayer) {
-        if (isAndroidOreoOrHigher) {
-            player.setupMediaSession(flutterState!!.applicationContext)
-            activity!!.enterPictureInPictureMode(PictureInPictureParams.Builder().build())
-            startPictureInPictureListenerTimer(player)
-        }
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun enablePictureInPicture(context: Context, activity: Activity, player: VideoPlayer) {
+        player.setupMediaSession(context)
+        activity.enterPictureInPictureMode(PictureInPictureParams.Builder().build())
+        startPictureInPictureListenerTimer(activity, player)
     }
 
     private fun disablePictureInPicture(player: VideoPlayer) {
@@ -341,25 +362,24 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     private var isInPip = false
 
-    private fun startPictureInPictureListenerTimer(player: VideoPlayer) {
-        if (isAndroidNougatOrHigher) {
-            pipHandler = Handler(Looper.getMainLooper())
-            pipRunnable = Runnable {
-                if (isInPip != activity!!.isInPictureInPictureMode) {
-                    if (!activity!!.isInPictureInPictureMode) {
-                        // exited PiP
-                        player.disposeMediaSession()
-                        stopPipHandler()
-                    }
-                    player.onPictureInPictureStatusChanged(activity!!.isInPictureInPictureMode)
+    @RequiresApi(Build.VERSION_CODES.N)
+    private fun startPictureInPictureListenerTimer(activity: Activity, player: VideoPlayer) {
+        pipHandler = Handler(Looper.getMainLooper())
+        pipRunnable = Runnable {
+            if (isInPip != activity.isInPictureInPictureMode) {
+                if (!activity.isInPictureInPictureMode) {
+                    // exited PiP
+                    player.disposeMediaSession()
+                    stopPipHandler()
                 }
-                if (activity!!.isInPictureInPictureMode) {
-                    pipHandler?.postDelayed(pipRunnable!!, 100)
-                }
-                isInPip = activity!!.isInPictureInPictureMode
+                player.onPictureInPictureStatusChanged(activity.isInPictureInPictureMode)
             }
-            pipHandler?.post(pipRunnable!!)
+            if (activity.isInPictureInPictureMode) {
+                pipHandler?.postDelayed(pipRunnable!!, 100)
+            }
+            isInPip = activity.isInPictureInPictureMode
         }
+        pipHandler?.post(pipRunnable!!)
     }
 
     private fun stopPipHandler() {
@@ -371,7 +391,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private class FlutterState(
         val applicationContext: Context,
         val binaryMessenger: BinaryMessenger,
-        val textureRegistry: TextureRegistry?
+        val textureRegistry: TextureRegistry
     ) {
         private val methodChannel: MethodChannel = MethodChannel(binaryMessenger, CHANNEL)
 
@@ -389,6 +409,10 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         private const val CHANNEL = "video_player"
         private const val EVENTS_CHANNEL = "video_player_channel/videoEvents"
         private const val DOWNLOAD_EVENTS_CHANNEL = "video_player_channel/downloadEvents"
+
+        private const val ERR_CODE_PLUGIN_NOT_ATTACHED = "PLUGIN_NOT_ATTACHED"
+        private const val ERR_CODE_INVALID_TEXTURE_ID = "INVALID_TEXTURE_ID"
+        private const val ERR_CODE_NO_ACTIVITY = "NO_ACTIVITY"
 
         private const val METHOD_INIT = "init"
         private const val METHOD_CREATE = "create"

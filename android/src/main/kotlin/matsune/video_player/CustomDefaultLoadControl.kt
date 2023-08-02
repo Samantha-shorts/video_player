@@ -33,19 +33,11 @@ internal class CustomDefaultLoadControl {
     @JvmField
     val bufferForPlaybackAfterRebufferMs: Int
 
-    constructor() {
-        minBufferMs = DefaultLoadControl.DEFAULT_MIN_BUFFER_MS
-        maxBufferMs = DefaultLoadControl.DEFAULT_MAX_BUFFER_MS
-        bufferForPlaybackMs = DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS
-        bufferForPlaybackAfterRebufferMs =
-            DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS
-    }
-
     constructor(
-        minBufferMs: Int?,
-        maxBufferMs: Int?,
-        bufferForPlaybackMs: Int?,
-        bufferForPlaybackAfterRebufferMs: Int?
+        minBufferMs: Int? = null,
+        maxBufferMs: Int? = null,
+        bufferForPlaybackMs: Int? = null,
+        bufferForPlaybackAfterRebufferMs: Int? = null,
     ) {
         this.minBufferMs = minBufferMs ?: DefaultLoadControl.DEFAULT_MIN_BUFFER_MS
         this.maxBufferMs = maxBufferMs ?: DefaultLoadControl.DEFAULT_MAX_BUFFER_MS

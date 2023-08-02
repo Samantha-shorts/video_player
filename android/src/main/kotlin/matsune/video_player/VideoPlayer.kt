@@ -16,6 +16,7 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.view.Surface
+import androidx.annotation.RequiresApi
 import androidx.lifecycle.Observer
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE
@@ -286,23 +287,26 @@ internal class VideoPlayer(
         sendEvent(EVENT_PIP_CHANGED, mapOf("isPip" to isPip))
     }
 
-    fun setupMediaSession(context: Context?): MediaSessionCompat? {
+    @RequiresApi(Build.VERSION_CODES.M)
+    fun setupMediaSession(context: Context): MediaSessionCompat {
         mediaSession?.release()
-        context?.let {
-            val mediaButtonIntent = Intent(Intent.ACTION_MEDIA_BUTTON)
-            val pendingIntent =
-                PendingIntent.getBroadcast(
-                    context,
-                    0,
-                    mediaButtonIntent,
-                    PendingIntent.FLAG_IMMUTABLE
-                )
-            val mediaSession = MediaSessionCompat(context, TAG, null, pendingIntent)
-            mediaSession.isActive = true
-            this.mediaSession = mediaSession
-            return mediaSession
-        }
-        return null
+        val mediaButtonIntent = Intent(Intent.ACTION_MEDIA_BUTTON)
+        val pendingIntent =
+            PendingIntent.getBroadcast(
+                context,
+                0,
+                mediaButtonIntent,
+                PendingIntent.FLAG_IMMUTABLE
+            )
+        val mediaSession = MediaSessionCompat(context, TAG, null, pendingIntent)
+        mediaSession.setCallback(object : MediaSessionCompat.Callback() {
+            override fun onSeekTo(pos: Long) {
+                seekTo(pos.toInt())
+            }
+        })
+        mediaSession.isActive = true
+        this.mediaSession = mediaSession
+        return mediaSession
     }
 
     fun disposeMediaSession() {
@@ -312,6 +316,7 @@ internal class VideoPlayer(
         mediaSession = null
     }
 
+    @RequiresApi(Build.VERSION_CODES.M)
     fun setupPlayerNotification(
         context: Context,
         title: String,
@@ -433,14 +438,15 @@ internal class VideoPlayer(
                 setUsePreviousAction(false)
                 setUseStopAction(false)
             }
-            setupMediaSession(context)?.let { setMediaSessionToken(it.sessionToken) }
+            val mediaSession = setupMediaSession(context)
+            setMediaSessionToken(mediaSession.sessionToken)
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             refreshHandler = Handler(Looper.getMainLooper())
             refreshRunnable = Runnable {
                 val playbackState: PlaybackStateCompat =
-                    if (exoPlayer.isPlaying == true) {
+                    if (exoPlayer.isPlaying) {
                         PlaybackStateCompat.Builder()
                             .setActions(PlaybackStateCompat.ACTION_SEEK_TO)
                             .setState(PlaybackStateCompat.STATE_PLAYING, position, 1.0f)
