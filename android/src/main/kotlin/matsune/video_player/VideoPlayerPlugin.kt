@@ -28,14 +28,12 @@ import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.view.TextureRegistry
 
 
-/** VideoPlayerPlugin */
 class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private val videoPlayers = LongSparseArray<VideoPlayer>()
     private val dataSources = LongSparseArray<Map<String, Any?>>()
     private var flutterState: FlutterState? = null
     private var activity: Activity? = null
-    private var pipHandler: Handler? = null
-    private var pipRunnable: Runnable? = null
+    private var pipListener = PipListener()
     private var currentNotificationTextureId: Long? = null
 
     private val isAndroidHigherM: Boolean
@@ -43,9 +41,6 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     private val isAndroidHigherO: Boolean
         get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-
-    private val isAndroidHigherN: Boolean
-        get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.N
 
     private val isPictureInPictureSupported: Boolean
         get() = isAndroidHigherO && activity?.packageManager?.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) ==
@@ -341,7 +336,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     }
 
     private fun dispose(player: VideoPlayer, textureId: Long) {
-        stopPipHandler()
+        pipListener.stopPipHandler()
         player.dispose()
         videoPlayers.remove(textureId)
         dataSources.remove(textureId)
@@ -351,41 +346,13 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private fun enablePictureInPicture(context: Context, activity: Activity, player: VideoPlayer) {
         player.setupMediaSession(context)
         activity.enterPictureInPictureMode(PictureInPictureParams.Builder().build())
-        startPictureInPictureListenerTimer(activity, player)
+        pipListener.startPictureInPictureListenerTimer(activity, player)
     }
 
     private fun disablePictureInPicture(player: VideoPlayer) {
-        stopPipHandler()
-        activity!!.moveTaskToBack(false)
+        pipListener.stopPipHandler()
+        activity?.moveTaskToBack(false)
         player.disposeMediaSession()
-    }
-
-    private var isInPip = false
-
-    @RequiresApi(Build.VERSION_CODES.N)
-    private fun startPictureInPictureListenerTimer(activity: Activity, player: VideoPlayer) {
-        pipHandler = Handler(Looper.getMainLooper())
-        pipRunnable = Runnable {
-            if (isInPip != activity.isInPictureInPictureMode) {
-                if (!activity.isInPictureInPictureMode) {
-                    // exited PiP
-                    player.disposeMediaSession()
-                    stopPipHandler()
-                }
-                player.onPictureInPictureStatusChanged(activity.isInPictureInPictureMode)
-            }
-            if (activity.isInPictureInPictureMode) {
-                pipHandler?.postDelayed(pipRunnable!!, 100)
-            }
-            isInPip = activity.isInPictureInPictureMode
-        }
-        pipHandler?.post(pipRunnable!!)
-    }
-
-    private fun stopPipHandler() {
-        pipHandler?.removeCallbacksAndMessages(null)
-        pipHandler = null
-        pipRunnable = null
     }
 
     private class FlutterState(

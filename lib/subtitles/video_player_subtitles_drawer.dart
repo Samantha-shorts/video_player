@@ -36,10 +36,19 @@ class _VideoPlayerSubtitlesDrawerState
     _controlsVisibilitySubscription =
         controller.controlsVisibilityStream.listen(_controlsVisibilityListener);
 
+    setupTextStyles(
+      lastValue?.isFullscreen ?? false,
+      lastValue?.isPip ?? false,
+    );
+  }
+
+  void setupTextStyles(bool isFullscreen, bool isPip) {
     _outerTextStyle = TextStyle(
-      fontSize: lastValue?.isFullscreen == true
-          ? subtitlesConfiguration.fontSizeInFullscreen
-          : subtitlesConfiguration.fontSize,
+      fontSize: isPip
+          ? subtitlesConfiguration.fontSizeInPip
+          : isFullscreen
+              ? subtitlesConfiguration.fontSizeInFullscreen
+              : subtitlesConfiguration.fontSize,
       fontFamily: subtitlesConfiguration.fontFamily,
       foreground: Paint()
         ..style = PaintingStyle.stroke
@@ -48,9 +57,11 @@ class _VideoPlayerSubtitlesDrawerState
     );
 
     _innerTextStyle = TextStyle(
-      fontSize: lastValue?.isFullscreen == true
-          ? subtitlesConfiguration.fontSizeInFullscreen
-          : subtitlesConfiguration.fontSize,
+      fontSize: isPip
+          ? subtitlesConfiguration.fontSizeInPip
+          : isFullscreen
+              ? subtitlesConfiguration.fontSizeInFullscreen
+              : subtitlesConfiguration.fontSize,
       fontFamily: subtitlesConfiguration.fontFamily,
       color: subtitlesConfiguration.fontColor,
     );
@@ -102,6 +113,12 @@ class _VideoPlayerSubtitlesDrawerState
             .loadAsmsSubtitlesSegments(newValue.position);
       }
       return true;
+    } else if (newValue.eventType == VideoPlayerEventType.pipChanged) {
+      setupTextStyles(newValue.isFullscreen, newValue.isPip);
+      // final becamePip = newValue.isPip;
+      // if (becamePip) {
+      // } else {}
+      return true;
     }
     return false;
   }
@@ -113,7 +130,7 @@ class _VideoPlayerSubtitlesDrawerState
     final List<Widget> textWidgets =
         subtitles.map((text) => _buildSubtitleTextWidget(text)).toList();
 
-    return Container(
+    return SizedBox(
       height: double.infinity,
       width: double.infinity,
       child: AnimatedPadding(
@@ -123,7 +140,7 @@ class _VideoPlayerSubtitlesDrawerState
           left: subtitlesConfiguration.leftPadding,
           right: subtitlesConfiguration.rightPadding,
         ),
-        duration: Duration(milliseconds: 100),
+        duration: const Duration(milliseconds: 100),
         curve: Curves.easeOut,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,
@@ -149,14 +166,16 @@ class _VideoPlayerSubtitlesDrawerState
   }
 
   Widget _buildSubtitleTextWidget(String subtitleText) {
-    return Row(children: [
-      Expanded(
-        child: Align(
-          alignment: Alignment.center,
-          child: _getTextWithStroke(subtitleText),
+    return Row(
+      children: [
+        Expanded(
+          child: Align(
+            alignment: Alignment.center,
+            child: _getTextWithStroke(subtitleText),
+          ),
         ),
-      ),
-    ]);
+      ],
+    );
   }
 
   Widget _getTextWithStroke(String subtitleText) {
