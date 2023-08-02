@@ -292,10 +292,8 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
             let downloadedKeys: [String] = Array(items.filter { $0.value["path"] != nil }.keys)
             let downloadings = items.filter { $0.value["path"] == nil }
             downloader.getAllDownloadTasks { tasks in
-                var downloads: [String: [String: Any]] = [:]
-                downloadedKeys.forEach {
-                    downloads[$0] = ["state": DownloadState.completed.rawValue]
-                }
+                var downloads: [[String: Any]] = []
+                downloads = downloadedKeys.map { ["key": $0, "state": DownloadState.completed.rawValue] }
                 downloadings.forEach {
                     let key = $0.key
                     let url = $0.value["url"]
@@ -313,7 +311,7 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                         default:
                             fatalError("unreachable")
                         }
-                        downloads[key] = ["state": state.rawValue]
+                        downloads.append(["key": key, "state": state.rawValue])
                     } else {
                         // still downloading but download task not found
                         DownloadPathManager.remove(key)

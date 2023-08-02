@@ -367,18 +367,18 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
   }
 
   @override
-  Future<Map<String, Map<String, dynamic>>> getDownloads() async {
-    final res = await methodChannel.invokeMethod(
-      'getDownloads',
-      null,
-    );
-    final map = Map<String, dynamic>.from(res);
-    return map.map((key, value) {
-      if (value is Map) {
-        return MapEntry(key, Map<String, dynamic>.from(value));
-      } else {
-        throw Exception('Expected a Map but got $value');
-      }
-    });
+  Future<List<Download>> getDownloads() async {
+    final res = await methodChannel.invokeMethod<List<dynamic>>(
+          'getDownloads',
+          null,
+        ) ??
+        [];
+    return res.map((e) {
+      final map = Map<String, dynamic>.from(e);
+      return Download(
+        key: map["key"],
+        state: platformDownloadStateFromString(map["state"] as String)!,
+      );
+    }).toList();
   }
 }

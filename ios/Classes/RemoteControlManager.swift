@@ -149,7 +149,6 @@ class RemoteControlManager {
     }
 
     func disposePlayer(textureId: TextureId, player: VideoPlayer) {
-        assert(player == remotePlayer)
         remotePlayer = nil
         endReceivingRemoteControlEvents()
         removePeriodicTimeObserver(textureId: textureId, player: player)

@@ -166,3 +166,13 @@ PlatformDownloadState? platformDownloadStateFromString(String s) {
       return null;
   }
 }
+
+class Download {
+  final String key;
+  final PlatformDownloadState state;
+
+  Download({
+    required this.key,
+    required this.state,
+  });
+}

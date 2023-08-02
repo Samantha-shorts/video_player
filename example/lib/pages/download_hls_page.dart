@@ -142,10 +142,9 @@ class _DownloadHlsPageState extends State<DownloadHlsPage> {
 
   Future<void> loadDownloadedURLs() async {
     final downloads = await VideoPlayerPlatform.instance.getDownloads();
-    for (final entry in downloads.entries) {
+    for (final entry in downloads) {
       final key = entry.key;
-      final downloadState =
-          platformDownloadStateFromString(entry.value["state"] as String)!;
+      final downloadState = entry.state;
       states[key]!.status = downloadStatusFromState(downloadState);
     }
     setState(() {});

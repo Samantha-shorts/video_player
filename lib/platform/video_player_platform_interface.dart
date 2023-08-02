@@ -114,6 +114,6 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
   Future<void> deleteOfflineAsset(String key) => throw UnimplementedError(
       'deleteOfflineAsset() has not been implemented.');
 
-  Future<Map<String, Map<String, dynamic>>> getDownloads() =>
+  Future<List<Download>> getDownloads() =>
       throw UnimplementedError('getDownloads() has not been implemented.');
 }

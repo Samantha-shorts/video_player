@@ -201,19 +201,19 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             }
             METHOD_GET_DOWNLOADS -> {
                 val keys = Downloader.getDownloadKeys(context)
-                val res = mutableMapOf<String, Map<String, Any>>()
+                val res = mutableListOf<Map<String, Any>>()
                 keys.forEach {
                     val key = it
                     val download = Downloader.getDownloadByKey(context, key)
                     when (download?.state) {
                         Download.STATE_COMPLETED -> {
-                            res[key] = mapOf("state" to DOWNLOAD_STATE_COMPLETED)
+                            res.add(mapOf("key" to key, "state" to DOWNLOAD_STATE_COMPLETED))
                         }
                         Download.STATE_DOWNLOADING, Download.STATE_QUEUED, Download.STATE_RESTARTING -> {
-                            res[key] = mapOf("state" to DOWNLOAD_STATE_RUNNING)
+                            res.add(mapOf("key" to key, "state" to DOWNLOAD_STATE_RUNNING))
                         }
                         Download.STATE_STOPPED -> {
-                            res[key] = mapOf("state" to DOWNLOAD_STATE_SUSPENDED)
+                            res.add(mapOf("key" to key, "state" to DOWNLOAD_STATE_SUSPENDED))
                         }
                         else -> {}
                     }
