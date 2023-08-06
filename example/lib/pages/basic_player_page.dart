@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:video_player_example/constants.dart';
@@ -10,13 +12,15 @@ class BasicPlayerPage extends StatefulWidget {
 }
 
 class _BasicPlayerPageState extends State<BasicPlayerPage> {
+  final controller = VideoPlayerController(
+    configuration: const VideoPlayerConfiguration(
+      autoPlay: false,
+    ),
+  );
+
   @override
-  Widget build(BuildContext context) {
-    final controller = VideoPlayerController(
-      configuration: const VideoPlayerConfiguration(
-        autoPlay: false,
-      ),
-    );
+  void initState() {
+    super.initState();
     controller.setNetworkDataSource(
       Constants.m3u8_16x9,
       useAbrSubtitles: true,
@@ -25,6 +29,20 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
         author: "video author",
       ),
     );
+    controller.addListener(() {
+      switch (controller.value.eventType) {
+        case VideoPlayerEventType.pipChanged:
+          if (Platform.isIOS) {
+            controller.selectLegibleMediaGroup();
+          }
+          break;
+        default:
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("Basic player"),

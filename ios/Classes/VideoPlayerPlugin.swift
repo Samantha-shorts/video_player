@@ -19,6 +19,7 @@ enum FlutterMethod: String {
     case setMuted
     case setPlaybackRate
     case setTrackParameters
+    case selectLegibleMediaGroup
     // download
     case downloadOfflineAsset
     case pauseDownload
@@ -213,6 +214,10 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
             let height = args["height"] as! Int
             let bitrate = args["bitrate"] as! Double
             player.setTrackParameters(width: width, height: height, bitrate: bitrate)
+            result(nil)
+        case .selectLegibleMediaGroup:
+            let index = args["index"] as? Int
+            player.selectLegibleMediaGroup(at: index)
             result(nil)
         default:
             result(FlutterMethodNotImplemented)

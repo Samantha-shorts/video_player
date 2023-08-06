@@ -89,6 +89,12 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
     throw UnimplementedError('setTrackParameters() has not been implemented.');
   }
 
+  /// iOS only
+  Future<void> selectLegibleMediaGroup(int? textureId, int? index) {
+    throw UnimplementedError(
+        'selectLegibleMediaGroup() has not been implemented.');
+  }
+
   /// Returns a Stream of [PlatformEventType]s.
   Stream<PlatformDownloadEvent> downloadEventStream() =>
       throw UnimplementedError(

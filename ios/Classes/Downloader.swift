@@ -38,13 +38,14 @@ class Downloader: NSObject {
     }
 
     func startDownload(key: String, url: URL, headers: [String: String]?) {
-        let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers ?? [:]])
+        let options = ["AVURLAssetHTTPHeaderFieldsKey": headers ?? [:]]
+        let asset = AVURLAsset(url: url, options: options)
         let assetTitle = url.lastPathComponent
         let downloadTask = downloadSession.makeAssetDownloadTask(
             asset: asset,
             assetTitle: assetTitle,
             assetArtworkData: nil,
-            options: nil
+            options: options
         )
         downloadTask?.resume()
         DownloadPathManager.add(key: key, url: url.absoluteString)

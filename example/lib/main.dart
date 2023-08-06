@@ -53,7 +53,7 @@ class _WelcomePageState extends State<WelcomePage> {
       _buildExampleElementWidget("Basic player", () {
         _navigateToPage(const BasicPlayerPage());
       }),
-      _buildExampleElementWidget("Subtitles", () {
+      _buildExampleElementWidget("SRT Subtitles", () {
         _navigateToPage(const SrtSubtitlePage());
       }),
       _buildExampleElementWidget("Download HLS", () {

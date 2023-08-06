@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:collection/collection.dart';
 import 'package:video_player/abr/abr.dart';
 import 'package:video_player/utils.dart';
 
@@ -18,10 +17,14 @@ enum SubtitlesStreamEvent {
 class VideoPlayerSubtitlesController {
   VideoPlayerSubtitlesController();
 
-  VideoPlayerSubtitlesSource? _selectedSubtitlesSource;
+  int? _selectedSubtitlesSourceIndex;
+
+  int? get selectedSubtitlesSourceIndex => _selectedSubtitlesSourceIndex;
 
   VideoPlayerSubtitlesSource? get selectedSubtitlesSource =>
-      _selectedSubtitlesSource;
+      _selectedSubtitlesSourceIndex == null
+          ? null
+          : subtitlesSourceList[_selectedSubtitlesSourceIndex!];
 
   List<VideoPlayerSubtitle> _subtitlesLines = [];
 
@@ -49,7 +52,7 @@ class VideoPlayerSubtitlesController {
       selectedSubtitlesSource?.type == VideoPlayerSubtitlesSourceType.none;
 
   void reset() {
-    _selectedSubtitlesSource = null;
+    _selectedSubtitlesSourceIndex = null;
     _subtitlesLines.clear();
     _subtitlesSourceList.clear();
     _asmsSegmentsLoading = false;
@@ -84,16 +87,19 @@ class VideoPlayerSubtitlesController {
   }
 
   void selectDefaultSource() {
-    final defaultSubtitle = _subtitlesSourceList
-            .firstWhereOrNull((e) => e.selectedByDefault == true) ??
-        _subtitlesSourceList
-            .firstWhere((e) => e.type == VideoPlayerSubtitlesSourceType.none);
-    setSubtitleSource(defaultSubtitle);
+    int index = _subtitlesSourceList
+        .indexWhere((element) => element.selectedByDefault == true);
+    if (index < 0) {
+      index = _subtitlesSourceList.indexWhere(
+          (element) => element.type == VideoPlayerSubtitlesSourceType.none);
+    }
+    setSubtitleSource(index);
   }
 
-  void setSubtitleSource(VideoPlayerSubtitlesSource source) {
+  void setSubtitleSource(int index) {
     _subtitlesLines = [];
-    _selectedSubtitlesSource = source;
+    _selectedSubtitlesSourceIndex = index;
+    final source = subtitlesSourceList[index];
     if (source.asmsIsSegmented != true) {
       loadAllSubtitleLines();
     }
@@ -119,7 +125,7 @@ class VideoPlayerSubtitlesController {
         return;
       }
       _asmsSegmentsLoading = true;
-      final source = _selectedSubtitlesSource;
+      final source = selectedSubtitlesSource;
       final Duration loadDurationEnd = Duration(
           milliseconds:
               position.inMilliseconds + 5 * (source?.asmsSegmentsTime ?? 5000));
@@ -147,7 +153,7 @@ class VideoPlayerSubtitlesController {
         ///Additional check if current source of subtitles is same as source
         ///used to start loading subtitles. It can be different when user
         ///changes subtitles and there was already pending load.
-        if (source == _selectedSubtitlesSource) {
+        if (source == selectedSubtitlesSource) {
           subtitlesLines.addAll(subtitlesParsed);
           _asmsSegmentsLoaded.addAll(segmentsToLoad);
         }

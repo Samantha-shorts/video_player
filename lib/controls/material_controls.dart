@@ -355,17 +355,25 @@ class _MaterialControlsState
     }
 
     _showMaterialBottomSheet(
-        subtitles.map((source) => _buildSubtitlesSourceRow(source)).toList());
+      subtitles
+          .asMap()
+          .entries
+          .map((entry) => _buildSubtitlesSourceRow(entry.key, entry.value))
+          .toList(),
+    );
   }
 
-  Widget _buildSubtitlesSourceRow(VideoPlayerSubtitlesSource subtitlesSource) {
+  Widget _buildSubtitlesSourceRow(
+    int index,
+    VideoPlayerSubtitlesSource subtitlesSource,
+  ) {
     final bool isSelected = subtitlesSource ==
         controller.subtitlesController.selectedSubtitlesSource;
 
     return MaterialClickableWidget(
       onTap: () {
         Navigator.of(context).pop();
-        controller.subtitlesController.setSubtitleSource(subtitlesSource);
+        controller.subtitlesController.setSubtitleSource(index);
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -469,7 +477,7 @@ class _MaterialControlsState
               },
             ),
           ),
-          Expanded(child: _ReplayButton()),
+          const Expanded(child: _ReplayButton()),
           Expanded(
             child: _SkipForwardButton(
               onClicked: () {

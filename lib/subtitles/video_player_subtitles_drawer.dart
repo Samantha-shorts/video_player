@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
@@ -114,10 +115,9 @@ class _VideoPlayerSubtitlesDrawerState
       }
       return true;
     } else if (newValue.eventType == VideoPlayerEventType.pipChanged) {
-      setupTextStyles(newValue.isFullscreen, newValue.isPip);
-      // final becamePip = newValue.isPip;
-      // if (becamePip) {
-      // } else {}
+      if (Platform.isAndroid) {
+        setupTextStyles(newValue.isFullscreen, newValue.isPip);
+      }
       return true;
     }
     return false;
@@ -129,6 +129,11 @@ class _VideoPlayerSubtitlesDrawerState
     final List<String> subtitles = subtitle?.texts ?? [];
     final List<Widget> textWidgets =
         subtitles.map((text) => _buildSubtitleTextWidget(text)).toList();
+
+    if (Platform.isIOS && lastValue?.isPip == true) {
+      // show AVPlayer subtitle in iOS PiP instead of flutter render
+      return Container();
+    }
 
     return SizedBox(
       height: double.infinity,

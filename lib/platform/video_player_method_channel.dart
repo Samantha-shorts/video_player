@@ -270,6 +270,17 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
   }
 
   @override
+  Future<void> selectLegibleMediaGroup(int? textureId, int? index) {
+    return methodChannel.invokeMethod<void>(
+      'selectLegibleMediaGroup',
+      <String, dynamic>{
+        'textureId': textureId,
+        'index': index,
+      },
+    );
+  }
+
+  @override
   Stream<PlatformDownloadEvent> downloadEventStream() {
     return const EventChannel('video_player_channel/downloadEvents')
         .receiveBroadcastStream()

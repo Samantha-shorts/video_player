@@ -143,11 +143,37 @@ class VideoPlayer: NSObject {
         let item = AVPlayerItem(asset: asset)
         item.add(videoOutput)
         player.replaceCurrentItem(with: item)
-        if let group = item.asset.mediaSelectionGroup(forMediaCharacteristic: .legible) {
+        if let group = asset.mediaSelectionGroup(forMediaCharacteristic: .legible) {
             // disable AVPlayer's CC
-            player.currentItem?.select(nil, in: group)
+            item.select(nil, in: group)
         }
         addObservers(to: item)
+    }
+
+    func selectLegibleMediaGroup(at index: Int?) {
+        if #available(iOS 15.0, *) {
+            player.currentItem?.asset.loadMediaSelectionGroup(for: .legible, completionHandler: { [weak self] group, error in
+                guard let group = group else {
+                    if let error = error {
+                        self?.sendEvent(.error, ["error": error.localizedDescription])
+                    }
+                    return
+                }
+                if let index = index, 0 <= index && index < group.options.count {
+                    self?.player.currentItem?.select(group.options[index], in: group)
+                } else {
+                    self?.player.currentItem?.select(nil, in: group)
+                }
+            })
+        } else {
+            if let group = player.currentItem?.asset.mediaSelectionGroup(forMediaCharacteristic: .legible) {
+                if let index = index, 0 <= index && index < group.options.count {
+                    player.currentItem?.select(group.options[index], in: group)
+                } else {
+                    player.currentItem?.select(nil, in: group)
+                }
+            }
+        }
     }
 
     func sendEvent(_ eventType: PlatformEventType, _ params: [String: Any] = [:]) {

@@ -70,6 +70,22 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     return videoPLayerControllerProvider.controller;
   }
 
+  Future<void> selectLegibleMediaGroup() async {
+    if (Platform.isIOS) {
+      if (value.isPip) {
+        await VideoPlayerPlatform.instance.selectLegibleMediaGroup(
+          textureId,
+          subtitlesController.selectedSubtitlesSourceIndex,
+        );
+      } else {
+        await VideoPlayerPlatform.instance.selectLegibleMediaGroup(
+          textureId,
+          null,
+        );
+      }
+    }
+  }
+
   Future<void> _create() async {
     _textureId =
         await VideoPlayerPlatform.instance.create(bufferingConfiguration);
