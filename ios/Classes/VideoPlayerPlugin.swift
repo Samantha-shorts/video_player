@@ -90,6 +90,7 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
         case .`init`:
             players.forEach { $0.value.dispose() }
             players.removeAll()
+            HlsProxyServer.shared.start()
             result(nil)
         case .create:
             let textureId = createVideoPlayer()
@@ -153,10 +154,27 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                     result(FlutterError.invalidArgs(message: "requires valid url"))
                     return
                 }
-                player.setDataSource(
-                    url: url,
-                    headers: dataSource["headers"] as? [String: String]
-                )
+                if let useAbrSubtitles = dataSource["useAbrSubtitles"] as? Bool,
+                   useAbrSubtitles {
+                    player.setDataSource(
+                        url: url,
+                        headers: dataSource["headers"] as? [String: String]
+                    )
+                } else {
+                    let subtitles = dataSource["subtitles"] as? [[String: Any]]
+                    let proxyURL = HlsProxyServer.shared.m3u8ProxyURL(url, subtitles: subtitles?.compactMap {
+                        guard let name = $0["name"] as? String,
+                              let urlString = $0["url"] as? String,
+                              let url = URL(string: urlString) else {
+                            return nil
+                        }
+                        return HlsProxyServer.Subtitle(name: name, url: url, language: nil)
+                    })
+                    player.setDataSource(
+                        url: proxyURL!,
+                        headers: dataSource["headers"] as? [String: String]
+                    )
+                }
             }
             result(nil)
         case .play:

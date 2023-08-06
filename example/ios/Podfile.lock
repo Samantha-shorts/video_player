@@ -1,14 +1,22 @@
 PODS:
   - Flutter (1.0.0)
+  - GCDWebServer (3.5.4):
+    - GCDWebServer/Core (= 3.5.4)
+  - GCDWebServer/Core (3.5.4)
   - integration_test (0.0.1):
     - Flutter
   - video_player (0.0.1):
     - Flutter
+    - GCDWebServer
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
   - video_player (from `.symlinks/plugins/video_player/ios`)
+
+SPEC REPOS:
+  trunk:
+    - GCDWebServer
 
 EXTERNAL SOURCES:
   Flutter:
@@ -20,9 +28,10 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   Flutter: f04841e97a9d0b0a8025694d0796dd46242b2854
+  GCDWebServer: 2c156a56c8226e2d5c0c3f208a3621ccffbe3ce4
   integration_test: 13825b8a9334a850581300559b8839134b124670
-  video_player: 5484a3eb10895c0c5b202554581cf8c74f852ff3
+  video_player: b78f60cadb757c760359a03cd86c036054a83e40
 
-PODFILE CHECKSUM: 70d9d25280d0dd177a5f637cdb0f0b0b12c6a189
+PODFILE CHECKSUM: fa7c17c799d777ff9dfd9f983daa28b61d43d0a8
 
 COCOAPODS: 1.12.1
