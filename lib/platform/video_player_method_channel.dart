@@ -138,7 +138,6 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
         return {
           'url': dataSource.url,
           'headers': dataSource.headers,
-          'useAbrSubtitles': dataSource.useAbrSubtitles,
           'subtitles': dataSource.subtitles
               ?.map(
                 (subtitle) => {

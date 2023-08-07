@@ -22,9 +22,7 @@ class _SrtSubtitlePageState extends State<SrtSubtitlePage> {
   void initState() {
     super.initState();
     controller.setNetworkDataSource(
-      // Constants.m3u8_16x9,
-      "https://d173fw6w6ru1im.cloudfront.net/converted/28/a3b31217ac79a02b009f7c22c6bfdff2.m3u8",
-      useAbrSubtitles: false,
+      Constants.m3u8_16x9,
       subtitles: [
         VideoPlayerSubtitlesSource(
           type: VideoPlayerSubtitlesSourceType.network,

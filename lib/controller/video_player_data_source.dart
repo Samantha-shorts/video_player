@@ -8,7 +8,6 @@ class VideoPlayerDataSource {
     this.offlineKey,
     this.startPosition,
     this.subtitles,
-    this.useAbrSubtitles,
     this.headers,
     this.bufferingConfiguration = const VideoPlayerBufferingConfiguration(),
     this.notificationConfiguration,
@@ -33,8 +32,6 @@ class VideoPlayerDataSource {
 
   ///Subtitles configuration
   final List<VideoPlayerSubtitlesSource>? subtitles;
-
-  final bool? useAbrSubtitles;
 
   final Map<String, String?>? headers;
 

@@ -4,17 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:video_player_example/constants.dart';
 
-class BasicPlayerPage extends StatefulWidget {
-  const BasicPlayerPage({super.key});
+class ExternalVttPage extends StatefulWidget {
+  const ExternalVttPage({super.key});
 
   @override
-  State<BasicPlayerPage> createState() => _BasicPlayerPageState();
+  State<ExternalVttPage> createState() => _ExternalVttPagePageState();
 }
 
-class _BasicPlayerPageState extends State<BasicPlayerPage> {
+class _ExternalVttPagePageState extends State<ExternalVttPage> {
   final controller = VideoPlayerController(
     configuration: const VideoPlayerConfiguration(
-      autoPlay: false,
+      autoPlay: true,
     ),
   );
 
@@ -23,11 +23,22 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
     super.initState();
     controller.setNetworkDataSource(
       Constants.m3u8_16x9,
+      subtitles: [
+        VideoPlayerSubtitlesSource(
+          type: VideoPlayerSubtitlesSourceType.network,
+          name: "日本語",
+          urls: [
+            "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_16x9/subtitles/jpn/fileSequence0.webvtt"
+          ],
+          selectedByDefault: true,
+        ),
+      ],
       notificationConfiguration: const VideoPlayerNotificationConfiguration(
         title: "video example title",
         author: "video author",
       ),
     );
+
     controller.addListener(() {
       switch (controller.value.eventType) {
         case VideoPlayerEventType.pipChanged:
@@ -44,7 +55,7 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Basic player"),
+        title: const Text("External VTT"),
       ),
       body: Column(
         children: [

@@ -7,9 +7,16 @@
 
 import Foundation
 import GCDWebServer
+import os
+
+//extension OSLog {
+//    static let proxyServer = OSLog(subsystem: "matsune.videoPlayer", category: "HlsProxyServer")
+//}
 
 class HlsProxyServer {
     private init() {}
+
+    static let shared = HlsProxyServer()
 
     private let webServer = GCDWebServer()
     private let urlSession: URLSession = .shared
@@ -17,22 +24,24 @@ class HlsProxyServer {
     private let port: UInt = 3333
     private let originURLKey = "__hls_origin_url"
     private let subtitlesGroupID = "subs"
-    private let subtitlesM3u8Path = "/__subtitles.m3u8"
-
-    private var subsDict: [URL: [Subtitle]] = [:]
-
-    static let shared = HlsProxyServer()
+    private let subtitlesM3u8Path = "/__proxy_subtitles.m3u8"
+    private var configs: [URL: RequestConfig] = [:]
 
     struct Subtitle {
         let name: String
         let url: URL
         let language: String?
 
-        init(name: String, url: URL, language: String?) {
+        init(name: String, url: URL, language: String? = nil) {
             self.name = name
             self.url = url
             self.language = language
         }
+    }
+
+    private struct RequestConfig {
+        let headers: [String: String]?
+        let subtitles: [Subtitle]?
     }
 
     func start() {
@@ -52,8 +61,8 @@ class HlsProxyServer {
         }
     }
 
-    func m3u8ProxyURL(_ originURL: URL, subtitles: [Subtitle]?) -> URL? {
-        subsDict[originURL] = subtitles
+    func m3u8ProxyURL(_ originURL: URL, headers: [String: String]?, subtitles: [Subtitle]?) -> URL? {
+        configs[originURL] = .init(headers: headers, subtitles: subtitles)
         return reverseProxyURL(from: originURL)
     }
 
@@ -72,7 +81,6 @@ class HlsProxyServer {
             pathRegex: "^/.*\\.m3u8$",
             request: GCDWebServerRequest.self
         ) { [weak self] (request: GCDWebServerRequest, completion) in
-            print("request: \(request.url)")
             guard let self = self else {
                 return completion(GCDWebServerDataResponse(statusCode: 500))
             }
@@ -81,81 +89,102 @@ class HlsProxyServer {
             }
 
             if request.url.relativePath == subtitlesM3u8Path {
-                var urlString: String
+                let url: URL
                 if originURL.pathExtension == "srt" {
-                    urlString = reverseProxyURL(from: originURL)!.absoluteString
+                    url = reverseProxyURL(from: originURL)!
                 } else {
-                    urlString = originURL.absoluteString
+                    url = originURL
                 }
                 let m3u8 = """
-#EXTM3U
-#EXT-X-TARGETDURATION:99999999
-#EXT-X-VERSION:3
-#EXT-X-MEDIA-SEQUENCE:0
-#EXT-X-PLAYLIST-TYPE:VOD
+                #EXTM3U
+                #EXT-X-TARGETDURATION:99999999
+                #EXT-X-VERSION:3
+                #EXT-X-MEDIA-SEQUENCE:0
+                #EXT-X-PLAYLIST-TYPE:VOD
 
-#EXTINF:99999999,
-\(urlString)
+                #EXTINF:99999999,
+                \(url.absoluteString)
 
-#EXT-X-ENDLIST
-"""
-                print(m3u8)
+                #EXT-X-ENDLIST
+                """
+//                os_log("%@", log: .proxyServer, type: .debug, request.url.debugDescription)
+//                os_log("%@", log: .proxyServer, type: .debug, m3u8)
                 return completion(
                     GCDWebServerDataResponse(data: m3u8.data(using: .utf8)!, contentType: self.m3u8ContentType)
                 )
             }
 
-            let task = self.urlSession.dataTask(with: originURL) { [weak self] data, response, _ in
+            var request = URLRequest(url: originURL)
+            if let headers = self.configs[originURL]?.headers {
+                headers.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
+            }
+            let task = self.urlSession.dataTask(with: request) { [weak self] data, response, _ in
                 guard let self = self, let data = data, let response = response else {
                     return completion(GCDWebServerErrorResponse(statusCode: 500))
                 }
-                let playlistData = self.reverseProxyPlaylist(with: data, forOriginURL: originURL)
-                print(String(data: playlistData, encoding: .utf8)!)
+                let m3u8Data = self.rewriteM3u8(with: data, forOriginURL: originURL)
                 completion(
-                    GCDWebServerDataResponse(data: playlistData, contentType: response.mimeType ?? self.m3u8ContentType)
+                    GCDWebServerDataResponse(data: m3u8Data, contentType: response.mimeType ?? self.m3u8ContentType)
                 )
             }
             task.resume()
         }
     }
 
-    func reverseProxyPlaylist(with data: Data, forOriginURL originURL: URL) -> Data {
+    private func rewriteM3u8(with data: Data, forOriginURL originURL: URL) -> Data {
         var lines = String(data: data, encoding: .utf8)!
             .components(separatedBy: .newlines)
-            .filter { !$0.hasPrefix("#EXT-X-MEDIA:TYPE=SUBTITLES") }
-            .map { processPlaylistLine($0, forOriginURL: originURL) }
-            .map { line in
-                if line.hasPrefix("#EXT-X-STREAM-INF:") {
-                    return lineByReplaceOrAddSubtitles(line: line)
-                } else {
-                    return line
+            .map { rewriteM3u8Line($0, forOriginURL: originURL) }
+        if let subtitles = configs[originURL]?.subtitles {
+            // replace subtitles
+            var newLines = lines
+                .filter { !$0.hasPrefix("#EXT-X-MEDIA:TYPE=SUBTITLES") } // remove embedded subtitles
+                .map { line in
+                    if line.hasPrefix("#EXT-X-STREAM-INF:") {
+                        return lineByReplaceOrAddSubtitles(line: line)
+                    } else {
+                        return line
+                    }
                 }
-            }
-        if let subtitles = subsDict[originURL] {
-            if let insertIndex = lines.firstIndex(where: { $0.hasPrefix("#EXT-X-STREAM-INF:")}) {
-                lines.insert(contentsOf: subtitles.map {
-"""
-#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="\(subtitlesGroupID)",NAME="\($0.name)",DEFAULT=NO,AUTOSELECT=NO\($0.language.map({ ",LANGUAGE=\($0)" }) ?? ""),URI="\(subtitleProxyURL(originURL: $0.url)!.absoluteString)"
-"""
-                }, at: insertIndex)
+            if let headIndex = newLines.firstIndex(where: { $0.hasPrefix("#EXTM3U")}) {
+                newLines.insert(contentsOf: subtitles.map(subtitleMediaTag), at: headIndex + 1)
+                lines = newLines
             }
         }
-
         return lines.joined(separator: "\n").data(using: .utf8)!
     }
 
+    private func subtitleMediaTag(_ subtitle: Subtitle) -> String {
+        let languageComponent = subtitle.language.map({ "LANGUAGE=\($0)," }) ?? ""
+        return """
+        #EXT-X-MEDIA:TYPE=SUBTITLES,\
+        GROUP-ID="\(subtitlesGroupID)",\
+        NAME="\(subtitle.name)",\
+        DEFAULT=NO,\
+        AUTOSELECT=NO,\
+        \(languageComponent)\
+        URI="\(subtitleProxyURL(originURL: subtitle.url)!.absoluteString)"
+        """
+    }
+
     private func lineByReplaceOrAddSubtitles(line: String) -> String {
-        let pattern = try! NSRegularExpression(pattern: "SUBTITLES=\"(.*)\"")
-        let lineRange = NSRange(location: 0, length: line.count)
-        guard let result = pattern.firstMatch(in: line, options: [], range: lineRange) else {
-            return line + ",SUBTITLES=\"\(subtitlesGroupID)\""
+        let patternString = "SUBTITLES=\"(.*)\""
+        guard let pattern = try? NSRegularExpression(pattern: patternString) else {
+            return line
         }
-        return pattern.stringByReplacingMatches(
-            in: line,
-            options: [],
-            range: lineRange,
-            withTemplate: "SUBTITLES=\"\(subtitlesGroupID)\""
-        )
+        let lineRange = NSRange(location: 0, length: line.count)
+        let matches = pattern.matches(in: line, options: [], range: lineRange)
+        if matches.isEmpty {
+            // add SUBTITLES attribute if there's no match
+            return line + ",SUBTITLES=\"\(subtitlesGroupID)\""
+        } else {
+            return pattern.stringByReplacingMatches(
+                in: line,
+                options: [],
+                range: lineRange,
+                withTemplate: "SUBTITLES=\"\(subtitlesGroupID)\""
+            )
+        }
     }
 
     private func subtitleProxyURL(originURL: URL) -> URL? {
@@ -185,31 +214,41 @@ class HlsProxyServer {
         return components.url
     }
 
-    private func processPlaylistLine(_ line: String, forOriginURL originURL: URL) -> String {
+    private func rewriteM3u8Line(_ line: String, forOriginURL originURL: URL) -> String {
         guard !line.isEmpty else { return line }
         if line.hasPrefix("#") {
-            return lineByReplacingURI(line: line, forOriginURL: originURL)
+            // tag line
+            return replaceTagLineURI(line, forOriginURL: originURL)
+        } else {
+            // URI line
+            if let originalSegmentURL = absoluteURL(from: line, forOriginURL: originURL) {
+                return originalSegmentURL.absoluteString
+            }
+            return line
         }
-        if let originalSegmentURL = absoluteURL(from: line, forOriginURL: originURL) {
-            return originalSegmentURL.absoluteString
-        }
-        return line
     }
 
-    private func lineByReplacingURI(line: String, forOriginURL originURL: URL) -> String {
+    /// Replace origin URI with proxy URI.
+    private func replaceTagLineURI(_ line: String, forOriginURL originURL: URL) -> String {
         let uriPattern = try! NSRegularExpression(pattern: "URI=\"(.*)\"")
         let lineRange = NSRange(location: 0, length: line.count)
         guard let result = uriPattern.firstMatch(in: line, options: [], range: lineRange) else {
             return line
         }
-
         let uri = (line as NSString).substring(with: result.range(at: 1))
-        guard let absoluteURL = absoluteURL(from: uri, forOriginURL: originURL) else { return line }
-        guard let reverseProxyURL = reverseProxyURL(from: absoluteURL) else { return line }
-
-        return uriPattern.stringByReplacingMatches(in: line, options: [], range: lineRange, withTemplate: "URI=\"\(reverseProxyURL.absoluteString)\"")
+        guard let absoluteURL = absoluteURL(from: uri, forOriginURL: originURL),
+                let reverseProxyURL = reverseProxyURL(from: absoluteURL) else {
+            return line
+        }
+        return uriPattern.stringByReplacingMatches(
+            in: line,
+            options: [],
+            range: lineRange,
+            withTemplate: "URI=\"\(reverseProxyURL.absoluteString)\""
+        )
     }
 
+    /// Get absolute URL if the line is relative URL.
     private func absoluteURL(from line: String, forOriginURL originURL: URL) -> URL? {
         if line.hasPrefix("http://") || line.hasPrefix("https://") { // already absolute url
             return URL(string: line)
@@ -223,7 +262,6 @@ class HlsProxyServer {
         }
         return URL(string: scheme + "://" + host + path)?.standardized
     }
-
 
     /// Handler for srt file
     private func addSrtHandler() {

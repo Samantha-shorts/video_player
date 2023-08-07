@@ -186,7 +186,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     String url, {
     Duration? startPosition,
     List<VideoPlayerSubtitlesSource>? subtitles,
-    bool? useAbrSubtitles,
     Map<String, String?>? headers,
     VideoPlayerNotificationConfiguration? notificationConfiguration,
   }) {
@@ -196,7 +195,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
         url: url,
         startPosition: startPosition,
         subtitles: subtitles,
-        useAbrSubtitles: useAbrSubtitles,
         headers: headers,
         notificationConfiguration: notificationConfiguration,
       ),
@@ -207,7 +205,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     String offlineKey, {
     Duration? startPosition,
     List<VideoPlayerSubtitlesSource>? subtitles,
-    bool? useAbrSubtitles,
     Map<String, String?>? headers,
     VideoPlayerNotificationConfiguration? notificationConfiguration,
   }) {
@@ -217,7 +214,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
         offlineKey: offlineKey,
         startPosition: startPosition,
         subtitles: subtitles,
-        useAbrSubtitles: useAbrSubtitles,
         headers: headers,
         notificationConfiguration: notificationConfiguration,
       ),
@@ -264,10 +260,10 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     final abrData = await AbrDataHolder.parse(dataSource.url!, data);
 
     tracksController.setTracksList(abrData.tracks ?? []);
-    if (dataSource.useAbrSubtitles == true) {
-      subtitlesController.setAbrSubtitlesSourceList(abrData.subtitles ?? []);
-    } else {
+    if (dataSource.subtitles != null) {
       subtitlesController.setSubtitlesSourceList(dataSource.subtitles ?? []);
+    } else {
+      subtitlesController.setAbrSubtitlesSourceList(abrData.subtitles ?? []);
     }
     subtitlesController.selectDefaultSource();
 

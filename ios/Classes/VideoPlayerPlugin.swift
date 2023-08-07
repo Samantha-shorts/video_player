@@ -154,26 +154,20 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                     result(FlutterError.invalidArgs(message: "requires valid url"))
                     return
                 }
-                if let useAbrSubtitles = dataSource["useAbrSubtitles"] as? Bool,
-                   useAbrSubtitles {
-                    player.setDataSource(
-                        url: url,
-                        headers: dataSource["headers"] as? [String: String]
-                    )
-                } else {
-                    let subtitles = dataSource["subtitles"] as? [[String: Any]]
-                    let proxyURL = HlsProxyServer.shared.m3u8ProxyURL(url, subtitles: subtitles?.compactMap {
+                let headers = dataSource["headers"] as? [String: String]
+                if let subtitles = dataSource["subtitles"] as? [[String: Any]] {
+                    let proxySubtitles: [HlsProxyServer.Subtitle] = subtitles.compactMap {
                         guard let name = $0["name"] as? String,
                               let urlString = $0["url"] as? String,
                               let url = URL(string: urlString) else {
                             return nil
                         }
-                        return HlsProxyServer.Subtitle(name: name, url: url, language: nil)
-                    })
-                    player.setDataSource(
-                        url: proxyURL!,
-                        headers: dataSource["headers"] as? [String: String]
-                    )
+                        return .init(name: name, url: url, language: $0["language"] as? String)
+                    }
+                    let proxyURL = HlsProxyServer.shared.m3u8ProxyURL(url, headers: headers, subtitles: proxySubtitles)
+                    player.setDataSource(url: proxyURL!, headers: headers)
+                } else {
+                    player.setDataSource(url: url, headers: headers)
                 }
             }
             result(nil)
