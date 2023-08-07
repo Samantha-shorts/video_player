@@ -208,6 +208,11 @@ class VideoPlayer: NSObject {
             statusObservation = item.observe(\.status) { [weak self] item, _ in
                 switch item.status {
                 case .failed:
+                    if let data = item.errorLog()?.extendedLogData() {
+                        if let errorLog = String(data: data, encoding: .utf8) {
+                            print(errorLog)
+                        }
+                    }
                     self?.sendEvent(.error, ["error": item.error?.localizedDescription as Any])
                 case .readyToPlay:
                     self?.readyToPlay()

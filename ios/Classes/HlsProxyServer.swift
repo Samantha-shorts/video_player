@@ -9,9 +9,9 @@ import Foundation
 import GCDWebServer
 import os
 
-//extension OSLog {
-//    static let proxyServer = OSLog(subsystem: "matsune.videoPlayer", category: "HlsProxyServer")
-//}
+extension OSLog {
+    static let proxyServer = OSLog(subsystem: "matsune.videoPlayer", category: "HlsProxyServer")
+}
 
 class HlsProxyServer {
     private init() {}
@@ -107,7 +107,6 @@ class HlsProxyServer {
 
                 #EXT-X-ENDLIST
                 """
-//                os_log("%@", log: .proxyServer, type: .debug, request.url.debugDescription)
 //                os_log("%@", log: .proxyServer, type: .debug, m3u8)
                 return completion(
                     GCDWebServerDataResponse(data: m3u8.data(using: .utf8)!, contentType: self.m3u8ContentType)
@@ -123,6 +122,7 @@ class HlsProxyServer {
                     return completion(GCDWebServerErrorResponse(statusCode: 500))
                 }
                 let m3u8Data = self.rewriteM3u8(with: data, forOriginURL: originURL)
+//                os_log("%@", log: .proxyServer, type: .debug, String(data: m3u8Data, encoding: .utf8)!)
                 completion(
                     GCDWebServerDataResponse(data: m3u8Data, contentType: response.mimeType ?? self.m3u8ContentType)
                 )
@@ -135,7 +135,7 @@ class HlsProxyServer {
         var lines = String(data: data, encoding: .utf8)!
             .components(separatedBy: .newlines)
             .map { rewriteM3u8Line($0, forOriginURL: originURL) }
-        if let subtitles = configs[originURL]?.subtitles {
+        if let subtitles = configs[originURL]?.subtitles, !subtitles.isEmpty {
             // replace subtitles
             var newLines = lines
                 .filter { !$0.hasPrefix("#EXT-X-MEDIA:TYPE=SUBTITLES") } // remove embedded subtitles
@@ -283,6 +283,7 @@ class HlsProxyServer {
                 }
                 let srt = String(data: data, encoding: .utf8)!
                 let vtt = convertSrtToVtt(srt)
+//                os_log("%@", log: .proxyServer, type: .debug, vtt)
                 completion(
                     GCDWebServerDataResponse(data: vtt.data(using: .utf8)!, contentType: response.mimeType ?? "plain/txt")
                 )
