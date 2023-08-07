@@ -21,7 +21,7 @@ class VideoPlayer extends StatefulWidget {
   }) =>
       VideoPlayer(
         controller: VideoPlayerController(
-          configuration: configuration ?? const VideoPlayerConfiguration(),
+          configuration: configuration ?? VideoPlayerConfiguration(),
           dataSource: VideoPlayerDataSource(
             sourceType: VideoPlayerDataSourceType.network,
             url: url,
@@ -35,7 +35,7 @@ class VideoPlayer extends StatefulWidget {
   }) =>
       VideoPlayer(
         controller: VideoPlayerController(
-          configuration: configuration ?? const VideoPlayerConfiguration(),
+          configuration: configuration ?? VideoPlayerConfiguration(),
           dataSource: VideoPlayerDataSource(
             sourceType: VideoPlayerDataSourceType.offline,
             offlineKey: offlineKey,

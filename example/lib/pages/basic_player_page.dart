@@ -11,7 +11,7 @@ class BasicPlayerPage extends StatefulWidget {
 
 class _BasicPlayerPageState extends State<BasicPlayerPage> {
   final controller = VideoPlayerController(
-    configuration: const VideoPlayerConfiguration(
+    configuration: VideoPlayerConfiguration(
       autoPlay: false,
     ),
   );

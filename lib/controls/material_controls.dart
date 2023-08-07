@@ -400,32 +400,36 @@ class _MaterialControlsState
     );
   }
 
-  void _showQualitiesSelectionWidget() {
-    final rows = controller.tracksController.abrTracks.map((track) {
-      if (track.width == 0 && track.height == 0 && track.bitrate == 0) {
-        return _buildTrackRow(track, "Auto");
-      } else {
-        return _buildTrackRow(track, null);
-      }
-    }).toList();
-
-    if (rows.isEmpty) {
-      rows.add(
-        _buildTrackRow(AbrTrack.defaultTrack(), "Auto"),
-      );
-    }
-
-    _showMaterialBottomSheet(rows);
-  }
-
-  Widget _buildTrackRow(AbrTrack track, String? preferredName) {
+  String? defaultQualitySelectable(AbrTrack track) {
     final int width = track.width ?? 0;
     final int height = track.height ?? 0;
     final int bitrate = track.bitrate ?? 0;
-    final String mimeType = (track.mimeType ?? '').replaceAll('video/', '');
-    final String trackName = preferredName ??
-        "${width}x$height ${Utils.formatBitrate(bitrate)} $mimeType";
+    if (width > 0 && height > 0 && bitrate > 0) {
+      return "${height}p";
+    } else {
+      return null;
+    }
+  }
 
+  void _showQualitiesSelectionWidget() {
+    final rows = controller.tracksController.abrTracks
+        .map((track) {
+          final selectableFn =
+              controller.configuration.quarityTrackSelectable ??
+                  defaultQualitySelectable;
+          final displayName = selectableFn(track);
+          return (track, displayName);
+        })
+        .where((e) => e.$2 != null)
+        .map((e) => _buildTrackRow(e.$1, e.$2!))
+        .toList();
+    rows.add(
+      _buildTrackRow(AbrTrack.defaultTrack(), "Auto"),
+    );
+    _showMaterialBottomSheet(rows);
+  }
+
+  Widget _buildTrackRow(AbrTrack track, String displayName) {
     final selectedTrack = controller.tracksController.selectedTrack;
     final bool isSelected = (selectedTrack != null && selectedTrack == track) ||
         (selectedTrack == null &&
@@ -451,7 +455,7 @@ class _MaterialControlsState
                 )),
             const SizedBox(width: 16),
             Text(
-              trackName,
+              displayName,
               style: _getOverflowMenuElementTextStyle(isSelected),
             ),
           ],
@@ -920,7 +924,7 @@ class _FullscreenButtonState
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(right: 12.0),
+      padding: const EdgeInsets.only(right: 12.0),
       child: MaterialClickableWidget(
         onTap: () {
           if (lastValue?.isFullscreen != true) {

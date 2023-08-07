@@ -278,9 +278,21 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 result.success(null)
             }
             METHOD_SET_TRACK_PARAMETERS -> {
-                val width = (call.argument("width") as Number?)!!.toInt()
-                val height = (call.argument("height") as Number?)!!.toInt()
-                val bitrate = (call.argument("bitrate") as Number?)!!.toInt()
+                val width: Int = if (call.argument<Any>("width") is Number) {
+                    call.argument<Number>("width")!!.toInt()
+                } else {
+                    0
+                }
+                val height = if (call.argument<Any>("height") is Number) {
+                    call.argument<Number>("height")!!.toInt()
+                } else {
+                    0
+                }
+                val bitrate = if (call.argument<Any>("bitrate") is Number) {
+                    call.argument<Number>("bitrate")!!.toInt()
+                } else {
+                    0
+                }
                 player.setTrackParameters(width, height, bitrate)
                 result.success(null)
             }

@@ -11,7 +11,7 @@ class SrtSubtitlePage extends StatefulWidget {
 
 class _SrtSubtitlePageState extends State<SrtSubtitlePage> {
   final controller = VideoPlayerController(
-    configuration: const VideoPlayerConfiguration(
+    configuration: VideoPlayerConfiguration(
       autoPlay: true,
     ),
   );

@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:video_player/abr/abr.dart';
 import 'package:video_player/configurations/configurations.dart';
 
 class VideoPlayerConfiguration {
@@ -26,7 +27,9 @@ class VideoPlayerConfiguration {
   ///Defines controls configuration
   final VideoPlayerControlsConfiguration controlsConfiguration;
 
-  const VideoPlayerConfiguration({
+  String? Function(AbrTrack track)? quarityTrackSelectable;
+
+  VideoPlayerConfiguration({
     this.aspectRatio,
     this.autoPlay = false,
     this.deviceOrientationsOnFullScreen = const [
@@ -39,6 +42,7 @@ class VideoPlayerConfiguration {
     ],
     this.subtitlesConfiguration = const VideoPlayerSubtitlesConfiguration(),
     this.controlsConfiguration = const VideoPlayerControlsConfiguration(),
+    this.quarityTrackSelectable,
   });
 
   VideoPlayerConfiguration copyWith({

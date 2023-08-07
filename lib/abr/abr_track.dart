@@ -18,21 +18,24 @@ class AbrTrack {
   ///Codecs of the track
   final String? codecs;
 
-  ///mimeType of the video track
-  final String? mimeType;
-
-  AbrTrack(
+  AbrTrack({
     this.id,
     this.width,
     this.height,
     this.bitrate,
     this.frameRate,
     this.codecs,
-    this.mimeType,
-  );
+  });
 
   factory AbrTrack.defaultTrack() {
-    return AbrTrack('', 0, 0, 0, 0, '', '');
+    return AbrTrack(
+      id: '',
+      width: 0,
+      height: 0,
+      bitrate: 0,
+      frameRate: 0,
+      codecs: '',
+    );
   }
 
   @override
@@ -46,8 +49,7 @@ class AbrTrack {
         height == other.height &&
         bitrate == other.bitrate &&
         frameRate == other.frameRate &&
-        codecs == other.codecs &&
-        mimeType == other.mimeType;
+        codecs == other.codecs;
   }
 
   @override
@@ -60,7 +62,6 @@ class AbrTrack {
         'bitrate: $bitrate, '
         'frameRate: $frameRate, '
         'codecs: $codecs, '
-        'mimeType: $mimeType'
         ')';
   }
 }

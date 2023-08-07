@@ -41,13 +41,15 @@ class AbrDataHolder {
   static Future<List<AbrTrack>> _parseTracks(HlsMasterPlaylist master) async {
     final tracks = master.variants
         .map(
-          (variant) => AbrTrack('', variant.format.width, variant.format.height,
-              variant.format.bitrate, 0, '', ''),
+          (variant) => AbrTrack(
+            width: variant.format.width,
+            height: variant.format.height,
+            bitrate: variant.format.bitrate,
+            frameRate: 0,
+            codecs: variant.format.codecs,
+          ),
         )
         .toList();
-    if (tracks.isNotEmpty) {
-      tracks.insert(0, AbrTrack.defaultTrack());
-    }
     return tracks;
   }
 

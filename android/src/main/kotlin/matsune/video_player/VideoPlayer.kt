@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -18,19 +17,15 @@ import android.util.Log
 import android.view.Surface
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.Observer
-import androidx.media3.common.AudioAttributes
+import androidx.media3.common.*
 import androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE
-import androidx.media3.common.ForwardingPlayer
-import androidx.media3.common.MediaItem
-import androidx.media3.common.PlaybackException
-import androidx.media3.common.Player
 import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.exoplayer.*
 import androidx.media3.exoplayer.hls.HlsMediaSource
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.trackselection.AdaptiveTrackSelection
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
 import androidx.media3.ui.PlayerNotificationManager
 import androidx.media3.ui.PlayerNotificationManager.BitmapCallback
 import androidx.media3.ui.PlayerNotificationManager.MediaDescriptionAdapter
@@ -38,7 +33,7 @@ import androidx.work.*
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.EventChannel.EventSink
 import io.flutter.view.TextureRegistry.SurfaceTextureEntry
-import java.util.UUID
+import java.util.*
 
 internal class VideoPlayer(
     private val context: Context,
@@ -50,7 +45,8 @@ internal class VideoPlayer(
     private val loadControl: LoadControl
     private val exoPlayer: ExoPlayer
     private val eventSink = QueuingEventSink()
-    private val trackSelector = DefaultTrackSelector(context)
+    private val bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
+    private val trackSelector = DefaultTrackSelector(context, AdaptiveTrackSelection.Factory())
     private var surface: Surface? = null
     private var isInitialized = false
     private var lastSendBufferedPosition = 0L
@@ -68,19 +64,19 @@ internal class VideoPlayer(
     private val workerObserverMap: HashMap<UUID, Observer<WorkInfo?>>
 
     var isMuted: Boolean
-        get() = (exoPlayer.volume ?: 0f) == 0f
+        get() = exoPlayer.volume == 0f
         set(value) {
             exoPlayer.volume = if (value) 0f else 1f
         }
 
     private val position: Long
-        get() = exoPlayer.currentPosition ?: 0L
+        get() = exoPlayer.currentPosition
 
     private val duration: Long
-        get() = exoPlayer.duration ?: 0L
+        get() = exoPlayer.duration
 
     var playbackSpeed: Float
-        get() = exoPlayer.playbackParameters?.speed ?: 1f
+        get() = exoPlayer.playbackParameters.speed
         set(value) {
             exoPlayer.setPlaybackSpeed(value)
         }
@@ -99,6 +95,7 @@ internal class VideoPlayer(
             ExoPlayer.Builder(context)
                 .setTrackSelector(trackSelector)
                 .setLoadControl(loadControl)
+                .setBandwidthMeter(bandwidthMeter)
                 .build()
         setupVideoPlayer(eventChannel, textureEntry)
         workManager = WorkManager.getInstance(context)
@@ -177,7 +174,7 @@ internal class VideoPlayer(
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
-                    sendEvent(EVENT_ERROR, mapOf("error" to error))
+                    sendEvent(EVENT_ERROR, mapOf("error" to error.localizedMessage))
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -234,6 +231,7 @@ internal class VideoPlayer(
         val dataSourceFactory = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
             .setDefaultRequestProperties(headers)
+            .setTransferListener(bandwidthMeter)
         val mediaSourceFactory = HlsMediaSource.Factory(dataSourceFactory)
         val mediaItem = MediaItem.fromUri(uri)
         val mediaSource = mediaSourceFactory.createMediaSource(mediaItem)

@@ -11,7 +11,7 @@ class ExternalVttPage extends StatefulWidget {
 
 class _ExternalVttPagePageState extends State<ExternalVttPage> {
   final controller = VideoPlayerController(
-    configuration: const VideoPlayerConfiguration(
+    configuration: VideoPlayerConfiguration(
       autoPlay: true,
     ),
   );
