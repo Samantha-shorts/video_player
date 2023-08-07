@@ -128,6 +128,9 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
             eventType: VideoPlayerEventType.pipChanged,
             isPip: event.isPip,
           );
+          if (Platform.isIOS) {
+            selectLegibleMediaGroup();
+          }
           break;
         case PlatformEventType.muteChanged:
           value = value.copyWith(

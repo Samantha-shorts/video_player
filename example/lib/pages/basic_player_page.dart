@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:video_player_example/constants.dart';
@@ -28,16 +26,6 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
         author: "video author",
       ),
     );
-    controller.addListener(() {
-      switch (controller.value.eventType) {
-        case VideoPlayerEventType.pipChanged:
-          if (Platform.isIOS) {
-            controller.selectLegibleMediaGroup();
-          }
-          break;
-        default:
-      }
-    });
   }
 
   @override

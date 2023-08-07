@@ -115,9 +115,10 @@ class _VideoPlayerSubtitlesDrawerState
       }
       return true;
     } else if (newValue.eventType == VideoPlayerEventType.pipChanged) {
-      if (Platform.isAndroid) {
-        setupTextStyles(newValue.isFullscreen, newValue.isPip);
-      }
+      setupTextStyles(newValue.isFullscreen, newValue.isPip);
+      return true;
+    } else if (newValue.eventType == VideoPlayerEventType.fullscreenChanged) {
+      setupTextStyles(newValue.isFullscreen, newValue.isPip);
       return true;
     }
     return false;
