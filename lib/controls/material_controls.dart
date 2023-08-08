@@ -234,7 +234,6 @@ class _MaterialControlsState
 
   Widget _buildMoreOptionsList() {
     return SingleChildScrollView(
-      // ignore: avoid_unnecessary_containers
       child: Container(
         child: Column(
           children: [
@@ -246,14 +245,15 @@ class _MaterialControlsState
                 _showSpeedChooserWidget();
               },
             ),
-            _buildMoreOptionsListRow(
-              controlsConfiguration.subtitlesIcon,
-              "Subtitles",
-              () {
-                Navigator.of(context).pop();
-                _showSubtitlesSelectionWidget();
-              },
-            ),
+            if (controller.subtitlesController.subtitlesSourceList.isNotEmpty)
+              _buildMoreOptionsListRow(
+                controlsConfiguration.subtitlesIcon,
+                "Subtitles",
+                () {
+                  Navigator.of(context).pop();
+                  _showSubtitlesSelectionWidget();
+                },
+              ),
             _buildMoreOptionsListRow(
               controlsConfiguration.qualitiesIcon,
               "Quality",

@@ -62,9 +62,6 @@ class VideoPlayerSubtitlesController {
 
   void setSubtitlesSourceList(List<VideoPlayerSubtitlesSource> subtitles) {
     _subtitlesSourceList = subtitles;
-    _subtitlesSourceList.add(
-      VideoPlayerSubtitlesSource(type: VideoPlayerSubtitlesSourceType.none),
-    );
     _subtitlesStreamController.add(SubtitlesStreamEvent.sourceListChanged);
   }
 
@@ -80,9 +77,6 @@ class VideoPlayerSubtitlesController {
               selectedByDefault: subtitle.isDefault,
             ))
         .toList();
-    _subtitlesSourceList.add(
-      VideoPlayerSubtitlesSource(type: VideoPlayerSubtitlesSourceType.none),
-    );
     _subtitlesStreamController.add(SubtitlesStreamEvent.sourceListChanged);
   }
 
@@ -98,10 +92,14 @@ class VideoPlayerSubtitlesController {
 
   void setSubtitleSource(int index) {
     _subtitlesLines = [];
-    _selectedSubtitlesSourceIndex = index;
-    final source = subtitlesSourceList[index];
-    if (source.asmsIsSegmented != true) {
-      loadAllSubtitleLines();
+    if (-1 < index && index < subtitlesSourceList.length) {
+      _selectedSubtitlesSourceIndex = index;
+      final source = subtitlesSourceList[index];
+      if (source.asmsIsSegmented != true) {
+        loadAllSubtitleLines();
+      }
+    } else {
+      _selectedSubtitlesSourceIndex = null;
     }
     _subtitlesStreamController.add(SubtitlesStreamEvent.selectedSourceChanged);
   }
