@@ -64,6 +64,7 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
         registrar.register(instance, withId: "matsune/video_player")
     }
 
+    private var nextTextureId: Int = 1
     private let registrar: FlutterPluginRegistrar
     private let messenger: FlutterBinaryMessenger
     private var players: [TextureId: VideoPlayer] = [:]
@@ -341,13 +342,10 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
         }
     }
 
-    private var nextTextureId: Int {
-        players.count + 1
-    }
-
     /// returns: texture id
     private func createVideoPlayer() -> TextureId {
         let textureId = nextTextureId
+        nextTextureId += 1
         let eventChannel = FlutterEventChannel(
             name: "video_player_channel/videoEvents\(textureId)",
             binaryMessenger: messenger
