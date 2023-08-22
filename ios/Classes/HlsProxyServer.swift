@@ -48,10 +48,14 @@ class HlsProxyServer {
         if !webServer.isRunning {
             addPlaylistHandler()
             addSrtHandler()
-            try! webServer.start(options: [
-                GCDWebServerOption_Port: port,
-                GCDWebServerOption_AutomaticallySuspendInBackground: false
-            ])
+            do {
+                try webServer.start(options: [
+                    GCDWebServerOption_Port: port,
+                    GCDWebServerOption_AutomaticallySuspendInBackground: false
+                ])
+            } catch {
+                os_log("%@", log: .proxyServer, type: .error, error.localizedDescription)
+            }
         }
     }
 
@@ -107,7 +111,6 @@ class HlsProxyServer {
 
                 #EXT-X-ENDLIST
                 """
-//                os_log("%@", log: .proxyServer, type: .debug, m3u8)
                 return completion(
                     GCDWebServerDataResponse(data: m3u8.data(using: .utf8)!, contentType: self.m3u8ContentType)
                 )
@@ -122,7 +125,6 @@ class HlsProxyServer {
                     return completion(GCDWebServerErrorResponse(statusCode: 500))
                 }
                 let m3u8Data = self.rewriteM3u8(with: data, forOriginURL: originURL)
-//                os_log("%@", log: .proxyServer, type: .debug, String(data: m3u8Data, encoding: .utf8)!)
                 completion(
                     GCDWebServerDataResponse(data: m3u8Data, contentType: response.mimeType ?? self.m3u8ContentType)
                 )
@@ -283,7 +285,6 @@ class HlsProxyServer {
                 }
                 let srt = String(data: data, encoding: .utf8)!
                 let vtt = convertSrtToVtt(srt)
-//                os_log("%@", log: .proxyServer, type: .debug, vtt)
                 completion(
                     GCDWebServerDataResponse(data: vtt.data(using: .utf8)!, contentType: response.mimeType ?? "plain/txt")
                 )
