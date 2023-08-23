@@ -14,14 +14,11 @@ extension OSLog {
 }
 
 class HlsProxyServer {
-    private init() {}
-
-    static let shared = HlsProxyServer()
+    init() {}
 
     private let webServer = GCDWebServer()
     private let urlSession: URLSession = .shared
     private let m3u8ContentType = "application/vnd.apple.mpegurl"
-    private let port: UInt = 3333
     private let originURLKey = "__hls_origin_url"
     private let subtitlesGroupID = "subs"
     private let subtitlesM3u8Path = "/__proxy_subtitles.m3u8"
@@ -50,7 +47,6 @@ class HlsProxyServer {
             addSrtHandler()
             do {
                 try webServer.start(options: [
-                    GCDWebServerOption_Port: port,
                     GCDWebServerOption_AutomaticallySuspendInBackground: false
                 ])
             } catch {
@@ -190,10 +186,13 @@ class HlsProxyServer {
     }
 
     private func subtitleProxyURL(originURL: URL) -> URL? {
+        guard let serverURL = webServer.serverURL else {
+            return nil
+        }
         var components = URLComponents()
-        components.scheme = "http"
-        components.host = "127.0.0.1"
-        components.port = Int(port)
+        components.scheme = serverURL.scheme
+        components.host = serverURL.host
+        components.port = serverURL.port
         components.path = subtitlesM3u8Path
 
         let originURLQueryItem = URLQueryItem(name: originURLKey, value: originURL.absoluteString)
@@ -203,13 +202,13 @@ class HlsProxyServer {
     }
 
     private func reverseProxyURL(from originURL: URL) -> URL? {
-        guard var components = URLComponents(url: originURL, resolvingAgainstBaseURL: false) else {
+        guard let serverURL = webServer.serverURL,
+              var components = URLComponents(url: originURL, resolvingAgainstBaseURL: false) else {
             return nil
         }
-        components.scheme = "http"
-        components.host = "127.0.0.1"
-        components.port = Int(port)
-
+        components.scheme = serverURL.scheme
+        components.host = serverURL.host
+        components.port = serverURL.port
         let originURLQueryItem = URLQueryItem(name: originURLKey, value: originURL.absoluteString)
         components.queryItems = (components.queryItems ?? []) + [originURLQueryItem]
 

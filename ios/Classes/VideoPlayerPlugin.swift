@@ -91,7 +91,6 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
         case .`init`:
             players.forEach { $0.value.dispose() }
             players.removeAll()
-            HlsProxyServer.shared.start()
             result(nil)
         case .create:
             let textureId = createVideoPlayer()
@@ -165,7 +164,7 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                         }
                         return .init(name: name, url: url, language: $0["language"] as? String)
                     }
-                    let proxyURL = HlsProxyServer.shared.m3u8ProxyURL(url, headers: headers, subtitles: proxySubtitles)
+                    let proxyURL = player.proxyServer.m3u8ProxyURL(url, headers: headers, subtitles: proxySubtitles)
                     player.setDataSource(url: proxyURL!, headers: headers)
                 } else {
                     player.setDataSource(url: url, headers: headers)

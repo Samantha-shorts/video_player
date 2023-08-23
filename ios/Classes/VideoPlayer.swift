@@ -40,6 +40,7 @@ class VideoPlayer: NSObject {
     private var pipController: AVPictureInPictureController?
     private(set) var isDisposed = false
     private(set) var isInitialized = false
+    let proxyServer = HlsProxyServer()
 
     private var observersAdded = false
     private var presentationSizeObservation: NSKeyValueObservation?
@@ -89,6 +90,7 @@ class VideoPlayer: NSObject {
         player.actionAtItemEnd = .none
         player.automaticallyWaitsToMinimizeStalling = false
         setPlayerViewActive(playerView)
+        proxyServer.start()
     }
 
     func setPlayerViewActive(_ playerView: VideoPlayerView) {
