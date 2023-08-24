@@ -48,7 +48,8 @@ class HlsProxyServer {
             addSrtHandler()
             do {
                 try webServer.start(options: [
-                    GCDWebServerOption_AutomaticallySuspendInBackground: false
+                    GCDWebServerOption_AutomaticallySuspendInBackground: false,
+                    GCDWebServerOption_BindToLocalhost: true
                 ])
             } catch {
                 os_log("%@", log: .proxyServer, type: .error, error.localizedDescription)
