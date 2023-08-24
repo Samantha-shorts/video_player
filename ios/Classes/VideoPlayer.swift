@@ -7,6 +7,7 @@
 
 import AVKit
 import Flutter
+import os
 
 enum PlatformEventType: String {
     case initialized
@@ -248,6 +249,41 @@ class VideoPlayer: NSObject {
     private func playerItemDidPlayToEndTime(_ sender: Any?) {
         pause()
         sendEvent(.ended)
+    }
+
+    func waitProxyServerReady(_ completion: @escaping (Bool) -> Void) {
+        pingProxyServer(retryCount: 0, completion: completion)
+    }
+
+    let interval: TimeInterval = 1
+
+    func pingProxyServer(retryCount: Int, completion: @escaping (Bool) -> Void) {
+        os_log("%@", log: .proxyServer, type: .info, "pingProxyServer \(retryCount)")
+        if retryCount > 5 {
+            completion(false)
+            return
+        }
+        guard let serverURL = proxyServer.webServer.serverURL else {
+            os_log("%@", log: .proxyServer, type: .info, "retry>>>")
+            DispatchQueue.global().asyncAfter(deadline: .now() + interval) { [weak self] in
+                self?.pingProxyServer(retryCount: retryCount + 1, completion: completion)
+            }
+            return
+        }
+        let url = serverURL.appendingPathComponent("_healthcheck")
+        os_log("%@", log: .proxyServer, type: .info, url.absoluteString)
+        let task = URLSession.shared.dataTask(with: url) { data, response, error in
+            if let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 {
+                os_log("%@", log: .proxyServer, type: .info, "200")
+                completion(true)
+            } else {
+                DispatchQueue.global().asyncAfter(deadline: .now() + self.interval) { [weak self] in
+                    os_log("%@", log: .proxyServer, type: .info, "retrying")
+                    self?.pingProxyServer(retryCount: retryCount + 1, completion: completion)
+                }
+            }
+        }
+        task.resume()
     }
 
     func removeObservers() {

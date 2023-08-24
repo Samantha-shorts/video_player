@@ -164,8 +164,20 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                         }
                         return .init(name: name, url: url, language: $0["language"] as? String)
                     }
-                    let proxyURL = player.proxyServer.m3u8ProxyURL(url, headers: headers, subtitles: proxySubtitles)
-                    player.setDataSource(url: proxyURL!, headers: headers)
+                    if let proxyURL = player.proxyServer.m3u8ProxyURL(url, headers: headers, subtitles: proxySubtitles) {
+                        player.setDataSource(url: proxyURL, headers: headers)
+                        result(nil)
+                        return
+                    }
+                    player.waitProxyServerReady { isReady in
+                        if isReady {
+                            if let proxyURL = player.proxyServer.m3u8ProxyURL(url, headers: headers, subtitles: proxySubtitles) {
+                                player.setDataSource(url: proxyURL, headers: headers)
+                            }
+                        }
+                        result(nil)
+                    }
+                    return
                 } else {
                     player.setDataSource(url: url, headers: headers)
                 }

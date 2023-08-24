@@ -10,13 +10,13 @@ import GCDWebServer
 import os
 
 extension OSLog {
-    static let proxyServer = OSLog(subsystem: "matsune.videoPlayer", category: "HlsProxyServer")
+    static let proxyServer = OSLog(subsystem: "matsune.videoPlayer", category: ">>>>>>>HlsProxyServer")
 }
 
 class HlsProxyServer {
     init() {}
 
-    private let webServer = GCDWebServer()
+    let webServer = GCDWebServer()
     private let urlSession: URLSession = .shared
     private let m3u8ContentType = "application/vnd.apple.mpegurl"
     private let originURLKey = "__hls_origin_url"
@@ -43,6 +43,7 @@ class HlsProxyServer {
 
     func start() {
         if !webServer.isRunning {
+            addHealthcheckHandler()
             addPlaylistHandler()
             addSrtHandler()
             do {
@@ -74,6 +75,16 @@ class HlsProxyServer {
         return URL(string: urlString)
     }
 
+    private func addHealthcheckHandler() {
+        webServer.addHandler(
+            forMethod: "GET",
+            pathRegex: "^/_healthcheck$",
+            request: GCDWebServerRequest.self
+        ) { (request: GCDWebServerRequest, completion) in
+            completion(GCDWebServerResponse(statusCode: 200))
+        }
+    }
+
     /// Handler for m3u8
     private func addPlaylistHandler() {
         webServer.addHandler(
@@ -87,7 +98,7 @@ class HlsProxyServer {
             guard let originURL = self.originURL(from: request) else {
                 return completion(GCDWebServerErrorResponse(statusCode: 400))
             }
-
+            os_log("%@", log: .proxyServer, type: .info, "originURL: \(originURL.absoluteString)")
             if request.url.relativePath == subtitlesM3u8Path {
                 let url: URL
                 if originURL.pathExtension == "srt" {
@@ -211,7 +222,6 @@ class HlsProxyServer {
         components.port = serverURL.port
         let originURLQueryItem = URLQueryItem(name: originURLKey, value: originURL.absoluteString)
         components.queryItems = (components.queryItems ?? []) + [originURLQueryItem]
-
         return components.url
     }
 
