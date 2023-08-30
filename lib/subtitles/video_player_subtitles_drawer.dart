@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:video_player/configurations/configurations.dart';
@@ -28,6 +29,7 @@ class _VideoPlayerSubtitlesDrawerState
   StreamSubscription? _controlsVisibilitySubscription;
 
   bool _isControlsVisible = false;
+  VideoPlayerSubtitle? _lastSubtitle;
 
   @override
   Future<void> setup() async {
@@ -161,14 +163,17 @@ class _VideoPlayerSubtitlesDrawerState
       return null;
     }
 
-    final Duration position = lastValue!.position;
-    for (final VideoPlayerSubtitle subtitle
-        in controller.subtitlesController.subtitlesLines) {
-      if (subtitle.start! <= position && subtitle.end! >= position) {
-        return subtitle;
-      }
+    final position = lastValue!.position;
+    if (_lastSubtitle?.isVisiblePosition(position) == true) {
+      return _lastSubtitle;
     }
-    return null;
+
+    final subtitle =
+        controller.subtitlesController.subtitlesLines.firstWhereOrNull(
+      (subtitle) => subtitle.start! <= position && subtitle.end! >= position,
+    );
+    _lastSubtitle = subtitle;
+    return subtitle;
   }
 
   Widget _buildSubtitleTextWidget(String subtitleText) {

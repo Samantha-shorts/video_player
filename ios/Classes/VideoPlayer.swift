@@ -188,10 +188,10 @@ class VideoPlayer: NSObject {
     func addObservers(to item: AVPlayerItem) {
         if !observersAdded {
             timeObserver = player.addPeriodicTimeObserver(
-                forInterval: CMTimeMake(value: 1, timescale: 2),
-                queue: .main,
+                forInterval: CMTimeMake(value: 1, timescale: 5),
+                queue: .global(qos: .userInteractive),
                 using: { [weak self] time in
-                    let millis = TimeUtils.FLTCMTimeToMillis(time)
+                    let millis = TimeUtils.FLTCMTimeToMillis(time) + 350 // adjustment for lag
                     self?.sendEvent(.positionChanged, ["position": millis])
                 }
             )
@@ -258,13 +258,11 @@ class VideoPlayer: NSObject {
     let interval: TimeInterval = 1
 
     func pingProxyServer(retryCount: Int, completion: @escaping (Bool) -> Void) {
-        os_log("%@", log: .proxyServer, type: .info, "pingProxyServer \(retryCount)")
         if retryCount > 5 {
             completion(false)
             return
         }
         guard let serverURL = proxyServer.webServer.serverURL else {
-            os_log("%@", log: .proxyServer, type: .info, "retry>>>")
             DispatchQueue.global().asyncAfter(deadline: .now() + interval) { [weak self] in
                 self?.pingProxyServer(retryCount: retryCount + 1, completion: completion)
             }

@@ -112,4 +112,8 @@ class VideoPlayerSubtitle {
   String toString() {
     return 'VideoPlayerSubtitle{index: $index, start: $start, end: $end, texts: $texts}';
   }
+
+  bool isVisiblePosition(Duration position) =>
+      (start != null && end != null) &&
+      (start! <= position && end! >= position);
 }

@@ -106,7 +106,7 @@ internal class VideoPlayer(
                     if (exoPlayer.isPlaying) {
                         sendPositionChanged()
                     }
-                    handler.postDelayed(this, 500)
+                    handler.postDelayed(this, 200)
                 }
             }
     }
@@ -222,9 +222,7 @@ internal class VideoPlayer(
     }
 
     private fun sendPositionChanged() {
-        exoPlayer.currentPosition?.let {
-            sendEvent(EVENT_POSITION_CHANGED, mapOf("position" to it))
-        }
+        sendEvent(EVENT_POSITION_CHANGED, mapOf("position" to exoPlayer.currentPosition + 250))
     }
 
     fun setNetworkDataSource(uri: String, headers: Map<String, String>) {
