@@ -14,18 +14,18 @@ class VideoPlayerSubtitle {
     this.texts,
   });
 
-  factory VideoPlayerSubtitle(String value, bool isWebVTT) {
+  factory VideoPlayerSubtitle(String value) {
     try {
       final scanner = value.split('\n');
       if (scanner.length == 2) {
         return _handle2LinesSubtitles(scanner);
       }
       if (scanner.length > 2) {
-        return _handle3LinesAndMoreSubtitles(scanner, isWebVTT);
+        return _handle3LinesAndMoreSubtitles(scanner);
       }
       return VideoPlayerSubtitle._();
     } catch (exception) {
-      Utils.log("Failed to parse subtitle line: $value");
+      Utils.log("Failed to parse subtitle line: $value. $exception");
       return VideoPlayerSubtitle._();
     }
   }
@@ -38,15 +38,24 @@ class VideoPlayerSubtitle {
       final texts = scanner.sublist(1, scanner.length);
 
       return VideoPlayerSubtitle._(
-          index: -1, start: start, end: end, texts: texts);
+        index: -1,
+        start: start,
+        end: end,
+        texts: texts,
+      );
     } catch (exception) {
-      Utils.log("Failed to parse subtitle line: $scanner");
+      Utils.log("Failed to parse subtitle line: $scanner. $exception");
       return VideoPlayerSubtitle._();
     }
   }
 
   static VideoPlayerSubtitle _handle3LinesAndMoreSubtitles(
-      List<String> scanner, bool isWebVTT) {
+    List<String> scanner,
+  ) {
+    if (scanner[0].trim() == "WEBVTT") {
+      scanner
+          .removeWhere((str) => str.trim() == "WEBVTT" || str.trim().isEmpty);
+    }
     try {
       int? index = -1;
       List<String> timeSplit = [];
@@ -64,9 +73,13 @@ class VideoPlayerSubtitle {
       final end = _stringToDuration(timeSplit[1]);
       final texts = scanner.sublist(firstLineOfText, scanner.length);
       return VideoPlayerSubtitle._(
-          index: index, start: start, end: end, texts: texts);
+        index: index,
+        start: start,
+        end: end,
+        texts: texts,
+      );
     } catch (exception) {
-      Utils.log("Failed to parse subtitle line: $scanner");
+      Utils.log("Failed to parse subtitle line: $scanner. $exception");
       return VideoPlayerSubtitle._();
     }
   }
@@ -97,13 +110,14 @@ class VideoPlayerSubtitle {
       }
 
       final result = Duration(
-          hours: int.tryParse(component[0])!,
-          minutes: int.tryParse(component[1])!,
-          seconds: int.tryParse(secsAndMillsSplit[0])!,
-          milliseconds: int.tryParse(secsAndMillsSplit[1])!);
+        hours: int.tryParse(component[0])!,
+        minutes: int.tryParse(component[1])!,
+        seconds: int.tryParse(secsAndMillsSplit[0])!,
+        milliseconds: int.tryParse(secsAndMillsSplit[1])!,
+      );
       return result;
     } catch (exception) {
-      Utils.log("Failed to process value: $value");
+      Utils.log("Failed to process value: $value. $exception");
       return const Duration();
     }
   }

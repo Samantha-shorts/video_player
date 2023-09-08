@@ -89,12 +89,11 @@ class VideoPlayerSubtitlesFactory {
 
     final List<VideoPlayerSubtitle> subtitlesObj = [];
 
-    final bool isWebVTT = components.contains("WEBVTT");
     for (final component in components) {
       if (component.isEmpty) {
         continue;
       }
-      final subtitle = VideoPlayerSubtitle(component, isWebVTT);
+      final subtitle = VideoPlayerSubtitle(component);
       if (subtitle.start != null &&
           subtitle.end != null &&
           subtitle.texts != null) {

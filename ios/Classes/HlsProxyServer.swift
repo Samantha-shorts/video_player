@@ -10,7 +10,7 @@ import GCDWebServer
 import os
 
 extension OSLog {
-    static let proxyServer = OSLog(subsystem: "matsune.videoPlayer", category: ">>>>>>>HlsProxyServer")
+    static let proxyServer = OSLog(subsystem: "matsune.videoPlayer", category: "HlsProxyServer")
 }
 
 class HlsProxyServer {
@@ -46,6 +46,7 @@ class HlsProxyServer {
             addHealthcheckHandler()
             addPlaylistHandler()
             addSrtHandler()
+            addVttHandler()
             do {
                 try webServer.start(options: [
                     GCDWebServerOption_AutomaticallySuspendInBackground: false,
@@ -102,7 +103,7 @@ class HlsProxyServer {
             os_log("%@", log: .proxyServer, type: .info, "originURL: \(originURL.absoluteString)")
             if request.url.relativePath == subtitlesM3u8Path {
                 let url: URL
-                if originURL.pathExtension == "srt" {
+                if ["srt", "vtt", "webvtt"].contains(originURL.pathExtension) {
                     url = reverseProxyURL(from: originURL)!
                 } else {
                     url = originURL
@@ -119,6 +120,7 @@ class HlsProxyServer {
 
                 #EXT-X-ENDLIST
                 """
+//                os_log("%@", log: .proxyServer, type: .debug, m3u8)
                 return completion(
                     GCDWebServerDataResponse(data: m3u8.data(using: .utf8)!, contentType: self.m3u8ContentType)
                 )
@@ -132,16 +134,20 @@ class HlsProxyServer {
                 guard let self = self, let data = data, let response = response else {
                     return completion(GCDWebServerErrorResponse(statusCode: 500))
                 }
-                let m3u8Data = self.rewriteM3u8(with: data, forOriginURL: originURL)
+                let m3u8 = self.rewriteM3u8(with: data, forOriginURL: originURL)
+//                os_log("%@", log: .proxyServer, type: .debug, m3u8)
                 completion(
-                    GCDWebServerDataResponse(data: m3u8Data, contentType: response.mimeType ?? self.m3u8ContentType)
+                    GCDWebServerDataResponse(
+                        data: m3u8.data(using: .utf8)!,
+                        contentType: response.mimeType ?? self.m3u8ContentType
+                    )
                 )
             }
             task.resume()
         }
     }
 
-    private func rewriteM3u8(with data: Data, forOriginURL originURL: URL) -> Data {
+    private func rewriteM3u8(with data: Data, forOriginURL originURL: URL) -> String {
         var lines = String(data: data, encoding: .utf8)!
             .components(separatedBy: .newlines)
             .map { rewriteM3u8Line($0, forOriginURL: originURL) }
@@ -161,17 +167,14 @@ class HlsProxyServer {
                 lines = newLines
             }
         }
-        return lines.joined(separator: "\n").data(using: .utf8)!
+        return lines.joined(separator: "\n")
     }
 
     private func subtitleMediaTag(_ subtitle: Subtitle) -> String {
         let languageComponent = subtitle.language.map({ "LANGUAGE=\($0)," }) ?? ""
         return """
-        #EXT-X-MEDIA:TYPE=SUBTITLES,\
-        GROUP-ID="\(subtitlesGroupID)",\
-        NAME="\(subtitle.name)",\
-        DEFAULT=NO,\
-        AUTOSELECT=NO,\
+        #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="\(subtitlesGroupID)",NAME="\(subtitle.name)",\
+        DEFAULT=NO,AUTOSELECT=NO,\
         \(languageComponent)\
         URI="\(subtitleProxyURL(originURL: subtitle.url)!.absoluteString)"
         """
@@ -311,5 +314,41 @@ class HlsProxyServer {
             return "WEBVTT\n\(result)"
         }
         return "WEBVTT\n\(str)"
+    }
+
+    private func addVttHandler() {
+        webServer.addHandler(
+            forMethod: "GET",
+            pathRegex: "^/.*\\.(vtt|webvtt)$",
+            request: GCDWebServerRequest.self
+        ) { [weak self] (request: GCDWebServerRequest, completion) in
+            guard let self = self else {
+                return completion(GCDWebServerDataResponse(statusCode: 500))
+            }
+            guard let originURL = self.originURL(from: request) else {
+                return completion(GCDWebServerErrorResponse(statusCode: 400))
+            }
+
+            let task = self.urlSession.dataTask(with: originURL) { [weak self] data, response, _ in
+                guard let self = self, let data = data, let response = response else {
+                    return completion(GCDWebServerErrorResponse(statusCode: 500))
+                }
+                let content = String(data: data, encoding: .utf8)!
+                let vtt = self.modifyVtt(content)
+                completion(
+                    GCDWebServerDataResponse(data: vtt.data(using: .utf8)!, contentType: response.mimeType ?? "text/vtt")
+                )
+            }
+            task.resume()
+        }
+    }
+
+    private func modifyVtt(_ str: String) -> String {
+        if str.contains("WEBVTT") && !str.contains("X-TIMESTAMP-MAP=") {
+            let insertLine = "X-TIMESTAMP-MAP=MPEGTS:200000,LOCAL:00:00:00.000\n"
+            let modifiedStr = str.replacingOccurrences(of: "WEBVTT\n", with: "WEBVTT\n" + insertLine)
+            return modifiedStr
+        }
+        return str
     }
 }
