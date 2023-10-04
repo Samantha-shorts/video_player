@@ -326,6 +326,12 @@ class _MaterialControlsState
       onTap: () {
         Navigator.of(context).pop();
         controller.setPlaybackRate(value);
+        controller.controlsEventStreamController.add(
+          ControlsEvent(
+            eventType: ControlsEventType.onTapPlaybackSpeedValue,
+            speedValue: value,
+          ),
+        );
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),

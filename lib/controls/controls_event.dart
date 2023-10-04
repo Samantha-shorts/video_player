@@ -7,6 +7,7 @@ enum ControlsEventType {
   onTapSkipBack,
   onTapMore,
   onTapPlaybackSpeedMenu,
+  onTapPlaybackSpeedValue,
   onTapSubtitlesMenu,
   onTapQualityMenu,
   onTapPip,
@@ -19,12 +20,14 @@ class ControlsEvent {
     this.muteOn,
     this.pipEnabled,
     this.fullscreenEnabled,
+    this.speedValue,
   });
 
   final ControlsEventType eventType;
   final bool? muteOn;
   final bool? pipEnabled;
   final bool? fullscreenEnabled;
+  final double? speedValue;
 
   @override
   String toString() {
@@ -34,6 +37,7 @@ class ControlsEvent {
         'muteOn: $muteOn, '
         'pipEnabled: $pipEnabled, '
         'fullscreenEnabled: $fullscreenEnabled, '
+        'speedValue: $speedValue'
         ')';
   }
 }
