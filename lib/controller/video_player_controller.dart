@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/abr/abr.dart';
 import 'package:video_player/configurations/configurations.dart';
+import 'package:video_player/controls/controls_event.dart';
 import 'package:video_player/platform/platform.dart';
 import 'package:video_player/subtitles/subtitles.dart';
 import 'package:video_player/utils.dart';
@@ -63,6 +64,12 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
 
   Stream<bool> get controlsVisibilityStream =>
       controlsVisibilityStreamController.stream;
+
+  final StreamController<ControlsEvent> controlsEventStreamController =
+      StreamController.broadcast();
+
+  Stream<ControlsEvent> get controlsEventStream =>
+      controlsEventStreamController.stream;
 
   static VideoPlayerController of(BuildContext context) {
     final videoPLayerControllerProvider = context

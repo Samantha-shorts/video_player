@@ -5,10 +5,9 @@ import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/abr/abr.dart';
 import 'package:video_player/controller/controller.dart';
+import 'package:video_player/controls/controls.dart';
 import 'package:video_player/subtitles/subtitles.dart';
 import 'package:video_player/utils.dart';
-
-import 'material_video_progress_bar.dart';
 
 class MaterialControls extends StatefulWidget {
   const MaterialControls({Key? key}) : super(key: key);
@@ -241,6 +240,8 @@ class _MaterialControlsState
               controlsConfiguration.playbackSpeedIcon,
               "Playback Speed",
               () {
+                controller.controlsEventStreamController.add(ControlsEvent(
+                    eventType: ControlsEventType.onTapPlaybackSpeedMenu));
                 Navigator.of(context).pop();
                 _showSpeedChooserWidget();
               },
@@ -250,6 +251,8 @@ class _MaterialControlsState
                 controlsConfiguration.subtitlesIcon,
                 "Subtitles",
                 () {
+                  controller.controlsEventStreamController.add(ControlsEvent(
+                      eventType: ControlsEventType.onTapSubtitlesMenu));
                   Navigator.of(context).pop();
                   _showSubtitlesSelectionWidget();
                 },
@@ -258,6 +261,8 @@ class _MaterialControlsState
               controlsConfiguration.qualitiesIcon,
               "Quality",
               () {
+                controller.controlsEventStreamController.add(ControlsEvent(
+                    eventType: ControlsEventType.onTapQualityMenu));
                 Navigator.of(context).pop();
                 _showQualitiesSelectionWidget();
               },
@@ -629,8 +634,16 @@ class _PipButtonState extends VideoPlayerControllerState<_PipButton> {
                 onTap: () async {
                   if (lastValue?.isPip != true) {
                     await controller.enablePictureInPicture();
+                    controller.controlsEventStreamController.add(ControlsEvent(
+                      eventType: ControlsEventType.onTapPip,
+                      pipEnabled: true,
+                    ));
                   } else {
                     await controller.disablePictureInPicture();
+                    controller.controlsEventStreamController.add(ControlsEvent(
+                      eventType: ControlsEventType.onTapPip,
+                      pipEnabled: false,
+                    ));
                   }
                 },
                 child: Padding(
@@ -666,7 +679,11 @@ class _MoreButton extends StatelessWidget {
     final controlsConfiguration =
         controller.configuration.controlsConfiguration;
     return MaterialClickableWidget(
-      onTap: onTap,
+      onTap: () {
+        onTap();
+        controller.controlsEventStreamController
+            .add(ControlsEvent(eventType: ControlsEventType.onTapMore));
+      },
       child: Padding(
         padding: const EdgeInsets.all(8),
         child: Icon(
@@ -705,6 +722,8 @@ class _SkipBackButtonState extends VideoPlayerControllerState<_SkipBackButton> {
             .inMilliseconds;
         controller.seekTo(Duration(milliseconds: max(skip, beginning)));
         widget.onClicked();
+        controller.controlsEventStreamController
+            .add(ControlsEvent(eventType: ControlsEventType.onTapSkipBack));
       },
       icon: Icon(
         controlsConfiguration.skipBackIcon,
@@ -742,6 +761,8 @@ class _SkipForwardButtonState
             .inMilliseconds;
         controller.seekTo(Duration(milliseconds: min(skip, end)));
         widget.onClicked();
+        controller.controlsEventStreamController
+            .add(ControlsEvent(eventType: ControlsEventType.onTapSkipForward));
       },
       icon: Icon(
         controlsConfiguration.skipForwardIcon,
@@ -766,11 +787,17 @@ class _ReplayButtonState extends VideoPlayerControllerState<_ReplayButton> {
       onTap: () async {
         if (lastValue?.isPlaying == true) {
           controller.pause();
+          controller.controlsEventStreamController
+              .add(ControlsEvent(eventType: ControlsEventType.onTapPause));
         } else if (lastValue?.isFinished == true) {
           await controller.seekTo(Duration.zero);
           controller.play();
+          controller.controlsEventStreamController
+              .add(ControlsEvent(eventType: ControlsEventType.onTapReplay));
         } else {
           controller.play();
+          controller.controlsEventStreamController
+              .add(ControlsEvent(eventType: ControlsEventType.onTapPlay));
         }
       },
       child: Icon(
@@ -804,11 +831,20 @@ class _PlayPauseButtonState
   @override
   Widget build(BuildContext context) {
     return MaterialClickableWidget(
-      onTap: () {
+      onTap: () async {
         if (lastValue?.isPlaying == true) {
           controller.pause();
+          controller.controlsEventStreamController
+              .add(ControlsEvent(eventType: ControlsEventType.onTapPause));
+        } else if (lastValue?.isFinished == true) {
+          await controller.seekTo(Duration.zero);
+          controller.play();
+          controller.controlsEventStreamController
+              .add(ControlsEvent(eventType: ControlsEventType.onTapReplay));
         } else {
           controller.play();
+          controller.controlsEventStreamController
+              .add(ControlsEvent(eventType: ControlsEventType.onTapPlay));
         }
       },
       child: Container(
@@ -887,8 +923,16 @@ class _MuteButtonState extends VideoPlayerControllerState<_MuteButton> {
       onTap: () {
         if (lastValue?.isMuted == true) {
           controller.setMuted(false);
+          controller.controlsEventStreamController.add(ControlsEvent(
+            eventType: ControlsEventType.onTapMute,
+            muteOn: false,
+          ));
         } else {
           controller.setMuted(true);
+          controller.controlsEventStreamController.add(ControlsEvent(
+            eventType: ControlsEventType.onTapMute,
+            muteOn: true,
+          ));
         }
       },
       child: ClipRect(
@@ -929,8 +973,16 @@ class _FullscreenButtonState
         onTap: () {
           if (lastValue?.isFullscreen != true) {
             controller.enterFullscreen();
+            controller.controlsEventStreamController.add(ControlsEvent(
+              eventType: ControlsEventType.onTapFullscreen,
+              fullscreenEnabled: true,
+            ));
           } else {
             controller.exitFullscreen();
+            controller.controlsEventStreamController.add(ControlsEvent(
+              eventType: ControlsEventType.onTapFullscreen,
+              fullscreenEnabled: false,
+            ));
           }
         },
         child: Container(

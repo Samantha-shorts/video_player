@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 import 'package:video_player_example/constants.dart';
@@ -16,6 +18,8 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
     ),
   );
 
+  StreamSubscription? _controlsEventSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -26,6 +30,15 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
         author: "video author",
       ),
     );
+    _controlsEventSubscription = controller.controlsEventStream.listen((event) {
+      print(event);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controlsEventSubscription?.cancel();
+    super.dispose();
   }
 
   @override
