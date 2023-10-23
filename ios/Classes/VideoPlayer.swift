@@ -352,6 +352,10 @@ class VideoPlayer: NSObject {
             player.currentItem?.preferredMaximumResolution = CGSize(width: width, height: height)
         }
     }
+
+    func onDetachFromEngine() {
+        eventSink = nil
+    }
 }
 
 extension VideoPlayer: FlutterPlatformView {

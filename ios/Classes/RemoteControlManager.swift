@@ -10,7 +10,7 @@ import MediaPlayer
 
 class RemoteControlManager {
     private var remotePlayer: VideoPlayer?
-    private let artworkManager = ArtworkManager(thumbnailRefreshSec: 60)
+//    private let artworkManager = ArtworkManager(thumbnailRefreshSec: 60)
     private var togglePlayPauseCommandTarget: Any?
     private var playCommandTarget: Any?
     private var pauseCommandTarget: Any?
@@ -117,11 +117,11 @@ class RemoteControlManager {
             MPMediaItemPropertyPlaybackDuration: durationInSeconds,
             MPNowPlayingInfoPropertyPlaybackRate: 1,
         ]
-        artworkManager.fetchArtwork(textureId: textureId, player: player, imageUrl: imageUrl) {
-            artwork in
-            nowPlayingInfoDict[MPMediaItemPropertyArtwork] = artwork
+//        artworkManager.fetchArtwork(textureId: textureId, player: player, imageUrl: imageUrl) {
+//            artwork in
+//            nowPlayingInfoDict[MPMediaItemPropertyArtwork] = artwork
             MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfoDict
-        }
+//        }
     }
 
     private func addPeriodicTimeObserver(
@@ -152,7 +152,7 @@ class RemoteControlManager {
         remotePlayer = nil
         endReceivingRemoteControlEvents()
         removePeriodicTimeObserver(textureId: textureId, player: player)
-        artworkManager.removeCache(textureId: textureId)
+//        artworkManager.removeCache(textureId: textureId)
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 }

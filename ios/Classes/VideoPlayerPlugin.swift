@@ -70,7 +70,7 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
     private var players: [TextureId: VideoPlayer] = [:]
     private var dataSources: [TextureId: DataSource] = [:]
 
-    private let artworkManager = ArtworkManager(thumbnailRefreshSec: 60)
+//    private let artworkManager = ArtworkManager(thumbnailRefreshSec: 60)
     private let remoteControlManager: RemoteControlManager
 
     private let downloader: Downloader
@@ -80,6 +80,10 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
         self.messenger = registrar.messenger()
         self.remoteControlManager = RemoteControlManager()
         self.downloader = Downloader(binaryMessanger: messenger)
+    }
+
+    public func detachFromEngine(for registrar: FlutterPluginRegistrar) {
+        players.values.forEach { $0.onDetachFromEngine() }
     }
 
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
