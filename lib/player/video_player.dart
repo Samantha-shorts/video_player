@@ -6,9 +6,14 @@ import 'package:video_player/player/player.dart';
 
 ///Widget which uses provided controller to render video player.
 class VideoPlayer extends StatefulWidget {
-  const VideoPlayer({Key? key, required this.controller}) : super(key: key);
+  const VideoPlayer({
+    Key? key,
+    required this.controller,
+    this.noProvider = false,
+  }) : super(key: key);
 
   final VideoPlayerController controller;
+  final bool noProvider;
 
   @override
   State<VideoPlayer> createState() {
@@ -109,10 +114,12 @@ class _VideoPlayerState extends State<VideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    return VideoPlayerControllerProvider(
-      controller: widget.controller,
-      child: _buildPlayer(),
-    );
+    return widget.noProvider
+        ? _buildPlayer()
+        : VideoPlayerControllerProvider(
+            controller: widget.controller,
+            child: _buildPlayer(),
+          );
   }
 
   Future<void> exitFullscreen() async {
@@ -190,6 +197,8 @@ class _VideoPlayerState extends State<VideoPlayer> {
   }
 
   Widget _buildPlayer() {
-    return VideoPlayerWithControls(controller: widget.controller);
+    return VideoPlayerWithControls(
+      controller: widget.controller,
+    );
   }
 }

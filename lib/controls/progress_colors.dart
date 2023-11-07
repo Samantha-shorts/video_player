@@ -15,4 +15,14 @@ class ProgressColors {
   final Paint bufferedPaint;
   final Paint handlePaint;
   final Paint backgroundPaint;
+
+  @override
+  String toString() {
+    return '$runtimeType('
+        'playedColor: $playedPaint, '
+        'bufferedColor: $bufferedPaint, '
+        'handlePaint: $handlePaint, '
+        'backgroundPaint: $backgroundPaint'
+        ')';
+  }
 }

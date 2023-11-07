@@ -95,6 +95,8 @@ class VideoPlayerControlsConfiguration {
   ///Color of text in bottom modal sheet used for overflow menu items.
   final Color overflowModalTextColor;
 
+  final bool disableSeek;
+
   const VideoPlayerControlsConfiguration({
     this.controlBarColor = Colors.black26,
     this.textColor = Colors.white,
@@ -125,6 +127,7 @@ class VideoPlayerControlsConfiguration {
     this.backgroundColor = Colors.black,
     this.overflowModalColor = Colors.white,
     this.overflowModalTextColor = Colors.black,
+    this.disableSeek = false,
   });
 
   ProgressColors get progressColors => ProgressColors(

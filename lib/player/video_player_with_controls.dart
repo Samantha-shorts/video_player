@@ -7,7 +7,10 @@ import 'package:video_player/subtitles/subtitles.dart';
 class VideoPlayerWithControls extends StatefulWidget {
   final VideoPlayerController? controller;
 
-  const VideoPlayerWithControls({Key? key, this.controller}) : super(key: key);
+  const VideoPlayerWithControls({
+    Key? key,
+    this.controller,
+  }) : super(key: key);
 
   @override
   VideoPlayerWithControlsState createState() => VideoPlayerWithControlsState();
@@ -45,7 +48,8 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
       children: <Widget>[
         _Player(controller: videoPlayerController),
         const VideoPlayerSubtitlesDrawer(),
-        const MaterialControls(),
+        if (widget.controller?.configuration.hidesControls != true)
+          const MaterialControls(),
       ],
     );
   }

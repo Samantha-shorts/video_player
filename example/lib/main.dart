@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player_example/pages/basic_player_page.dart';
+import 'package:video_player_example/pages/custom_controls_page.dart';
 import 'package:video_player_example/pages/download_hls_page.dart';
 import 'package:video_player_example/pages/external_vtt_page.dart';
 import 'package:video_player_example/pages/no_subtitles_page.dart';
@@ -54,6 +55,9 @@ class _WelcomePageState extends State<WelcomePage> {
       const SizedBox(height: 8),
       _buildExampleElementWidget("Basic player", () {
         _navigateToPage(const BasicPlayerPage());
+      }),
+      _buildExampleElementWidget("Custom Controls", () {
+        _navigateToPage(const CustomControlsPage());
       }),
       _buildExampleElementWidget("External VTT", () {
         _navigateToPage(const ExternalVttPage());

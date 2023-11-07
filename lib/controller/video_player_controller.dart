@@ -251,6 +251,9 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     }
 
     await _initializeCompleter.future;
+    if (configuration.autoFullscreen) {
+      enterFullscreen();
+    }
     if (configuration.autoPlay) {
       play();
     }
