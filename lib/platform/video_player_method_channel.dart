@@ -181,6 +181,16 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
   }
 
   @override
+  Future<void> setAutoLoop(int? textureId, bool autoLoop) =>
+      methodChannel.invokeMethod(
+        'setAutoLoop',
+        <String, dynamic>{
+          'textureId': textureId,
+          'autoLoop': autoLoop,
+        },
+      );
+
+  @override
   Future<void> play(int? textureId) => methodChannel.invokeMethod(
         'play',
         <String, dynamic>{'textureId': textureId},

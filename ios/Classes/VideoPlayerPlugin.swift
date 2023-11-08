@@ -9,6 +9,7 @@ enum FlutterMethod: String {
     case create
     case isPictureInPictureSupported
     case setDataSource
+    case setAutoLoop
     case play
     case pause
     case seekTo
@@ -186,6 +187,10 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                     player.setDataSource(url: url, headers: headers)
                 }
             }
+            result(nil)
+        case .setAutoLoop:
+            let autoLoop = args["autoLoop"] as! Bool
+            player.autoLoop = autoLoop
             result(nil)
         case .play:
             player.play()

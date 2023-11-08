@@ -9,6 +9,8 @@ class VideoPlayerConfiguration {
   /// Enter fullscreen as soon as it's displayed
   final bool autoFullscreen;
 
+  final bool autoLoop;
+
   /// The Aspect Ratio of the Video. Important to get the correct size of the
   /// video!
   ///
@@ -32,12 +34,13 @@ class VideoPlayerConfiguration {
 
   String? Function(AbrTrack track)? quarityTrackSelectable;
 
-  final bool hidesControls;
+  final bool hideControls;
 
   VideoPlayerConfiguration({
     this.aspectRatio,
     this.autoPlay = false,
     this.autoFullscreen = false,
+    this.autoLoop = false,
     this.deviceOrientationsOnFullScreen = const [
       DeviceOrientation.landscapeLeft,
       DeviceOrientation.landscapeRight,
@@ -49,11 +52,13 @@ class VideoPlayerConfiguration {
     this.subtitlesConfiguration = const VideoPlayerSubtitlesConfiguration(),
     this.controlsConfiguration = const VideoPlayerControlsConfiguration(),
     this.quarityTrackSelectable,
-    this.hidesControls = false,
+    this.hideControls = false,
   });
 
   VideoPlayerConfiguration copyWith({
     bool? autoPlay,
+    bool? autoFullscreen,
+    bool? autoLoop,
     double? aspectRatio,
     List<DeviceOrientation>? deviceOrientationsOnFullScreen,
     List<SystemUiOverlay>? systemOverlaysAfterFullScreen,
@@ -64,6 +69,8 @@ class VideoPlayerConfiguration {
   }) {
     return VideoPlayerConfiguration(
       autoPlay: autoPlay ?? this.autoPlay,
+      autoFullscreen: autoFullscreen ?? this.autoFullscreen,
+      autoLoop: autoLoop ?? this.autoLoop,
       aspectRatio: aspectRatio ?? this.aspectRatio,
       deviceOrientationsOnFullScreen:
           deviceOrientationsOnFullScreen ?? this.deviceOrientationsOnFullScreen,
@@ -75,7 +82,7 @@ class VideoPlayerConfiguration {
           subtitlesConfiguration ?? this.subtitlesConfiguration,
       controlsConfiguration:
           controlsConfiguration ?? this.controlsConfiguration,
-      hidesControls: hidesControls ?? this.hidesControls,
+      hideControls: hidesControls ?? this.hideControls,
     );
   }
 }

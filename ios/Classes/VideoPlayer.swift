@@ -80,6 +80,8 @@ class VideoPlayer: NSObject {
     var duration: CMTime? {
         player.currentItem?.duration
     }
+    
+    var autoLoop: Bool = false
 
     init(eventChannel: FlutterEventChannel) {
         self.eventChannel = eventChannel
@@ -247,8 +249,13 @@ class VideoPlayer: NSObject {
 
     @objc
     private func playerItemDidPlayToEndTime(_ sender: Any?) {
-        pause()
-        sendEvent(.ended)
+        if autoLoop {
+            sendEvent(.ended)
+            seekTo(millis: 0)
+        } else {
+            pause()
+            sendEvent(.ended)
+        }
     }
 
     func waitProxyServerReady(_ completion: @escaping (Bool) -> Void) {

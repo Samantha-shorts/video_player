@@ -233,6 +233,11 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 setDataSource(call, textureId, player)
                 result.success(null)
             }
+            METHOD_SET_AUTO_LOOP -> {
+                val autoLoop = call.argument("autoLoop") as? Boolean
+                player.setAutoLoop(autoLoop!!)
+                result.success(null)
+            }
             METHOD_PLAY -> {
                 if (isAndroidHigherM) {
                     setupNotification(flutterState.applicationContext, textureId, player)
@@ -397,6 +402,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         private const val METHOD_CREATE = "create"
         private const val METHOD_IS_PICTURE_IN_PICTURE_SUPPORTED = "isPictureInPictureSupported"
         private const val METHOD_SET_DATA_SOURCE = "setDataSource"
+        private const val METHOD_SET_AUTO_LOOP = "setAutoLoop"
         private const val METHOD_PLAY = "play"
         private const val METHOD_PAUSE = "pause"
         private const val METHOD_SEEK_TO = "seekTo"

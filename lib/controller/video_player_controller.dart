@@ -251,6 +251,10 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     }
 
     await _initializeCompleter.future;
+    await VideoPlayerPlatform.instance.setAutoLoop(
+      textureId,
+      configuration.autoLoop,
+    );
     if (configuration.autoFullscreen) {
       enterFullscreen();
     }

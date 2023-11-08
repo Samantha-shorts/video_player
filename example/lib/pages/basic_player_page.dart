@@ -15,6 +15,7 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
   final controller = VideoPlayerController(
     configuration: VideoPlayerConfiguration(
       autoPlay: false,
+      autoLoop: true,
     ),
   );
 

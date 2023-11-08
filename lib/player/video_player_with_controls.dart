@@ -48,7 +48,7 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
       children: <Widget>[
         _Player(controller: videoPlayerController),
         const VideoPlayerSubtitlesDrawer(),
-        if (widget.controller?.configuration.hidesControls != true)
+        if (widget.controller?.configuration.hideControls != true)
           const MaterialControls(),
       ],
     );

@@ -225,6 +225,10 @@ internal class VideoPlayer(
         sendEvent(EVENT_POSITION_CHANGED, mapOf("position" to exoPlayer.currentPosition + 250))
     }
 
+    fun setAutoLoop(value: Boolean) {
+        exoPlayer.repeatMode = if (value) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF;
+    }
+
     fun setNetworkDataSource(uri: String, headers: Map<String, String>) {
         val dataSourceFactory = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)

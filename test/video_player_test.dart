@@ -133,6 +133,12 @@ class MockVideoPlayerPlatform
   }
 
   @override
+  Future<void> setAutoLoop(int? textureId, bool autoLoop) {
+    // TODO: implement setAutoLoop
+    throw UnimplementedError();
+  }
+
+  @override
   Future<void> setMuted(int? textureId, bool muted) {
     // TODO: implement setMuted
     throw UnimplementedError();

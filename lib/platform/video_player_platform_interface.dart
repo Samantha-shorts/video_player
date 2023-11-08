@@ -53,6 +53,9 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
           int? textureId, VideoPlayerDataSource dataSource) =>
       throw UnimplementedError('setDataSource() has not been implemented.');
 
+  Future<void> setAutoLoop(int? textureId, bool autoLoop) =>
+      throw UnimplementedError('setAutoLoop() has not been implemented.');
+
   Future<void> play(int? textureId) =>
       throw UnimplementedError('play() has not been implemented.');
 
