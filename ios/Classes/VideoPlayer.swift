@@ -184,7 +184,9 @@ class VideoPlayer: NSObject {
     func sendEvent(_ eventType: PlatformEventType, _ params: [String: Any] = [:]) {
         var paramsWithEvent = params
         paramsWithEvent["event"] = eventType.rawValue
-        eventSink?(paramsWithEvent)
+        DispatchQueue.main.async { [weak self] in
+            self?.eventSink?(paramsWithEvent)
+        }
     }
 
     func addObservers(to item: AVPlayerItem) {
