@@ -10,7 +10,6 @@ import MediaPlayer
 
 class RemoteControlManager {
     private var remotePlayer: VideoPlayer?
-//    private let artworkManager = ArtworkManager(thumbnailRefreshSec: 60)
     private var togglePlayPauseCommandTarget: Any?
     private var playCommandTarget: Any?
     private var pauseCommandTarget: Any?
@@ -75,10 +74,12 @@ class RemoteControlManager {
         author: String?,
         imageUrl: String?
     ) {
+        if let remotePlayer = remotePlayer, remotePlayer != player {
+            disposePlayer(textureId: remotePlayer.textureId, player: remotePlayer)
+        }
         remotePlayer = player
         beginReceivingRemoteControlEvents()
         setupRemoteCommandNotification(
-            textureId: textureId,
             title: title,
             author: author,
             imageUrl: imageUrl
@@ -102,7 +103,7 @@ class RemoteControlManager {
     }
 
     private func setupRemoteCommandNotification(
-        textureId: Int, title: String?, author: String?, imageUrl: String?
+        title: String?, author: String?, imageUrl: String?
     ) {
         guard let player = remotePlayer, let duration = player.duration else {
             return
@@ -110,18 +111,14 @@ class RemoteControlManager {
         let positionInSeconds = CMTimeGetSeconds(player.currentTime)
         let durationInSeconds = CMTimeGetSeconds(duration)
 
-        var nowPlayingInfoDict: [String: Any] = [
+        let nowPlayingInfoDict: [String: Any] = [
             MPMediaItemPropertyArtist: author ?? "",
             MPMediaItemPropertyTitle: title ?? "",
             MPNowPlayingInfoPropertyElapsedPlaybackTime: positionInSeconds,
             MPMediaItemPropertyPlaybackDuration: durationInSeconds,
             MPNowPlayingInfoPropertyPlaybackRate: 1,
         ]
-//        artworkManager.fetchArtwork(textureId: textureId, player: player, imageUrl: imageUrl) {
-//            artwork in
-//            nowPlayingInfoDict[MPMediaItemPropertyArtwork] = artwork
-            MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfoDict
-//        }
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nowPlayingInfoDict
     }
 
     private func addPeriodicTimeObserver(
@@ -136,7 +133,8 @@ class RemoteControlManager {
             queue: .global()
         ) { [weak self] _ in
             self?.setupRemoteCommandNotification(
-                textureId: textureId, title: title, author: author, imageUrl: imageUrl)
+                title: title, author: author, imageUrl: imageUrl
+            )
         }
         timeObservers[textureId] = timeObserver
     }
@@ -149,10 +147,11 @@ class RemoteControlManager {
     }
 
     func disposePlayer(textureId: TextureId, player: VideoPlayer) {
-        remotePlayer = nil
-        endReceivingRemoteControlEvents()
+        if remotePlayer == player {
+            remotePlayer = nil
+            endReceivingRemoteControlEvents()
+            MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        }
         removePeriodicTimeObserver(textureId: textureId, player: player)
-//        artworkManager.removeCache(textureId: textureId)
-        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 }

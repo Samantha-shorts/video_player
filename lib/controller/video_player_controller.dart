@@ -198,6 +198,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     List<VideoPlayerSubtitlesSource>? subtitles,
     Map<String, String?>? headers,
     VideoPlayerNotificationConfiguration? notificationConfiguration,
+    bool disableRemoteControl = false,
   }) {
     return _setDataSource(
       VideoPlayerDataSource(
@@ -207,6 +208,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
         subtitles: subtitles,
         headers: headers,
         notificationConfiguration: notificationConfiguration,
+        disableRemoteControl: disableRemoteControl,
       ),
     );
   }

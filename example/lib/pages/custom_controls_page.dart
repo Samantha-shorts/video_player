@@ -14,7 +14,7 @@ class _CustomControlsPageState extends State<CustomControlsPage> {
   final controller = VideoPlayerController(
     configuration: VideoPlayerConfiguration(
       autoPlay: true,
-      hideControls: true,
+      hidesControls: true,
       controlsConfiguration: VideoPlayerControlsConfiguration(
         disableSeek: true,
         progressBarPlayedColor: Colors.yellow[600]!,

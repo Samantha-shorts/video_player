@@ -152,6 +152,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
           'notificationChannelName':
               dataSource.notificationConfiguration?.notificationChannelName,
           'activityName': dataSource.notificationConfiguration?.activityName,
+          'disableRemoteControl': dataSource.disableRemoteControl,
         };
       case VideoPlayerDataSourceType.offline:
         return {

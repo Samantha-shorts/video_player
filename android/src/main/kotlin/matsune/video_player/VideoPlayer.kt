@@ -62,6 +62,7 @@ internal class VideoPlayer(
     private var bitmap: Bitmap? = null
     private val workManager: WorkManager
     private val workerObserverMap: HashMap<UUID, Observer<WorkInfo?>>
+    var disableRemoteControl: Boolean = false
 
     var isMuted: Boolean
         get() = exoPlayer.volume == 0f

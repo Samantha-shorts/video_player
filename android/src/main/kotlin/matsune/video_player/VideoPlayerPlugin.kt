@@ -239,7 +239,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 result.success(null)
             }
             METHOD_PLAY -> {
-                if (isAndroidHigherM) {
+                if (isAndroidHigherM && !player.disableRemoteControl) {
                     setupNotification(flutterState.applicationContext, textureId, player)
                 }
                 player.play()
@@ -341,6 +341,8 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private fun setDataSource(call: MethodCall, textureId: Long, player: VideoPlayer) {
         val dataSource = call.argument<Map<String, Any?>>("dataSource")!!
         dataSources.put(textureId, dataSource)
+        val disableRemoteControl = DataSourceUtils.getParameter<Boolean>(dataSource, "disableRemoteControl", false)
+        player.disableRemoteControl = disableRemoteControl
         val offlineKey = DataSourceUtils.getParameter<String?>(dataSource, "offlineKey", null)
         if (offlineKey != null) {
             player.setOfflineDataSource(offlineKey)

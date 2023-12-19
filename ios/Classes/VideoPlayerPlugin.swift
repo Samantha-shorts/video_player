@@ -70,10 +70,7 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
     private let messenger: FlutterBinaryMessenger
     private var players: [TextureId: VideoPlayer] = [:]
     private var dataSources: [TextureId: DataSource] = [:]
-
-//    private let artworkManager = ArtworkManager(thumbnailRefreshSec: 60)
     private let remoteControlManager: RemoteControlManager
-
     private let downloader: Downloader
 
     init(registrar: FlutterPluginRegistrar) {
@@ -143,6 +140,9 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
             let dataSource = args["dataSource"] as! DataSource
             dataSources[textureId] = dataSource
 
+            if let disableRemoteControl = dataSource["disableRemoteControl"] as? Bool {
+                player.disableRemoteControl = disableRemoteControl
+            }
             if let key = dataSource["offlineKey"] as? String {
                 guard let path = DownloadPathManager.assetPath(forKey: key)
                 else {
@@ -194,17 +194,19 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
             result(nil)
         case .play:
             player.play()
-            let dataSource = dataSources[textureId]
-            let title = dataSource?["title"] as? String
-            let author = dataSource?["author"] as? String
-            let imageUrl = dataSource?["imageUrl"] as? String
-            remoteControlManager.setupRemoteNotification(
-                textureId: textureId,
-                player: player,
-                title: title,
-                author: author,
-                imageUrl: imageUrl
-            )
+            if !player.disableRemoteControl {
+                let dataSource = dataSources[textureId]
+                let title = dataSource?["title"] as? String
+                let author = dataSource?["author"] as? String
+                let imageUrl = dataSource?["imageUrl"] as? String
+                remoteControlManager.setupRemoteNotification(
+                    textureId: textureId,
+                    player: player,
+                    title: title,
+                    author: author,
+                    imageUrl: imageUrl
+                )
+            }
             result(nil)
         case .pause:
             player.pause()
@@ -215,7 +217,9 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 result(nil)
             }
         case .dispose:
-            remoteControlManager.disposePlayer(textureId: textureId, player: player)
+            if !player.disableRemoteControl {
+                remoteControlManager.disposePlayer(textureId: textureId, player: player)
+            }
             players.removeValue(forKey: textureId)
             player.dispose()
             if players.isEmpty {
@@ -370,7 +374,7 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
             name: "video_player_channel/videoEvents\(textureId)",
             binaryMessenger: messenger
         )
-        players[textureId] = VideoPlayer(eventChannel: eventChannel)
+        players[textureId] = VideoPlayer(textureId: textureId, eventChannel: eventChannel)
         return textureId
     }
 }

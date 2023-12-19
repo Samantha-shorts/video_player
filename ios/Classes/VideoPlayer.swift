@@ -33,6 +33,7 @@ class VideoPlayer: NSObject {
 
     private let eventChannel: FlutterEventChannel
     private var eventSink: FlutterEventSink?
+    let textureId: Int
     let player: AVPlayer
     let playerView: VideoPlayerView
     let fullscreenPlayerView: VideoPlayerView
@@ -81,9 +82,12 @@ class VideoPlayer: NSObject {
         player.currentItem?.duration
     }
     
-    var autoLoop: Bool = false
+    var autoLoop = false
+    
+    var disableRemoteControl = false
 
-    init(eventChannel: FlutterEventChannel) {
+    init(textureId: Int, eventChannel: FlutterEventChannel) {
+        self.textureId = textureId
         self.eventChannel = eventChannel
         self.player = AVPlayer()
         self.playerView = VideoPlayerView()

@@ -11,6 +11,7 @@ class VideoPlayerDataSource {
     this.headers,
     this.bufferingConfiguration = const VideoPlayerBufferingConfiguration(),
     this.notificationConfiguration,
+    this.disableRemoteControl = false,
   });
 
   /// Describes the type of data source this [VideoPlayerController]
@@ -41,6 +42,8 @@ class VideoPlayerDataSource {
 
   ///Configuration of remote controls notification
   final VideoPlayerNotificationConfiguration? notificationConfiguration;
+
+  final bool disableRemoteControl;
 }
 
 /// The way in which the video was originally loaded.

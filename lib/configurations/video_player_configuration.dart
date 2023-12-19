@@ -34,7 +34,7 @@ class VideoPlayerConfiguration {
 
   String? Function(AbrTrack track)? quarityTrackSelectable;
 
-  final bool hideControls;
+  final bool hidesControls;
 
   VideoPlayerConfiguration({
     this.aspectRatio,
@@ -52,7 +52,7 @@ class VideoPlayerConfiguration {
     this.subtitlesConfiguration = const VideoPlayerSubtitlesConfiguration(),
     this.controlsConfiguration = const VideoPlayerControlsConfiguration(),
     this.quarityTrackSelectable,
-    this.hideControls = false,
+    this.hidesControls = false,
   });
 
   VideoPlayerConfiguration copyWith({
@@ -66,6 +66,7 @@ class VideoPlayerConfiguration {
     VideoPlayerSubtitlesConfiguration? subtitlesConfiguration,
     VideoPlayerControlsConfiguration? controlsConfiguration,
     bool? hidesControls,
+    bool? remoteControlEnable,
   }) {
     return VideoPlayerConfiguration(
       autoPlay: autoPlay ?? this.autoPlay,
@@ -82,7 +83,7 @@ class VideoPlayerConfiguration {
           subtitlesConfiguration ?? this.subtitlesConfiguration,
       controlsConfiguration:
           controlsConfiguration ?? this.controlsConfiguration,
-      hideControls: hidesControls ?? this.hideControls,
+      hidesControls: hidesControls ?? this.hidesControls,
     );
   }
 }
