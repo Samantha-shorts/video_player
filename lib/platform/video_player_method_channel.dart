@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/configurations/configurations.dart';
 import 'package:video_player/controller/controller.dart';
@@ -120,14 +122,23 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
 
   @override
   Widget buildView(int? textureId, bool isFullscreen) {
+    const viewType = "matsune.video_player/VideoPlayerView";
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       return UiKitView(
-        viewType: 'matsune/video_player',
+        viewType: viewType,
         creationParamsCodec: const StandardMessageCodec(),
         creationParams: {'textureId': textureId!, 'isFullscreen': isFullscreen},
       );
     } else {
-      return Texture(textureId: textureId!);
+      final Map<String, dynamic> creationParams = <String, dynamic>{
+        "textureId": textureId
+      };
+      return AndroidView(
+        viewType: viewType,
+        layoutDirection: TextDirection.ltr,
+        creationParams: creationParams,
+        creationParamsCodec: const StandardMessageCodec(),
+      );
     }
   }
 

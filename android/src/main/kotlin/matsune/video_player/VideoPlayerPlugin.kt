@@ -4,18 +4,11 @@ import android.app.Activity
 import android.app.PictureInPictureParams
 import android.content.Context
 import android.content.pm.PackageManager
-import android.net.Uri
 import android.os.Build
-import android.os.Handler
-import android.os.Looper
-import android.util.Log
 import android.util.LongSparseArray
 import androidx.annotation.RequiresApi
 import androidx.media3.datasource.cache.*
-import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.offline.*
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import androidx.media3.exoplayer.source.MediaSource
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -26,7 +19,6 @@ import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.view.TextureRegistry
-
 
 class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private val videoPlayers = LongSparseArray<VideoPlayer>()
@@ -47,10 +39,11 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 true
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        binding.platformViewRegistry.registerViewFactory(VIEW_TYPE_ID, VideoPlayerViewFactory(videoPlayers))
         flutterState = FlutterState(
             binding.applicationContext,
             binding.binaryMessenger,
-            binding.textureRegistry
+            binding.textureRegistry,
         )
         flutterState?.startListening(this)
 
@@ -130,9 +123,9 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         dataSources.clear()
     }
 
+
     private fun createPlayer(flutterState: FlutterState, call: MethodCall): Long {
-        val textureEntry = flutterState.textureRegistry.createSurfaceTexture()
-        val textureId = textureEntry.id()
+        val textureId = getNextTextureId()
         val eventChannel =
             EventChannel(flutterState.binaryMessenger, EVENTS_CHANNEL + textureId)
         var customDefaultLoadControl = CustomDefaultLoadControl()
@@ -153,7 +146,6 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             VideoPlayer(
                 flutterState.applicationContext,
                 eventChannel,
-                textureEntry,
                 customDefaultLoadControl,
             )
         videoPlayers.put(textureId, player)
@@ -377,7 +369,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private class FlutterState(
         val applicationContext: Context,
         val binaryMessenger: BinaryMessenger,
-        val textureRegistry: TextureRegistry
+        val textureRegistry: TextureRegistry,
     ) {
         private val methodChannel: MethodChannel = MethodChannel(binaryMessenger, CHANNEL)
 
@@ -391,7 +383,14 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     }
 
     companion object {
-        private const val TAG = "VideoPlayerPlugin"
+        private var nextTextureId: Long = 0
+        fun getNextTextureId(): Long {
+            return ++nextTextureId
+        }
+
+        private const val VIEW_TYPE_ID = "matsune.video_player/VideoPlayerView"
+
+        const val TAG = "VideoPlayerPlugin"
         private const val CHANNEL = "video_player"
         private const val EVENTS_CHANNEL = "video_player_channel/videoEvents"
         private const val DOWNLOAD_EVENTS_CHANNEL = "video_player_channel/downloadEvents"

@@ -62,7 +62,7 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
         let channel = FlutterMethodChannel(name: "video_player", binaryMessenger: registrar.messenger())
         let instance = VideoPlayerPlugin(registrar: registrar)
         registrar.addMethodCallDelegate(instance, channel: channel)
-        registrar.register(instance, withId: "matsune/video_player")
+        registrar.register(instance, withId: "matsune.video_player/VideoPlayerView")
     }
 
     private var nextTextureId: Int = 1
