@@ -4,7 +4,7 @@ import android.content.Context
 import android.util.Log
 import android.view.SurfaceView
 
-internal class VideoPlayerSurfaceView(context: Context): SurfaceView(context) {
+class VideoPlayerSurfaceView(context: Context): SurfaceView(context) {
     private var videoWidth: Int = 0
     private var videoHeight: Int = 0
 

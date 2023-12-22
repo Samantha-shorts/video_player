@@ -6,8 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import androidx.annotation.RequiresApi
 
-
-internal class PipListener {
+class PipListener {
     private var isInPip = false
     private var pipHandler: Handler? = null
     private var pipRunnable: Runnable? = null

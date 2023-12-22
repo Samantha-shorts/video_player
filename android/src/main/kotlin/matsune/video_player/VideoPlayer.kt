@@ -34,7 +34,7 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.EventChannel.EventSink
 import java.util.*
 
-internal class VideoPlayer(
+class VideoPlayer(
     private val context: Context,
     private val eventChannel: EventChannel,
     private val customDefaultLoadControl: CustomDefaultLoadControl
