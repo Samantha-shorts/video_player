@@ -300,6 +300,14 @@ class VideoPlayer(
         sendEvent(EVENT_PIP_CHANGED, mapOf("isPip" to isPip))
     }
 
+    fun expand() {
+        surfaceView?.expand()
+    }
+
+    fun shrink() {
+        surfaceView?.shrink()
+    }
+
     @RequiresApi(Build.VERSION_CODES.M)
     fun setupMediaSession(context: Context): MediaSessionCompat {
         mediaSession?.release()
