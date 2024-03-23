@@ -9,6 +9,7 @@ enum VideoPlayerEventType {
   positionChanged,
   bufferChanged,
   pipChanged,
+  expandChanged,
   muteChanged,
   fullscreenChanged,
   ended,
@@ -29,6 +30,7 @@ class VideoPlayerValue {
     this.isMuted = false,
     this.isFullscreen = false,
     this.isPip = false,
+    this.isExpanded = false,
     this.errorDescription,
   });
 
@@ -58,6 +60,8 @@ class VideoPlayerValue {
 
   final bool isPip;
 
+  final bool isExpanded;
+
   /// A description of the error if present.
   ///
   /// If [hasError] is false this is [null].
@@ -80,6 +84,7 @@ class VideoPlayerValue {
     bool? isMuted,
     bool? isFullscreen,
     bool? isPip,
+    bool? isExpanded,
     String? errorDescription,
   }) {
     return VideoPlayerValue(
@@ -93,6 +98,7 @@ class VideoPlayerValue {
       isMuted: isMuted ?? this.isMuted,
       isFullscreen: isFullscreen ?? this.isFullscreen,
       isPip: isPip ?? this.isPip,
+      isExpanded: isExpanded ?? this.isExpanded,
       errorDescription: errorDescription ?? this.errorDescription,
     );
   }
@@ -110,6 +116,7 @@ class VideoPlayerValue {
         'isMuted: $isMuted, '
         'isFullscreen: $isFullscreen, '
         'isPip: $isPip, '
+        'isExpanded: $isExpanded, '
         'buffered: ${buffered ?? '[]'}, '
         'errorDescription: $errorDescription)';
   }

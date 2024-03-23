@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/controller/controller.dart';
 import 'package:video_player/controls/controls.dart';
 import 'package:video_player/utils.dart';
+import 'package:video_player/controls/expand_shrink_button.dart';
 
 class MaterialControls extends StatefulWidget {
   const MaterialControls({Key? key}) : super(key: key);
@@ -188,8 +189,9 @@ class _MaterialControlsState
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
+          if (lastValue?.isFullscreen == true) const ExpandShrinkButton(),
           const _PipButton(),
-          MoreButton(),
+          const MoreButton(),
         ],
       ),
     );
