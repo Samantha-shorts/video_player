@@ -185,6 +185,14 @@ class VideoPlayer: NSObject {
         }
     }
 
+    func shrink() {
+        fullscreenPlayerView.playerLayer.videoGravity = .resizeAspect
+    }
+
+    func expand() {
+        fullscreenPlayerView.playerLayer.videoGravity = .resizeAspectFill
+    }
+
     func sendEvent(_ eventType: PlatformEventType, _ params: [String: Any] = [:]) {
         var paramsWithEvent = params
         paramsWithEvent["event"] = eventType.rawValue

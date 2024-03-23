@@ -28,6 +28,8 @@ enum FlutterMethod: String {
     case cancelDownload
     case deleteOfflineAsset
     case getDownloads
+    case shrink
+    case expand
 }
 
 typealias TextureId = Int
@@ -255,6 +257,12 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
         case .selectLegibleMediaGroup:
             let index = args["index"] as? Int
             player.selectLegibleMediaGroup(at: index)
+            result(nil)
+        case .shrink:
+            player.shrink()
+            result(nil)
+        case .expand:
+            player.expand()
             result(nil)
         default:
             result(FlutterMethodNotImplemented)

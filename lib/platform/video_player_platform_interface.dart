@@ -125,4 +125,10 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
 
   Future<List<Download>> getDownloads() =>
       throw UnimplementedError('getDownloads() has not been implemented.');
+
+  Future<void> shrink(int? textureId) =>
+      throw UnimplementedError('shrink() has not been implemented.');
+
+  Future<void> expand(int? textureId) =>
+      throw UnimplementedError('expand() has not been implemented.');
 }
