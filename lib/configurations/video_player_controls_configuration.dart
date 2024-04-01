@@ -59,6 +59,12 @@ class VideoPlayerControlsConfiguration {
   ///Icon of the PiP menu
   final IconData pipMenuIcon;
 
+  ///Icon of the expand menu
+  final IconData expandIcon;
+
+  ///Icon of the shrink menu
+  final IconData shrinkIcon;
+
   ///Icon of the playback speed menu item from overflow menu
   final IconData playbackSpeedIcon;
 
@@ -117,6 +123,8 @@ class VideoPlayerControlsConfiguration {
     this.controlBarHeight = 48.0,
     this.overflowMenuIcon = Icons.more_vert_outlined,
     this.pipMenuIcon = Icons.picture_in_picture_outlined,
+    this.expandIcon = Icons.open_in_full_outlined,
+    this.shrinkIcon = Icons.close_fullscreen_outlined,
     this.playbackSpeedIcon = Icons.shutter_speed_outlined,
     this.qualitiesIcon = Icons.hd_outlined,
     this.subtitlesIcon = Icons.closed_caption_outlined,

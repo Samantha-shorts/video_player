@@ -293,6 +293,14 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 player.setTrackParameters(width, height, bitrate)
                 result.success(null)
             }
+            METHOD_EXPAND -> {
+                player.expand()
+                result.success(null)
+            }
+            METHOD_SHRINK -> {
+                player.shrink()
+                result.success(null)
+            }
             else -> {
                 result.notImplemented()
             }
@@ -420,6 +428,8 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         private const val METHOD_RESUME_DOWNLOAD = "resumeDownload"
         private const val METHOD_CANCEL_DOWNLOAD = "cancelDownload"
         private const val METHOD_GET_DOWNLOADS = "getDownloads"
+        private const val METHOD_EXPAND = "expand"
+        private const val METHOD_SHRINK = "shrink"
 
         private const val DOWNLOAD_STATE_RUNNING = "running"
         private const val DOWNLOAD_STATE_SUSPENDED = "suspended"

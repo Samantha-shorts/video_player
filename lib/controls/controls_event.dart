@@ -11,6 +11,7 @@ enum ControlsEventType {
   onTapSubtitlesMenu,
   onTapQualityMenu,
   onTapPip,
+  onTapExpandShrink,
   onTapFullscreen,
 }
 
@@ -19,6 +20,7 @@ class ControlsEvent {
     required this.eventType,
     this.muteOn,
     this.pipEnabled,
+    this.expanded,
     this.fullscreenEnabled,
     this.speedValue,
   });
@@ -26,6 +28,7 @@ class ControlsEvent {
   final ControlsEventType eventType;
   final bool? muteOn;
   final bool? pipEnabled;
+  final bool? expanded;
   final bool? fullscreenEnabled;
   final double? speedValue;
 
@@ -36,6 +39,7 @@ class ControlsEvent {
         'eventType: $eventType, '
         'muteOn: $muteOn, '
         'pipEnabled: $pipEnabled, '
+        'expanded: $expanded, '
         'fullscreenEnabled: $fullscreenEnabled, '
         'speedValue: $speedValue'
         ')';

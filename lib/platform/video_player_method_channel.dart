@@ -422,4 +422,20 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
       );
     }).toList();
   }
+
+  @override
+  Future<void> shrink(int? textureId) async {
+    await methodChannel.invokeMethod(
+      'shrink',
+      <String, dynamic>{'textureId': textureId},
+    );
+  }
+
+  @override
+  Future<void> expand(int? textureId) async {
+    await methodChannel.invokeMethod(
+      'expand',
+      <String, dynamic>{'textureId': textureId},
+    );
+  }
 }
