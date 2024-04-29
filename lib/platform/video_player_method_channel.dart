@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -133,12 +132,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
       final Map<String, dynamic> creationParams = <String, dynamic>{
         "textureId": textureId
       };
-      return AndroidView(
-        viewType: viewType,
-        layoutDirection: TextDirection.ltr,
-        creationParams: creationParams,
-        creationParamsCodec: const StandardMessageCodec(),
-      );
+      return Texture(textureId: textureId!);
     }
   }
 

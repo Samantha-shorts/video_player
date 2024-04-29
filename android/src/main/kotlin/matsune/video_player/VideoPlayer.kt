@@ -33,10 +33,12 @@ import androidx.work.*
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.EventChannel.EventSink
 import java.util.*
+import io.flutter.view.TextureRegistry.SurfaceTextureEntry
 
 class VideoPlayer(
     private val context: Context,
     private val eventChannel: EventChannel,
+    private val textureEntry: SurfaceTextureEntry,
     private val customDefaultLoadControl: CustomDefaultLoadControl
 ) {
 
@@ -45,12 +47,7 @@ class VideoPlayer(
     private val eventSink = QueuingEventSink()
     private val bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
     private val trackSelector = DefaultTrackSelector(context, AdaptiveTrackSelection.Factory())
-    var surfaceView: VideoPlayerSurfaceView? = null
-        set(value) {
-            field = value
-            exoPlayer.setVideoSurfaceView(value)
-            resizeSurfaceView()
-        }
+    private var surface: Surface? = null
     private var isInitialized = false
     private var lastSendBufferedPosition = 0L
     private var mediaSession: MediaSessionCompat? = null
@@ -101,7 +98,7 @@ class VideoPlayer(
                 .setLoadControl(loadControl)
                 .setBandwidthMeter(bandwidthMeter)
                 .build()
-        setupVideoPlayer(eventChannel)
+        setupVideoPlayer(eventChannel, textureEntry)
         workManager = WorkManager.getInstance(context)
         workerObserverMap = HashMap()
         runnable =
@@ -123,10 +120,12 @@ class VideoPlayer(
             exoPlayer.stop()
         }
         eventChannel.setStreamHandler(null)
+        textureEntry.release()
+        surface?.release()
         exoPlayer.release()
     }
 
-    private fun setupVideoPlayer(eventChannel: EventChannel) {
+    private fun setupVideoPlayer(eventChannel: EventChannel, textureEntry: SurfaceTextureEntry) {
         eventChannel.setStreamHandler(
             object : EventChannel.StreamHandler {
                 override fun onListen(o: Any?, sink: EventSink) {
@@ -138,6 +137,8 @@ class VideoPlayer(
                 }
             }
         )
+        surface = Surface(textureEntry.surfaceTexture())
+        exoPlayer.setVideoSurface(surface)
         exoPlayer.setAudioAttributes(
             AudioAttributes.Builder().setContentType(AUDIO_CONTENT_TYPE_MOVIE).build(),
             true
@@ -211,21 +212,8 @@ class VideoPlayer(
             }
             width?.let { event["width"] = it }
             height?.let { event["height"] = it }
-            resizeSurfaceView()
         }
         sendEvent(EVENT_INITIALIZED, event)
-    }
-
-    private val videoWidth: Int?
-        get() = exoPlayer.videoFormat?.width
-
-    private val videoHeight: Int?
-        get() = exoPlayer.videoFormat?.height
-
-    private fun resizeSurfaceView() {
-        if (isInitialized && videoWidth != null && videoHeight != null) {
-            surfaceView?.setVideoSize(videoWidth!!, videoHeight!!)
-        }
     }
 
     private fun sendEvent(event: String, params: Map<String, Any>? = null) {
@@ -298,14 +286,6 @@ class VideoPlayer(
 
     fun onPictureInPictureStatusChanged(isPip: Boolean) {
         sendEvent(EVENT_PIP_CHANGED, mapOf("isPip" to isPip))
-    }
-
-    fun expand() {
-        surfaceView?.expand()
-    }
-
-    fun shrink() {
-        surfaceView?.shrink()
     }
 
     @RequiresApi(Build.VERSION_CODES.M)

@@ -36,10 +36,9 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
     private val isPictureInPictureSupported: Boolean
         get() = isAndroidHigherO && activity?.packageManager?.hasSystemFeature(PackageManager.FEATURE_PICTURE_IN_PICTURE) ==
-                true
+            true
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        binding.platformViewRegistry.registerViewFactory(VIEW_TYPE_ID, VideoPlayerViewFactory(videoPlayers))
         flutterState = FlutterState(
             binding.applicationContext,
             binding.binaryMessenger,
@@ -123,9 +122,9 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         dataSources.clear()
     }
 
-
     private fun createPlayer(flutterState: FlutterState, call: MethodCall): Long {
-        val textureId = getNextTextureId()
+        val textureEntry = flutterState.textureRegistry.createSurfaceTexture()
+        val textureId = textureEntry.id()
         val eventChannel =
             EventChannel(flutterState.binaryMessenger, EVENTS_CHANNEL + textureId)
         var customDefaultLoadControl = CustomDefaultLoadControl()
@@ -146,6 +145,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             VideoPlayer(
                 flutterState.applicationContext,
                 eventChannel,
+                textureEntry,
                 customDefaultLoadControl,
             )
         videoPlayers.put(textureId, player)
@@ -293,14 +293,8 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 player.setTrackParameters(width, height, bitrate)
                 result.success(null)
             }
-            METHOD_EXPAND -> {
-                player.expand()
-                result.success(null)
-            }
-            METHOD_SHRINK -> {
-                player.shrink()
-                result.success(null)
-            }
+            METHOD_EXPAND -> {}
+            METHOD_SHRINK -> {}
             else -> {
                 result.notImplemented()
             }
