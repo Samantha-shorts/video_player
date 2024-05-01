@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/configurations/configurations.dart';
 import 'package:video_player/controller/controller.dart';
+import 'package:video_player/fullscreen/fullscreen_video_page.dart';
 import 'package:video_player/player/player.dart';
 
 ///Widget which uses provided controller to render video player.
@@ -149,31 +150,18 @@ class _VideoPlayerState extends State<VideoPlayer> {
     if (context.mounted) Navigator.of(context, rootNavigator: true).push(route);
   }
 
-  Widget _buildFullScreenVideo(
-    BuildContext context,
-    Animation<double> animation,
-    VideoPlayerControllerProvider controllerProvider,
-  ) {
-    return Scaffold(
-      resizeToAvoidBottomInset: false,
-      body: Container(
-        alignment: Alignment.center,
-        color: Colors.black,
-        child: controllerProvider,
-      ),
-    );
-  }
-
   AnimatedWidget _defaultRoutePageBuilder(
     BuildContext context,
     Animation<double> animation,
     Animation<double> secondaryAnimation,
-    VideoPlayerControllerProvider controllerProvider,
   ) {
     return AnimatedBuilder(
       animation: animation,
       builder: (BuildContext context, Widget? child) {
-        return _buildFullScreenVideo(context, animation, controllerProvider);
+        return VideoPlayerControllerProvider(
+          controller: widget.controller,
+          child: const FullscreenVideoPage(),
+        );
       },
     );
   }
@@ -183,16 +171,10 @@ class _VideoPlayerState extends State<VideoPlayer> {
     Animation<double> animation,
     Animation<double> secondaryAnimation,
   ) {
-    final controllerProvider = VideoPlayerControllerProvider(
-      controller: widget.controller,
-      child: _buildPlayer(),
-    );
-
     return _defaultRoutePageBuilder(
       context,
       animation,
       secondaryAnimation,
-      controllerProvider,
     );
   }
 
