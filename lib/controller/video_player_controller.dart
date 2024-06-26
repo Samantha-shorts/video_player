@@ -377,4 +377,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     value = value.copyWith(playbackRate: rate);
     return VideoPlayerPlatform.instance.setPlaybackRate(textureId, rate);
   }
+
+  Future<double> getVideoResolution() async =>
+      await VideoPlayerPlatform.instance.getVideoResolution(_textureId);
 }

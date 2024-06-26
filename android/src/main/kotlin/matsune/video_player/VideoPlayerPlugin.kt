@@ -295,6 +295,10 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             }
             METHOD_EXPAND -> {}
             METHOD_SHRINK -> {}
+            METHOD_GET_VIDEO_RESOLUTION -> {
+                val resolution: Double = player.getVideoResolution()
+                result.success(resolution)
+            }
             else -> {
                 result.notImplemented()
             }
@@ -424,6 +428,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         private const val METHOD_GET_DOWNLOADS = "getDownloads"
         private const val METHOD_EXPAND = "expand"
         private const val METHOD_SHRINK = "shrink"
+        private const val METHOD_GET_VIDEO_RESOLUTION = "getVideoResolution"
 
         private const val DOWNLOAD_STATE_RUNNING = "running"
         private const val DOWNLOAD_STATE_SUSPENDED = "suspended"
