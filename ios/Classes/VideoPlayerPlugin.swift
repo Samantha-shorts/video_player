@@ -30,7 +30,8 @@ enum FlutterMethod: String {
     case getDownloads
     case shrink
     case expand
-    case getVideoResolution
+    case getCurrentVideoResolution
+    case getCurrentVideoFrameRate
 }
 
 typealias TextureId = Int
@@ -265,9 +266,12 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
         case .expand:
             player.expand()
             result(nil)
-        case .getVideoResolution:
-            let resolution = player.getVideoResolution()
+        case .getCurrentVideoResolution:
+            let resolution = player.getCurrentVideoResolution()
             result(resolution)
+        case .getCurrentVideoFrameRate:
+            let frameRate = player.getCurrentVideoFrameRate()
+            result(frameRate)
         default:
             result(FlutterMethodNotImplemented)
         }

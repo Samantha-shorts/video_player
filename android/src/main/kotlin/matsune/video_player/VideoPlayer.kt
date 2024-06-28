@@ -288,7 +288,7 @@ class VideoPlayer(
         sendEvent(EVENT_PIP_CHANGED, mapOf("isPip" to isPip))
     }
 
-    fun getVideoResolution(): Double {
+    fun getCurrentVideoResolution(): Double {
         val currentTracks = exoPlayer.currentTracks
         for (group in currentTracks.groups) {
             for (trackIndex in 0 until group.length) {
@@ -299,6 +299,11 @@ class VideoPlayer(
             }
         }
         return 0.0
+    }
+
+    fun getCurrentVideoFrameRate(): Double {
+        val videoFormat = exoPlayer.videoFormat
+        return videoFormat?.frameRate?.toDouble() ?: 0.0
     }
 
     @RequiresApi(Build.VERSION_CODES.M)

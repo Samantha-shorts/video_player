@@ -434,9 +434,17 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
   }
 
   @override
-  Future<double> getVideoResolution(int? textureId) async {
+  Future<double> getCurrentVideoResolution(int? textureId) async {
     return await methodChannel.invokeMethod(
-      'getVideoResolution',
+      'getCurrentVideoResolution',
+      <String, dynamic>{'textureId': textureId},
+    );
+  }
+
+  @override
+  Future<double> getCurrentVideoFrameRate(int? textureId) async {
+    return await methodChannel.invokeMethod(
+      'getCurrentVideoFrameRate',
       <String, dynamic>{'textureId': textureId},
     );
   }
