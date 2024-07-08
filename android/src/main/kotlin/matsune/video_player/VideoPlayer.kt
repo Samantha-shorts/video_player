@@ -288,6 +288,24 @@ class VideoPlayer(
         sendEvent(EVENT_PIP_CHANGED, mapOf("isPip" to isPip))
     }
 
+    fun getCurrentVideoResolution(): Double {
+        val currentTracks = exoPlayer.currentTracks
+        for (group in currentTracks.groups) {
+            for (trackIndex in 0 until group.length) {
+                val format = group.getTrackFormat(trackIndex)
+                if (format.sampleMimeType?.startsWith("video") == true) {
+                    return format.height.toDouble()
+                }
+            }
+        }
+        return 0.0
+    }
+
+    fun getCurrentVideoFrameRate(): Double {
+        val videoFormat = exoPlayer.videoFormat
+        return videoFormat?.frameRate?.toDouble() ?: 0.0
+    }
+
     @RequiresApi(Build.VERSION_CODES.M)
     fun setupMediaSession(context: Context): MediaSessionCompat {
         mediaSession?.release()

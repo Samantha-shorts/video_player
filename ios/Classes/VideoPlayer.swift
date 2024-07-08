@@ -193,6 +193,26 @@ class VideoPlayer: NSObject {
         fullscreenPlayerView.playerLayer.videoGravity = .resizeAspectFill
     }
 
+    func getCurrentVideoResolution() -> CGFloat {
+        guard let videoTrack = player.currentItem?.tracks.compactMap { $0.assetTrack }.filter { $0.mediaType == .video }.first else {
+            return 0
+        }
+
+        let naturalSize = videoTrack.naturalSize
+        let preferredTransform = videoTrack.preferredTransform
+        let realSize = naturalSize.applying(preferredTransform)
+
+        return abs(realSize.height)
+    }
+
+    func getCurrentVideoFrameRate() -> Float {
+        guard let track = player.currentItem?.tracks.first(where: { $0.assetTrack?.mediaType == .video }) else {
+            return 0
+        }
+        
+        return track.currentVideoFrameRate
+    }
+
     func sendEvent(_ eventType: PlatformEventType, _ params: [String: Any] = [:]) {
         var paramsWithEvent = params
         paramsWithEvent["event"] = eventType.rawValue
