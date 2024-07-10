@@ -97,6 +97,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     _textureId =
         await VideoPlayerPlatform.instance.create(bufferingConfiguration);
     tracksController.textureId = _textureId;
+    setPlaybackRate(configuration.initialPlayBackSpeedRate);
     _createCompleter.complete(null);
 
     void eventListener(PlatformEvent event) {
@@ -329,7 +330,10 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   }
 
   void expand() {
-    if (!value.initialized || _isDisposed || !value.isFullscreen || value.isExpanded) return;
+    if (!value.initialized ||
+        _isDisposed ||
+        !value.isFullscreen ||
+        value.isExpanded) return;
     VideoPlayerPlatform.instance.expand(_textureId);
     value = value.copyWith(
       eventType: VideoPlayerEventType.expandChanged,
@@ -338,7 +342,10 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   }
 
   void shrink() {
-    if (!value.initialized || _isDisposed || !value.isFullscreen || !value.isExpanded) return;
+    if (!value.initialized ||
+        _isDisposed ||
+        !value.isFullscreen ||
+        !value.isExpanded) return;
     VideoPlayerPlatform.instance.shrink(_textureId);
     value = value.copyWith(
       eventType: VideoPlayerEventType.expandChanged,
