@@ -36,6 +36,9 @@ class VideoPlayerConfiguration {
 
   final bool hidesControls;
 
+  ///The playback speed rate at which the video will start
+  final double initialPlayBackSpeedRate;
+
   VideoPlayerConfiguration({
     this.aspectRatio,
     this.autoPlay = false,
@@ -53,6 +56,7 @@ class VideoPlayerConfiguration {
     this.controlsConfiguration = const VideoPlayerControlsConfiguration(),
     this.quarityTrackSelectable,
     this.hidesControls = false,
+    this.initialPlayBackSpeedRate = 1.0,
   });
 
   VideoPlayerConfiguration copyWith({
@@ -67,6 +71,7 @@ class VideoPlayerConfiguration {
     VideoPlayerControlsConfiguration? controlsConfiguration,
     bool? hidesControls,
     bool? remoteControlEnable,
+    double? initialPlayBackSpeedRate,
   }) {
     return VideoPlayerConfiguration(
       autoPlay: autoPlay ?? this.autoPlay,
@@ -84,6 +89,8 @@ class VideoPlayerConfiguration {
       controlsConfiguration:
           controlsConfiguration ?? this.controlsConfiguration,
       hidesControls: hidesControls ?? this.hidesControls,
+      initialPlayBackSpeedRate:
+          initialPlayBackSpeedRate ?? this.initialPlayBackSpeedRate,
     );
   }
 }
