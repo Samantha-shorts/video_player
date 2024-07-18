@@ -11,7 +11,8 @@ import 'video_player_subtitles_source_type.dart';
 enum SubtitlesStreamEvent {
   didReset,
   sourceListChanged,
-  selectedSourceChanged,
+  userSelectedSourceChanged,
+  systemSelectedSourceChanged,
 }
 
 class VideoPlayerSubtitlesController {
@@ -90,7 +91,7 @@ class VideoPlayerSubtitlesController {
     setSubtitleSource(index);
   }
 
-  void setSubtitleSource(int index) {
+  void setSubtitleSource(int index, {bool isUserAction = false}) {
     _subtitlesLines = [];
     if (-1 < index && index < subtitlesSourceList.length) {
       _selectedSubtitlesSourceIndex = index;
@@ -101,7 +102,13 @@ class VideoPlayerSubtitlesController {
     } else {
       _selectedSubtitlesSourceIndex = null;
     }
-    _subtitlesStreamController.add(SubtitlesStreamEvent.selectedSourceChanged);
+    if (isUserAction) {
+      _subtitlesStreamController
+          .add(SubtitlesStreamEvent.userSelectedSourceChanged);
+    } else {
+      _subtitlesStreamController
+          .add(SubtitlesStreamEvent.systemSelectedSourceChanged);
+    }
   }
 
   void loadAllSubtitleLines() async {
