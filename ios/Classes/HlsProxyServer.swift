@@ -115,7 +115,7 @@ class HlsProxyServer {
                 #EXT-X-MEDIA-SEQUENCE:0
                 #EXT-X-PLAYLIST-TYPE:VOD
 
-                #EXTINF:99999999,
+                #EXTINF:10,
                 \(url.absoluteString)
 
                 #EXT-X-ENDLIST
