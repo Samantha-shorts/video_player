@@ -226,7 +226,8 @@ class MoreButtonState extends VideoPlayerControllerState<MoreButton> {
     return MaterialClickableWidget(
       onTap: () {
         Navigator.of(context).pop();
-        controller.subtitlesController.setSubtitleSource(index);
+        controller.subtitlesController
+            .setSubtitleSource(index, isUserAction: true);
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
