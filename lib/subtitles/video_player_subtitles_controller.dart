@@ -98,7 +98,7 @@ class VideoPlayerSubtitlesController {
         null;
     if (!noneSubtitlesElementExists) {
       _subtitlesSourceList.add(VideoPlayerSubtitlesSource(
-          type: VideoPlayerSubtitlesSourceType.none));
+          type: VideoPlayerSubtitlesSourceType.none, name: 'None'));
     }
     final index = _subtitlesSourceList.indexWhere(
         (element) => element.type == VideoPlayerSubtitlesSourceType.none);
