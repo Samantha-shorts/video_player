@@ -285,7 +285,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     } else {
       subtitlesController.setAbrSubtitlesSourceList(abrData.subtitles ?? []);
     }
-    subtitlesController.selectDefaultSource();
 
     if (subtitlesController.isSelectedNone) return;
 
