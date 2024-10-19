@@ -204,7 +204,7 @@ class MoreButtonState extends VideoPlayerControllerState<MoreButton> {
         null;
     if (!noneSubtitlesElementExists) {
       subtitles.add(VideoPlayerSubtitlesSource(
-          type: VideoPlayerSubtitlesSourceType.none));
+          type: VideoPlayerSubtitlesSourceType.none, name: 'None'));
     }
 
     _showMaterialBottomSheet(

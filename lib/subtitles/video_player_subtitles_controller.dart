@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:video_player/abr/abr.dart';
 import 'package:video_player/utils.dart';
 
@@ -88,6 +89,19 @@ class VideoPlayerSubtitlesController {
       index = _subtitlesSourceList.indexWhere(
           (element) => element.type == VideoPlayerSubtitlesSourceType.none);
     }
+    setSubtitleSource(index);
+  }
+
+  void selectNone() {
+    final noneSubtitlesElementExists = _subtitlesSourceList.firstWhereOrNull(
+            (source) => source.type == VideoPlayerSubtitlesSourceType.none) !=
+        null;
+    if (!noneSubtitlesElementExists) {
+      _subtitlesSourceList.add(VideoPlayerSubtitlesSource(
+          type: VideoPlayerSubtitlesSourceType.none, name: 'None'));
+    }
+    final index = _subtitlesSourceList.indexWhere(
+        (element) => element.type == VideoPlayerSubtitlesSourceType.none);
     setSubtitleSource(index);
   }
 
