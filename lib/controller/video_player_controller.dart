@@ -165,10 +165,12 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
           errorDescription: e.message,
           errorDetails: e.details.toString(),
         );
-      } else {
+      } else if (object is PlayerException) {
+        final PlayerException e = object;
         value = value.copyWith(
           eventType: VideoPlayerEventType.error,
-          errorDescription: object.toString(),
+          errorDescription: e.errorDescription,
+          invalid: e.invalid,
         );
       }
       if (!_initializeCompleter.isCompleted) {
