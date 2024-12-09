@@ -33,6 +33,7 @@ class VideoPlayerValue {
     this.isExpanded = false,
     this.errorDescription,
     this.errorDetails,
+    this.invalid,
   });
 
   VideoPlayerEventType? eventType;
@@ -70,6 +71,8 @@ class VideoPlayerValue {
 
   final String? errorDetails;
 
+  final bool? invalid;
+
   bool get initialized => duration != null;
 
   bool get isFinished => position.inSeconds == duration?.inSeconds;
@@ -90,6 +93,7 @@ class VideoPlayerValue {
     bool? isExpanded,
     String? errorDescription,
     String? errorDetails,
+    bool? invalid,
   }) {
     return VideoPlayerValue(
       eventType: eventType ?? this.eventType,
@@ -104,7 +108,8 @@ class VideoPlayerValue {
       isPip: isPip ?? this.isPip,
       isExpanded: isExpanded ?? this.isExpanded,
       errorDescription: errorDescription ?? this.errorDescription,
-      errorDetails:  errorDetails ?? this.errorDetails,
+      errorDetails: errorDetails ?? this.errorDetails,
+      invalid: invalid ?? this.invalid,
     );
   }
 
@@ -124,6 +129,7 @@ class VideoPlayerValue {
         'isExpanded: $isExpanded, '
         'buffered: ${buffered ?? '[]'}, '
         'errorDescription: $errorDescription, '
-        'errorDetails: $errorDetails)';
+        'errorDetails: $errorDetails), '
+        'invalid: $invalid)';
   }
 }
