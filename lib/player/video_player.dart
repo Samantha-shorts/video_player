@@ -11,10 +11,12 @@ class VideoPlayer extends StatefulWidget {
     Key? key,
     required this.controller,
     this.noProvider = false,
+    this.onDispose,
   }) : super(key: key);
 
   final VideoPlayerController controller;
   final bool noProvider;
+  final VoidCallback? onDispose;
 
   @override
   State<VideoPlayer> createState() {
@@ -77,6 +79,8 @@ class _VideoPlayerState extends State<VideoPlayer> {
 
   @override
   void dispose() {
+    widget.onDispose?.call();
+
     if (_isFullscreen) {
       _navigatorState.maybePop();
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual,
