@@ -111,8 +111,10 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
         case PlatformEventType.ended:
           return PlatformEvent(eventType: eventType);
         case PlatformEventType.error:
-          final errorDescription = map['error'] as String;
-          throw errorDescription;
+          throw PlayerException(
+            errorDescription: map['error'] as String,
+            invalid: map['invalid'] as bool? ?? false,
+          );
         case PlatformEventType.unknown:
           throw "Unknown event type";
       }
