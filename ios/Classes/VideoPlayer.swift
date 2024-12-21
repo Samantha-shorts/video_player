@@ -252,7 +252,11 @@ class VideoPlayer: NSObject {
                             print(errorLog)
                         }
                     }
-                    self?.sendEvent(.error, ["error": item.error?.localizedDescription as Any])
+                    var invalid = false
+                    if let nsError = item.error as? NSError {
+                        invalid = nsError.code == NSURLErrorNoPermissionsToReadFile
+                    }
+                    self?.sendEvent(.error, ["error": item.error?.localizedDescription as Any, "invalid": invalid])
                 case .readyToPlay:
                     self?.readyToPlay()
                 default:
