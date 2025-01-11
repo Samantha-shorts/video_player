@@ -124,7 +124,8 @@ class VideoPlayer: NSObject {
         let rate = player.rate
         if let timeScale = player.currentItem?.asset.duration.timescale {
             let targetTime = CMTime(value: CMTimeValue(millis), timescale: timeScale)
-            player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak player] _ in
+            let tolerance = CMTime(value: 1, timescale: 600)
+            player.seek(to: targetTime, toleranceBefore: tolerance, toleranceAfter: tolerance) { [weak player] _ in
                 player?.rate = rate
                 result?()
             }
