@@ -122,12 +122,12 @@ class VideoPlayer: NSObject {
 
     func seekTo(millis: Int64, result: (() -> Void)? = nil) {
         let rate = player.rate
-        player.seek(
-            to: CMTimeMake(value: millis, timescale: 1000),
-            toleranceBefore: .zero, toleranceAfter: .zero
-        ) { [weak player] _ in
-            player?.rate = rate
-            result?()
+        if let timeScale = player.currentItem?.asset.duration.timescale {
+            let targetTime = CMTime(value: CMTimeValue(millis), timescale: timeScale)
+            player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak player] _ in
+                player?.rate = rate
+                result?()
+            }
         }
     }
 
