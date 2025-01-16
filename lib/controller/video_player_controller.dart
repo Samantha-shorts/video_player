@@ -384,8 +384,10 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   Future<void> disablePictureInPicture() =>
       VideoPlayerPlatform.instance.disablePictureInPicture(textureId);
 
-  Future<void> setMuted(bool muted) =>
-      VideoPlayerPlatform.instance.setMuted(textureId, muted);
+  Future<void> setMuted(bool isMuted) {
+    value = value.copyWith(isMuted: isMuted);
+    return VideoPlayerPlatform.instance.setMuted(textureId, isMuted);
+  }
 
   Future<void> setPlaybackRate(double rate) {
     value = value.copyWith(playbackRate: rate);
