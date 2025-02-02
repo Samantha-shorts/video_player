@@ -107,6 +107,12 @@ class VideoPlayer(
                     if (exoPlayer.isPlaying) {
                         sendPositionChanged()
                     }
+                    val bufferedPosition = exoPlayer.bufferedPosition
+                    if (bufferedPosition != lastSendBufferedPosition) {
+                        val range: List<Number?> = listOf(0, bufferedPosition)
+                        sendEvent(EVENT_BUFFER_CHANGED, mapOf("bufferRange" to range))
+                        lastSendBufferedPosition = bufferedPosition
+                    }
                     handler.postDelayed(this, 200)
                 }
             }
@@ -148,15 +154,7 @@ class VideoPlayer(
                 override fun onPlaybackStateChanged(playbackState: Int) {
                     when (playbackState) {
                         Player.STATE_BUFFERING -> {
-                            val bufferedPosition = exoPlayer.bufferedPosition ?: 0L
-                            if (bufferedPosition != lastSendBufferedPosition) {
-                                val range: List<Number?> = listOf(0, bufferedPosition)
-                                sendEvent(
-                                    EVENT_BUFFER_CHANGED,
-                                    mapOf("bufferRange" to listOf(range))
-                                )
-                                lastSendBufferedPosition = bufferedPosition
-                            }
+                            // no-op
                         }
                         Player.STATE_READY -> {
                             if (!isInitialized) {
