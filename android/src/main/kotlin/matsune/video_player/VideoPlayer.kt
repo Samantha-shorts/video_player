@@ -20,6 +20,7 @@ import androidx.lifecycle.Observer
 import androidx.media3.common.*
 import androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.*
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
@@ -175,7 +176,21 @@ class VideoPlayer(
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
-                    sendEvent(EVENT_ERROR, mapOf("error" to error.localizedMessage))
+                    var invalid = false;
+
+                    when (val cause = error.cause) {
+                        is HttpDataSource.InvalidResponseCodeException -> {
+                            val responseCode = cause.responseCode
+                            if (responseCode == 403) {
+                                invalid = true
+                            }
+                        }
+                    }
+
+                    sendEvent(
+                        EVENT_ERROR,
+                        mapOf("error" to error.localizedMessage, "invalid" to invalid)
+                    )
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
