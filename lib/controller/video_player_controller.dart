@@ -51,7 +51,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
 
   late Completer<void> _initializeCompleter;
 
-  final Completer<void> _createCompleter = Completer<void>();
+  final Completer<void> createCompleter = Completer<void>();
 
   final VideoPlayerSubtitlesController subtitlesController =
       VideoPlayerSubtitlesController();
@@ -98,7 +98,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
         await VideoPlayerPlatform.instance.create(bufferingConfiguration);
     tracksController.textureId = _textureId;
     setPlaybackRate(configuration.initialPlayBackSpeedRate);
-    _createCompleter.complete(null);
+    createCompleter.complete(null);
 
     void eventListener(PlatformEvent event) {
       if (_isDisposed) {
@@ -190,7 +190,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
 
   @override
   void dispose() async {
-    await _createCompleter.future;
+    await createCompleter.future;
     if (!_isDisposed) {
       _isDisposed = true;
       await _eventSubscription?.cancel();
@@ -247,7 +247,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     }
     bufferingConfiguration = dataSource.bufferingConfiguration;
     value = VideoPlayerValue();
-    if (!_createCompleter.isCompleted) await _createCompleter.future;
+    if (!createCompleter.isCompleted) await createCompleter.future;
     _initializeCompleter = Completer<void>();
 
     await VideoPlayerPlatform.instance.setDataSource(textureId, dataSource);
