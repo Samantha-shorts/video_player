@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/configurations/configurations.dart';
 import 'package:video_player/controller/controller.dart';
@@ -114,6 +113,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
           throw PlayerException(
             errorDescription: map['error'] as String,
             invalid: map['invalid'] as bool? ?? false,
+            code: map['code'] as int?,
           );
         case PlatformEventType.unknown:
           throw "Unknown event type";

@@ -49,10 +49,15 @@ class PlatformEvent {
 }
 
 class PlayerException implements Exception {
-  PlayerException({required this.errorDescription, required this.invalid});
+  PlayerException({
+    required this.errorDescription,
+    required this.invalid,
+    required this.code,
+  });
 
   final String errorDescription;
   final bool invalid;
+  final int? code;
 }
 
 /// Describes a discrete segment of time within a video using a [start] and

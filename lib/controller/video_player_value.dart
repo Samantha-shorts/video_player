@@ -34,6 +34,7 @@ class VideoPlayerValue {
     this.errorDescription,
     this.errorDetails,
     this.invalid,
+    this.errorCode,
   });
 
   VideoPlayerEventType? eventType;
@@ -73,6 +74,8 @@ class VideoPlayerValue {
 
   final bool? invalid;
 
+  final int? errorCode;
+
   bool get initialized => duration != null;
 
   bool get isFinished => position.inSeconds == duration?.inSeconds;
@@ -94,6 +97,7 @@ class VideoPlayerValue {
     String? errorDescription,
     String? errorDetails,
     bool? invalid,
+    int? errorCode,
   }) {
     return VideoPlayerValue(
       eventType: eventType ?? this.eventType,
@@ -110,6 +114,7 @@ class VideoPlayerValue {
       errorDescription: errorDescription ?? this.errorDescription,
       errorDetails: errorDetails ?? this.errorDetails,
       invalid: invalid ?? this.invalid,
+      errorCode: errorCode ?? this.errorCode,
     );
   }
 
@@ -130,6 +135,7 @@ class VideoPlayerValue {
         'buffered: ${buffered ?? '[]'}, '
         'errorDescription: $errorDescription, '
         'errorDetails: $errorDetails), '
-        'invalid: $invalid)';
+        'invalid: $invalid), '
+        'errorCode: $errorCode)';
   }
 }
