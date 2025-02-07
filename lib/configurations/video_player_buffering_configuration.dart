@@ -3,8 +3,8 @@
 class VideoPlayerBufferingConfiguration {
   ///Constants values are from the offical exoplayer documentation
   ///https://exoplayer.dev/doc/reference/constant-values.html#com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS
-  //常に確保しようとするバッファ量:30秒
-  static const defaultMinBufferMs = 30000;
+  //再生が進んでも常に確保しようとするバッファ量:60秒
+  static const defaultMinBufferMs = 60000;
   //最大バッファ量:100秒
   static const defaultMaxBufferMs = 100000;
   //再生開始時に必要なバッファ量:10秒
