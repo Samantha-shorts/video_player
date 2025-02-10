@@ -150,6 +150,7 @@ class VideoPlayer: NSObject {
     func setDataSource(url: URL, headers: [String: String]?) {
         let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers ?? [:]])
         let item = AVPlayerItem(asset: asset)
+        item.preferredForwardBufferDuration = 100 
         item.add(videoOutput)
         player.replaceCurrentItem(with: item)
         if let group = asset.mediaSelectionGroup(forMediaCharacteristic: .legible) {
