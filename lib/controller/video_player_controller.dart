@@ -369,6 +369,16 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     );
   }
 
+  void showLoading() {
+    if (!value.initialized || _isDisposed || value.isLoading) return;
+    value = value.copyWith(isLoading: true);
+  }
+
+  void hideLoading() {
+    if (!value.initialized || _isDisposed || !value.isLoading) return;
+    value = value.copyWith(isLoading: false);
+  }
+
   Future<bool> isPictureInPictureSupported() =>
       VideoPlayerPlatform.instance.isPictureInPictureSupported();
 
