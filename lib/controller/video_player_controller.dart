@@ -118,6 +118,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
             eventType: VideoPlayerEventType.isPlayingChanged,
             isPlaying: event.isPlaying,
           );
+          updateLoadingState();
           break;
         case PlatformEventType.positionChanged:
           value = value.copyWith(
@@ -302,6 +303,32 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     subtitlesController.loadAllSubtitleLines();
   }
 
+  void updateLoadingState() {
+    if (value.isLoading || value.isPlaying) {
+      value = value.copyWith(isLoading: false);
+    } else if (!value.isLoading && !value.isPlaying && checkBuffering()) {
+      value = value.copyWith(isLoading: true);
+    }
+  }
+
+  /// [true]:buffering, [false]:not buffering
+  bool checkBuffering() {
+    if (!value.initialized || _isDisposed || value.isFinished) {
+      return false;
+    }
+    if (value.buffered == null) {
+      return true;
+    }
+    if (value.buffered!.end == value.duration) {
+      return false;
+    }
+    if (value.buffered!.end - value.position <
+        const Duration(milliseconds: defaultBufferForPlaybackMs)) {
+      return true;
+    }
+    return false;
+  }
+
   Future<void> play() async {
     if (!value.initialized || _isDisposed || value.isPlaying) return;
     await VideoPlayerPlatform.instance.play(textureId);
@@ -367,16 +394,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       eventType: VideoPlayerEventType.fullscreenChanged,
       isFullscreen: false,
     );
-  }
-
-  void showLoading() {
-    if (!value.initialized || _isDisposed || value.isLoading) return;
-    value = value.copyWith(isLoading: true);
-  }
-
-  void hideLoading() {
-    if (!value.initialized || _isDisposed || !value.isLoading) return;
-    value = value.copyWith(isLoading: false);
   }
 
   Future<bool> isPictureInPictureSupported() =>
