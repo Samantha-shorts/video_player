@@ -1,5 +1,9 @@
 ///Configuration class used to setup better buffering experience or setup custom
 ///load settings. Currently used only in Android.
+
+///再生開始時、バッファ不足での停止後の再生再開に必要なバッファ量:10秒
+const defaultBufferForPlaybackMs = 10000;
+
 class VideoPlayerBufferingConfiguration {
   ///Constants values are from the offical exoplayer documentation
   ///https://exoplayer.dev/doc/reference/constant-values.html#com.google.android.exoplayer2.DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS
@@ -7,10 +11,6 @@ class VideoPlayerBufferingConfiguration {
   static const defaultMinBufferMs = 60000;
   //最大バッファ量:100秒
   static const defaultMaxBufferMs = 100000;
-  //再生開始時に必要なバッファ量:10秒
-  static const defaultBufferForPlaybackMs = 10000;
-  //再生停止した場合時に再開するのに必要なバッファ量:10秒
-  static const defaultBufferForPlaybackAfterRebufferMs = 10000;
 
   /// The default minimum duration of media that the player will attempt to
   /// ensure is buffered at all times, in milliseconds.
@@ -33,7 +33,6 @@ class VideoPlayerBufferingConfiguration {
     this.minBufferMs = defaultMinBufferMs,
     this.maxBufferMs = defaultMaxBufferMs,
     this.bufferForPlaybackMs = defaultBufferForPlaybackMs,
-    this.bufferForPlaybackAfterRebufferMs =
-        defaultBufferForPlaybackAfterRebufferMs,
+    this.bufferForPlaybackAfterRebufferMs = defaultBufferForPlaybackMs,
   });
 }
