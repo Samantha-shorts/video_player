@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:video_player/controller/controller.dart';
 import 'package:video_player/controls/controls.dart';
 import 'package:video_player/platform/platform.dart';
@@ -6,10 +7,12 @@ import 'package:video_player/subtitles/subtitles.dart';
 
 class VideoPlayerWithControls extends StatefulWidget {
   final VideoPlayerController? controller;
+  final bool isLoading;
 
   const VideoPlayerWithControls({
     Key? key,
     this.controller,
+    required this.isLoading,
   }) : super(key: key);
 
   @override
@@ -49,7 +52,9 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
         _Player(controller: videoPlayerController),
         const VideoPlayerSubtitlesDrawer(),
         if (widget.controller?.configuration.hidesControls != true)
-          const MaterialControls(),
+          MaterialControls(isLoading: widget.isLoading),
+        if (widget.isLoading)
+          const IgnorePointer(child: Center(child: CircularProgressIndicator()))
       ],
     );
   }

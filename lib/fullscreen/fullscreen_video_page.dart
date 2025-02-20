@@ -6,7 +6,9 @@ import 'package:video_player/controller/video_player_value.dart';
 import 'package:video_player/player/video_player_with_controls.dart';
 
 class FullscreenVideoPage extends StatefulWidget {
-  const FullscreenVideoPage({super.key});
+  const FullscreenVideoPage({super.key, required this.isLoading});
+
+  final bool isLoading;
 
   @override
   State<FullscreenVideoPage> createState() => FullscreenVideoPageState();
@@ -52,6 +54,7 @@ class FullscreenVideoPageState
   Widget _buildPlayer() {
     return VideoPlayerWithControls(
       controller: controller,
+      isLoading: widget.isLoading,
     );
   }
 }
