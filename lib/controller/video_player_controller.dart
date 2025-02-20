@@ -316,10 +316,13 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     if (!value.initialized || _isDisposed || value.isFinished) {
       return false;
     }
-    if (value.buffered == null) {
+    if (value.buffered == null || value.duration == null) {
       return true;
     }
-    if (value.buffered!.end == value.duration) {
+    if (value.duration! - value.buffered!.end < Duration(seconds: 1)) {
+      return false;
+    }
+    if (value.duration! - value.position < Duration(seconds: 1)) {
       return false;
     }
     if (value.buffered!.end - value.position <

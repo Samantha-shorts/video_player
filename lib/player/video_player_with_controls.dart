@@ -52,7 +52,7 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
         _Player(controller: videoPlayerController),
         const VideoPlayerSubtitlesDrawer(),
         if (widget.controller?.configuration.hidesControls != true)
-          const MaterialControls(),
+          MaterialControls(isLoading: widget.isLoading),
         if (widget.isLoading)
           const IgnorePointer(child: Center(child: CircularProgressIndicator()))
       ],
