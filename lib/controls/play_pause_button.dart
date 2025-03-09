@@ -15,7 +15,7 @@ class PlayPauseButtonState extends VideoPlayerControllerState<PlayPauseButton> {
     return MaterialClickableWidget(
       onTap: () async {
         if (lastValue?.isPlaying == true) {
-          controller.pause();
+          controller.pause(isUserAction: true);
           controller.controlsEventStreamController
               .add(ControlsEvent(eventType: ControlsEventType.onTapPause));
         } else if (lastValue?.isFinished == true) {
