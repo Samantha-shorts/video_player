@@ -131,24 +131,18 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
           updateLoadingState();
           break;
         case PlatformEventType.positionChanged:
-          // if (_onSeeking) {
-          // print('[check]positionChanged (_onSeeking) ${_onSeeking}');
-          // print('[check]positionChanged (current position) ${event.position}');
-          // }
           if (_onSeeking && _positionChangedOnSeekingCount == 0) {
             _positionChangedOnSeekingCount++;
           } else if (_onSeeking && _positionChangedOnSeekingCount > 0) {
             _onSeeking = false;
             _positionChangedOnSeekingCount = 0;
           }
-
           value = value.copyWith(
             eventType: VideoPlayerEventType.positionChanged,
             position: event.position,
           );
           break;
         case PlatformEventType.bufferChanged:
-          print('buffered: ${value.buffered?.end}');
           value = value.copyWith(
             eventType: VideoPlayerEventType.bufferChanged,
             buffered: event.buffered,
