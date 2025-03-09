@@ -453,7 +453,8 @@ class _SkipBackButtonState extends VideoPlayerControllerState<_SkipBackButton> {
                     milliseconds:
                         controlsConfiguration.backwardSkipTimeInMilliseconds))
             .inMilliseconds;
-        controller.seekTo(Duration(milliseconds: max(skip, beginning)));
+        controller.seekTo(Duration(milliseconds: max(skip, beginning)),
+            isUserTrigger: true);
         widget.onClicked();
         controller.controlsEventStreamController
             .add(ControlsEvent(eventType: ControlsEventType.onTapSkipBack));
@@ -492,7 +493,8 @@ class _SkipForwardButtonState
                       controlsConfiguration.forwardSkipTimeInMilliseconds,
                 ))
             .inMilliseconds;
-        controller.seekTo(Duration(milliseconds: min(skip, end)));
+        controller.seekTo(Duration(milliseconds: min(skip, end)),
+            isUserTrigger: true);
         widget.onClicked();
         controller.controlsEventStreamController
             .add(ControlsEvent(eventType: ControlsEventType.onTapSkipForward));
@@ -519,7 +521,7 @@ class _ReplayButtonState extends VideoPlayerControllerState<_ReplayButton> {
     return MaterialClickableWidget(
       onTap: () async {
         if (lastValue?.isPlaying == true) {
-          controller.pause();
+          controller.pause(isUserAction: true);
           controller.controlsEventStreamController
               .add(ControlsEvent(eventType: ControlsEventType.onTapPause));
         } else if (lastValue?.isFinished == true) {
