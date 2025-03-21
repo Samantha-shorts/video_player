@@ -54,7 +54,14 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
         if (widget.controller?.configuration.hidesControls != true)
           MaterialControls(isLoading: widget.isLoading),
         if (widget.isLoading)
-          const IgnorePointer(child: Center(child: CircularProgressIndicator()))
+          IgnorePointer(
+            child: Center(
+              child: CircularProgressIndicator(
+                color: videoPlayerController
+                    .configuration.controlsConfiguration.loadingColor,
+              ),
+            ),
+          )
       ],
     );
   }
