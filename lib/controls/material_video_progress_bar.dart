@@ -44,7 +44,7 @@ class _VideoProgressBarState
         if (controller.value.initialized != true) {
           return;
         }
-        await controller.seekTo(_seekingPosition, isUserTrigger: true);
+        await controller.seekTo(_seekingPosition);
         _seekingPosition = null;
         widget.dragEnd?.call();
       },

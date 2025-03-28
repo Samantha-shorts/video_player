@@ -49,16 +49,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
 
   bool _isDisposed = false;
 
-  bool _isPausingByUserAction = false;
-
-  bool get isPausingByUserAction => _isPausingByUserAction;
-
-  bool _onSeeking = false;
-
-  bool get onSeeking => _onSeeking;
-
-  int _positionChangedOnSeekingCount = 0;
-
   late Completer<void> _initializeCompleter;
 
   final Completer<void> createCompleter = Completer<void>();
@@ -131,12 +121,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
           updateLoadingState();
           break;
         case PlatformEventType.positionChanged:
-          if (_onSeeking && _positionChangedOnSeekingCount == 0) {
-            _positionChangedOnSeekingCount++;
-          } else if (_onSeeking && _positionChangedOnSeekingCount > 0) {
-            _onSeeking = false;
-            _positionChangedOnSeekingCount = 0;
-          }
           value = value.copyWith(
             eventType: VideoPlayerEventType.positionChanged,
             position: event.position,
@@ -350,22 +334,17 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
 
   Future<void> play() async {
     if (!value.initialized || _isDisposed || value.isPlaying) return;
-    _isPausingByUserAction = false;
     await VideoPlayerPlatform.instance.play(textureId);
   }
 
-  Future<void> pause({bool isUserAction = false}) async {
+  Future<void> pause() async {
     if (!value.initialized || _isDisposed || !value.isPlaying) return;
-    _isPausingByUserAction = isUserAction;
     await VideoPlayerPlatform.instance.pause(textureId);
   }
 
-  Future<void> seekTo(Duration? position, {bool isUserTrigger = false}) async {
+  Future<void> seekTo(Duration? position) async {
     if (!value.initialized || _isDisposed || position == null) {
       return;
-    }
-    if (isUserTrigger) {
-      _onSeeking = true;
     }
     Duration? positionToSeek = position;
     if (position > value.duration!) {

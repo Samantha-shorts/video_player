@@ -55,8 +55,6 @@ class VideoPlayer(
 
     private var handler = Handler(Looper.getMainLooper())
     private val runnable: Runnable
-    private val bufferingRunnable: Runnable
-
 
     private var playerNotificationManager: PlayerNotificationManager? = null
     private var refreshHandler: Handler? = null
@@ -66,7 +64,6 @@ class VideoPlayer(
     private val workManager: WorkManager
     private val workerObserverMap: HashMap<UUID, Observer<WorkInfo?>>
     var disableRemoteControl: Boolean = false
-    private var isBufferingRunnableStarted = false
 
     var isMuted: Boolean
         get() = exoPlayer.volume == 0f
@@ -111,12 +108,6 @@ class VideoPlayer(
                     if (exoPlayer.isPlaying) {
                         sendPositionChanged()
                     }
-                    handler.postDelayed(this, 200)
-                }
-            }
-        bufferingRunnable =
-            object : Runnable {
-                override fun run() {
                     val bufferedPosition = exoPlayer.bufferedPosition
                     if (bufferedPosition != lastSendBufferedPosition) {
                         val range: List<Number?> = listOf(0, bufferedPosition)
@@ -132,8 +123,6 @@ class VideoPlayer(
         disposeMediaSession()
         disposeRemoteNotifications()
         handler.removeCallbacks(runnable)
-        handler.removeCallbacks(bufferingRunnable)
-        isBufferingRunnableStarted = false
         if (isInitialized) {
             exoPlayer.stop()
         }
@@ -205,11 +194,6 @@ class VideoPlayer(
                 override fun onIsPlayingChanged(isPlaying: Boolean) {
                     if (isPlaying) {
                         handler.post(runnable)
-
-                        if (!isBufferingRunnableStarted) {
-                            handler.post(bufferingRunnable)
-                            isBufferingRunnableStarted = true
-                        }
                     } else {
                         handler.removeCallbacks(runnable)
                     }
