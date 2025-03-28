@@ -118,7 +118,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
             eventType: VideoPlayerEventType.isPlayingChanged,
             isPlaying: event.isPlaying,
           );
-          updateLoadingState();
           break;
         case PlatformEventType.positionChanged:
           value = value.copyWith(
@@ -301,35 +300,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       return;
     }
     subtitlesController.loadAllSubtitleLines();
-  }
-
-  void updateLoadingState() {
-    if (value.isLoading || value.isPlaying) {
-      value = value.copyWith(isLoading: false);
-    } else if (!value.isLoading && !value.isPlaying && checkBuffering()) {
-      value = value.copyWith(isLoading: true);
-    }
-  }
-
-  /// [true]:buffering, [false]:not buffering
-  bool checkBuffering() {
-    if (!value.initialized || _isDisposed || value.isFinished) {
-      return false;
-    }
-    if (value.buffered == null || value.duration == null) {
-      return true;
-    }
-    if (value.duration! - value.buffered!.end < Duration(seconds: 1)) {
-      return false;
-    }
-    if (value.duration! - value.position < Duration(seconds: 1)) {
-      return false;
-    }
-    if (value.buffered!.end - value.position <
-        const Duration(milliseconds: defaultBufferForPlaybackMs)) {
-      return true;
-    }
-    return false;
   }
 
   Future<void> play() async {

@@ -8,9 +8,7 @@ import 'package:video_player/utils.dart';
 import 'package:video_player/controls/expand_shrink_button.dart';
 
 class MaterialControls extends StatefulWidget {
-  const MaterialControls({Key? key, required this.isLoading}) : super(key: key);
-
-  final bool isLoading;
+  const MaterialControls({Key? key}) : super(key: key);
 
   @override
   State<StatefulWidget> createState() => _MaterialControlsState();
@@ -216,11 +214,7 @@ class _MaterialControlsState
               },
             ),
           ),
-          Expanded(
-            child: widget.isLoading
-                ? const SizedBox.expand()
-                : const _ReplayButton(),
-          ),
+          const Expanded(child: _ReplayButton()),
           Expanded(
             child: _SkipForwardButton(
               onClicked: () {

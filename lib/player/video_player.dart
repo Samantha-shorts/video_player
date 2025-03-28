@@ -58,8 +58,6 @@ class _VideoPlayerState extends State<VideoPlayer> {
 
   bool _isFullscreen = false;
 
-  bool _isLoading = false;
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -113,11 +111,6 @@ class _VideoPlayerState extends State<VideoPlayer> {
         await exitFullscreen();
       }
     }
-    if (_isLoading != widget.controller.value.isLoading) {
-      setState(() {
-        _isLoading = widget.controller.value.isLoading;
-      });
-    }
   }
 
   @override
@@ -167,7 +160,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
       builder: (BuildContext context, Widget? child) {
         return VideoPlayerControllerProvider(
           controller: widget.controller,
-          child: FullscreenVideoPage(isLoading: _isLoading),
+          child: const FullscreenVideoPage(),
         );
       },
     );
@@ -187,6 +180,7 @@ class _VideoPlayerState extends State<VideoPlayer> {
 
   Widget _buildPlayer() {
     return VideoPlayerWithControls(
-        controller: widget.controller, isLoading: _isLoading);
+      controller: widget.controller,
+    );
   }
 }
