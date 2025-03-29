@@ -57,7 +57,6 @@ class VideoPlayer(
     private val runnable: Runnable
     private val bufferingRunnable: Runnable
 
-
     private var playerNotificationManager: PlayerNotificationManager? = null
     private var refreshHandler: Handler? = null
     private var refreshRunnable: Runnable? = null
@@ -131,9 +130,9 @@ class VideoPlayer(
     fun dispose() {
         disposeMediaSession()
         disposeRemoteNotifications()
-        handler.removeCallbacks(runnable)
         handler.removeCallbacks(bufferingRunnable)
         isBufferingRunnableStarted = false
+        handler.removeCallbacks(runnable)
         if (isInitialized) {
             exoPlayer.stop()
         }

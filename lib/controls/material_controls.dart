@@ -8,9 +8,7 @@ import 'package:video_player/utils.dart';
 import 'package:video_player/controls/expand_shrink_button.dart';
 
 class MaterialControls extends StatefulWidget {
-  const MaterialControls({Key? key, required this.isLoading}) : super(key: key);
-
-  final bool isLoading;
+  const MaterialControls({Key? key}) : super(key: key);
 
   @override
   State<StatefulWidget> createState() => _MaterialControlsState();
@@ -216,11 +214,7 @@ class _MaterialControlsState
               },
             ),
           ),
-          Expanded(
-            child: widget.isLoading
-                ? const SizedBox.expand()
-                : const _ReplayButton(),
-          ),
+          const Expanded(child: _ReplayButton()),
           Expanded(
             child: _SkipForwardButton(
               onClicked: () {
@@ -453,8 +447,7 @@ class _SkipBackButtonState extends VideoPlayerControllerState<_SkipBackButton> {
                     milliseconds:
                         controlsConfiguration.backwardSkipTimeInMilliseconds))
             .inMilliseconds;
-        controller.seekTo(Duration(milliseconds: max(skip, beginning)),
-            isUserTrigger: true);
+        controller.seekTo(Duration(milliseconds: max(skip, beginning)));
         widget.onClicked();
         controller.controlsEventStreamController
             .add(ControlsEvent(eventType: ControlsEventType.onTapSkipBack));
@@ -493,8 +486,7 @@ class _SkipForwardButtonState
                       controlsConfiguration.forwardSkipTimeInMilliseconds,
                 ))
             .inMilliseconds;
-        controller.seekTo(Duration(milliseconds: min(skip, end)),
-            isUserTrigger: true);
+        controller.seekTo(Duration(milliseconds: min(skip, end)));
         widget.onClicked();
         controller.controlsEventStreamController
             .add(ControlsEvent(eventType: ControlsEventType.onTapSkipForward));
@@ -521,7 +513,7 @@ class _ReplayButtonState extends VideoPlayerControllerState<_ReplayButton> {
     return MaterialClickableWidget(
       onTap: () async {
         if (lastValue?.isPlaying == true) {
-          controller.pause(isUserAction: true);
+          controller.pause();
           controller.controlsEventStreamController
               .add(ControlsEvent(eventType: ControlsEventType.onTapPause));
         } else if (lastValue?.isFinished == true) {
