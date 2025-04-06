@@ -38,8 +38,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   }
 
   final VideoPlayerConfiguration configuration;
-  VideoPlayerBufferingConfiguration bufferingConfiguration =
-      const VideoPlayerBufferingConfiguration();
 
   int? _textureId;
 
@@ -94,8 +92,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   }
 
   Future<void> _create() async {
-    _textureId =
-        await VideoPlayerPlatform.instance.create(bufferingConfiguration);
+    _textureId = await VideoPlayerPlatform.instance
+        .create(configuration.bufferingConfiguration);
     tracksController.textureId = _textureId;
     setPlaybackRate(configuration.initialPlayBackSpeedRate);
     createCompleter.complete(null);
@@ -245,7 +243,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     if (_isDisposed) {
       return;
     }
-    bufferingConfiguration = dataSource.bufferingConfiguration;
     value = VideoPlayerValue();
     if (!createCompleter.isCompleted) await createCompleter.future;
     _initializeCompleter = Completer<void>();
