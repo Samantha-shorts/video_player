@@ -199,8 +199,11 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
 
   /// Set data source for playing a video from obtained from
   /// the network.
-  Future<void> setNetworkDataSource(
-    String url, {
+  Future<void> setNetworkDataSource({
+    // TODO: null safety
+    String? fileUrl,
+    String? drmDashFileUrl,
+    String? drmHlsFileUrl,
     Duration? startPosition,
     List<VideoPlayerSubtitlesSource>? subtitles,
     Map<String, String?>? headers,
@@ -210,7 +213,9 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     return _setDataSource(
       VideoPlayerDataSource(
         sourceType: VideoPlayerDataSourceType.network,
-        url: url,
+        fileUrl: fileUrl,
+        drmDashFileUrl: drmDashFileUrl,
+        drmHlsFileUrl: drmHlsFileUrl,
         startPosition: startPosition,
         subtitles: subtitles,
         headers: headers,
@@ -253,7 +258,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     subtitlesController.reset();
 
     if (dataSource.sourceType == VideoPlayerDataSourceType.network) {
-      if (Utils.isDataSourceHls(dataSource.url)) {
+      if (Utils.isDataSourceHls(dataSource.fileUrl)) {
         _loadAbrManifest(dataSource);
       }
     }
@@ -277,12 +282,12 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
 
   Future<void> _loadAbrManifest(VideoPlayerDataSource dataSource) async {
     final data = await Utils.getDataFromUrl(
-      dataSource.url!,
+      dataSource.fileUrl!,
       dataSource.headers,
     );
     if (data == null) return;
 
-    final abrData = await AbrDataHolder.parse(dataSource.url!, data);
+    final abrData = await AbrDataHolder.parse(dataSource.fileUrl!, data);
 
     tracksController.setTracksList(abrData.tracks ?? []);
     if (dataSource.subtitles != null) {

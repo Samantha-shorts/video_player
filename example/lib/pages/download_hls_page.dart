@@ -38,6 +38,11 @@ class DownloadState {
 class _DownloadHlsPageState extends State<DownloadHlsPage> {
   static List<Map<String, String>> list = [
     {
+      "name": "test",
+      "uri":
+          "https://d1qg19f7rqukzl.cloudfront.net/big_buck_bunny_dev_20240917/HLS/big_buck_bunny_1080p_h264.m3u8"
+    },
+    {
       "name": "Apple 4x3 basic stream (TS)",
       "uri":
           "https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_4x3/bipbop_4x3_variant.m3u8"

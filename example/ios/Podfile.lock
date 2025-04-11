@@ -27,11 +27,11 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/video_player/ios"
 
 SPEC CHECKSUMS:
-  Flutter: f04841e97a9d0b0a8025694d0796dd46242b2854
+  Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   GCDWebServer: 2c156a56c8226e2d5c0c3f208a3621ccffbe3ce4
-  integration_test: 13825b8a9334a850581300559b8839134b124670
-  video_player: b78f60cadb757c760359a03cd86c036054a83e40
+  integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
+  video_player: fc61d537b5c2072db34a6adcc5235ea4a002593b
 
-PODFILE CHECKSUM: fa7c17c799d777ff9dfd9f983daa28b61d43d0a8
+PODFILE CHECKSUM: ee9211a07916c3463a676bc9bc34e6e6367dcad1
 
-COCOAPODS: 1.14.3
+COCOAPODS: 1.16.2

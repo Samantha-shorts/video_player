@@ -12,7 +12,6 @@ dependencies:
     sdk: flutter
   plugin_platform_interface: ^2.0.2
   flutter_hls_parser: ^2.0.1
-  flutter_widget_from_html_core: ^0.10.1
   collection: ^1.15.0
 
 dev_dependencies:
