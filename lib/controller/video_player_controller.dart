@@ -199,8 +199,11 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
 
   /// Set data source for playing a video from obtained from
   /// the network.
-  Future<void> setNetworkDataSource(
-    String fileUrl, {
+  Future<void> setNetworkDataSource({
+    // TODO: null safety
+    String? fileUrl,
+    String? drmDashFileUrl,
+    String? drmHlsFileUrl,
     Duration? startPosition,
     List<VideoPlayerSubtitlesSource>? subtitles,
     Map<String, String?>? headers,
@@ -211,6 +214,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       VideoPlayerDataSource(
         sourceType: VideoPlayerDataSourceType.network,
         fileUrl: fileUrl,
+        drmDashFileUrl: drmDashFileUrl,
+        drmHlsFileUrl: drmHlsFileUrl,
         startPosition: startPosition,
         subtitles: subtitles,
         headers: headers,

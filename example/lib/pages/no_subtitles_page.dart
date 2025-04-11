@@ -20,7 +20,7 @@ class _NoSubtitlesPageState extends State<NoSubtitlesPage> {
   void initState() {
     super.initState();
     controller.setNetworkDataSource(
-      Constants.no_subtitles,
+      fileUrl: Constants.no_subtitles,
       notificationConfiguration: const VideoPlayerNotificationConfiguration(
         title: "video example title",
         author: "video author",

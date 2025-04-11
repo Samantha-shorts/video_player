@@ -79,7 +79,7 @@ class __PageState extends State<_Page> {
     // TODO: implement initState
     super.initState();
     controller.setNetworkDataSource(
-      Constants.m3u8_16x9,
+      fileUrl: Constants.m3u8_16x9,
       disableRemoteControl: true,
     );
   }

@@ -25,7 +25,7 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
   void initState() {
     super.initState();
     controller.setNetworkDataSource(
-      Constants.m3u8_16x9,
+      fileUrl: Constants.m3u8_16x9,
       notificationConfiguration: const VideoPlayerNotificationConfiguration(
         title: "video example title",
         author: "video author",
