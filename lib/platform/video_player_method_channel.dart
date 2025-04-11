@@ -143,7 +143,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
     switch (dataSource.sourceType) {
       case VideoPlayerDataSourceType.network:
         return {
-          'url': dataSource.url,
+          'fileUrl': dataSource.fileUrl,
           'headers': dataSource.headers,
           'subtitles': dataSource.subtitles
               ?.map(

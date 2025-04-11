@@ -351,8 +351,8 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         } else {
             val headers: Map<String, String> =
                 DataSourceUtils.getParameter(dataSource, "headers", HashMap())
-            val url = DataSourceUtils.getParameter(dataSource, "url", "")
-            player.setNetworkDataSource(url, headers)
+            val fileUrl = DataSourceUtils.getParameter(dataSource, "fileUrl", "")
+            player.setNetworkDataSource(fileUrl, headers)
         }
     }
 

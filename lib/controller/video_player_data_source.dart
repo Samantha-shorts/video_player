@@ -4,7 +4,7 @@ import 'package:video_player/subtitles/subtitles.dart';
 class VideoPlayerDataSource {
   VideoPlayerDataSource({
     required this.sourceType,
-    this.url,
+    this.fileUrl,
     this.offlineKey,
     this.startPosition,
     this.subtitles,
@@ -24,7 +24,7 @@ class VideoPlayerDataSource {
   final VideoPlayerDataSourceType sourceType;
 
   /// The URL to the video file. Only set for [DataSourceType.network] videos.
-  final String? url;
+  final String? fileUrl;
 
   /// The key of the downloaded video file. Only set for [DataSourceType.offline] videos.
   final String? offlineKey;
