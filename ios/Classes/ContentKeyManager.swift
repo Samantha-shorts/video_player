@@ -1,8 +1,16 @@
-//
-//  ContentKeyManager.swift
-//  video_player
-//
-//  Created by 薩間俊彰 on 2025/04/11.
-//
 
-import Foundation
+import AVFoundation
+
+class ContentKeyManager {
+    static let shared = ContentKeyManager()
+
+    let contentKeySession: AVContentKeySession
+    let contentKeyDelegate: ContentKeyDelegate
+    let contentKeyDelegateQueue = DispatchQueue(label: "com.example.drm.ContentKeyDelegateQueue")
+
+    private init() {
+        contentKeySession = AVContentKeySession(keySystem: .fairPlayStreaming)
+        contentKeyDelegate = ContentKeyDelegate()
+        contentKeySession.setDelegate(contentKeyDelegate, queue: contentKeyDelegateQueue)
+    }
+}

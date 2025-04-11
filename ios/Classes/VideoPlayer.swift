@@ -150,7 +150,7 @@ class VideoPlayer: NSObject {
     func setDataSource(url: URL, headers: [String: String]?) {
         let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers ?? [:]])
         let item = AVPlayerItem(asset: asset)
-        item.preferredForwardBufferDuration = 100 
+        item.preferredForwardBufferDuration = 100
         item.add(videoOutput)
         player.replaceCurrentItem(with: item)
         if let group = asset.mediaSelectionGroup(forMediaCharacteristic: .legible) {
@@ -160,6 +160,20 @@ class VideoPlayer: NSObject {
         addObservers(to: item)
     }
 
+    func setDrmDataSource(url: URL, headers: [String: String]?) {
+        let asset = AVURLAsset(url: url)
+        ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
+        let item = AVPlayerItem(asset: asset)
+        item.preferredForwardBufferDuration = 100
+        item.add(videoOutput)
+        player.replaceCurrentItem(with: item)
+        if let group = asset.mediaSelectionGroup(forMediaCharacteristic: .legible) {
+            // disable AVPlayer's CC
+            item.select(nil, in: group)
+        }
+        addObservers(to: item)
+    }
+    
     func selectLegibleMediaGroup(at index: Int?) {
         if #available(iOS 15.0, *) {
             player.currentItem?.asset.loadMediaSelectionGroup(for: .legible, completionHandler: { [weak self] group, error in
