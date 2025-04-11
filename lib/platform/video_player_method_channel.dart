@@ -144,6 +144,8 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
       case VideoPlayerDataSourceType.network:
         return {
           'fileUrl': dataSource.fileUrl,
+          'drmDashFileUrl': dataSource.drmDashFileUrl,
+          'drmHlsFileUrl': dataSource.drmHlsFileUrl,
           'headers': dataSource.headers,
           'subtitles': dataSource.subtitles
               ?.map(
