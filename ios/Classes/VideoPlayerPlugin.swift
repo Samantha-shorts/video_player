@@ -157,13 +157,22 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                     .appendingPathComponent(path)
                 player.setDataSource(url: assetURL, headers: nil)
             } else {
-                guard let urlString = dataSource["url"] as? String,
-                    let url = URL(string: urlString)
-                else {
-                    result(FlutterError.invalidArgs(message: "requires valid url"))
+                let headers = dataSource["headers"] as? [String: String]
+
+                if let drmUrlString = dataSource["drmHlsFileUrl"] as? String,
+                   let drmUrl = URL(string: drmUrlString) {
+                    player.setDrmDataSource(url: drmUrl, headers: headers)
+                    result(nil)
                     return
                 }
-                let headers = dataSource["headers"] as? [String: String]
+                
+                guard let urlString = dataSource["fileUrl"] as? String,
+                    let url = URL(string: urlString)
+                else {
+                    result(FlutterError.invalidArgs(message: "requires valid fileUrl"))
+                    return
+                }
+
                 if let subtitles = dataSource["subtitles"] as? [[String: Any]] {
                     let proxySubtitles: [HlsProxyServer.Subtitle] = subtitles.compactMap {
                         guard let name = $0["name"] as? String,

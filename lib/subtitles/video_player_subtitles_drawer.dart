@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:video_player/configurations/configurations.dart';
 import 'package:video_player/controller/controller.dart';
 import 'package:video_player/subtitles/subtitles.dart';
@@ -208,9 +207,9 @@ class _VideoPlayerSubtitlesDrawerState
   }
 
   Widget _buildHtmlWidget(String text, TextStyle textStyle) {
-    return HtmlWidget(
+    return Text(
       text,
-      textStyle: textStyle,
+      style: textStyle,
     );
   }
 
