@@ -86,6 +86,9 @@ class _VideoPlayerSubtitlesDrawerState
           await controller.subtitlesController
               .loadAsmsSubtitlesSegments(lastValue!.position);
         }
+        if (!mounted) {
+          return;
+        }
         setState(() {});
         break;
     }
