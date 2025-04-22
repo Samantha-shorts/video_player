@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/configurations/configurations.dart';
 import 'package:video_player/controller/controller.dart';
@@ -38,8 +40,8 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
     return map["textureId"] as int?;
   }
 
-  EventChannel _eventChannelFor(int? textureId) =>
-      EventChannel('video_player_channel/videoEvents$textureId');
+  EventChannel _eventChannelFor(int? viewId) =>
+      EventChannel('video_player_channel/videoEvents$viewId');
 
   @override
   Stream<PlatformEvent> eventStreamFor(int? textureId) {
@@ -131,10 +133,28 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
         creationParams: {'textureId': textureId!, 'isFullscreen': isFullscreen},
       );
     } else {
-      final Map<String, dynamic> creationParams = <String, dynamic>{
-        "textureId": textureId
-      };
-      return Texture(textureId: textureId!);
+      final androidViewType = "$viewType$textureId";
+      return PlatformViewLink(
+        viewType: androidViewType,
+        surfaceFactory: (context, controller) {
+          return AndroidViewSurface(
+            controller: controller as AndroidViewController,
+            gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
+            hitTestBehavior: PlatformViewHitTestBehavior.opaque,
+          );
+        },
+        onCreatePlatformView: (params) {
+          // NOTE: ここでcontrollerの初期化処理を行う この時textureIdを渡す
+          return PlatformViewsService.initSurfaceAndroidView(
+            id: params.id,
+            viewType: androidViewType,
+            layoutDirection: TextDirection.ltr,
+            creationParamsCodec: const StandardMessageCodec(),
+          )
+            ..addOnPlatformViewCreatedListener(params.onPlatformViewCreated)
+            ..create();
+        },
+      );
     }
   }
 
@@ -146,6 +166,9 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
           'fileUrl': dataSource.fileUrl,
           'drmDashFileUrl': dataSource.drmDashFileUrl,
           'drmHlsFileUrl': dataSource.drmHlsFileUrl,
+          'fairplayCertUrl': dataSource.fairplayCertUrl,
+          'fairplayLicenseUrl': dataSource.fairplayLicenseUrl,
+          'widevineLicenseUrl': dataSource.widevineLicenseUrl,
           'headers': dataSource.headers,
           'subtitles': dataSource.subtitles
               ?.map(
