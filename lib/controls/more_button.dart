@@ -67,47 +67,45 @@ class MoreButtonState extends VideoPlayerControllerState<MoreButton> {
 
   Widget _buildMoreOptionsList() {
     return SingleChildScrollView(
-      child: Container(
-        child: Column(
-          children: [
+      child: Column(
+        children: [
+          _buildMoreOptionsListRow(
+            icon: controlsConfiguration.playbackSpeedIcon,
+            name: "Playback Speed",
+            onTap: () {
+              controller.controlsEventStreamController.add(
+                ControlsEvent(
+                    eventType: ControlsEventType.onTapPlaybackSpeedMenu),
+              );
+              Navigator.of(context).pop();
+              _showSpeedChooserWidget();
+            },
+          ),
+          if (controller.subtitlesController.subtitlesSourceList.isNotEmpty)
             _buildMoreOptionsListRow(
-              icon: controlsConfiguration.playbackSpeedIcon,
-              name: "Playback Speed",
+              icon: controlsConfiguration.subtitlesIcon,
+              name: "Subtitles",
               onTap: () {
                 controller.controlsEventStreamController.add(
                   ControlsEvent(
-                      eventType: ControlsEventType.onTapPlaybackSpeedMenu),
+                      eventType: ControlsEventType.onTapSubtitlesMenu),
                 );
                 Navigator.of(context).pop();
-                _showSpeedChooserWidget();
+                _showSubtitlesSelectionWidget();
               },
             ),
-            if (controller.subtitlesController.subtitlesSourceList.isNotEmpty)
-              _buildMoreOptionsListRow(
-                icon: controlsConfiguration.subtitlesIcon,
-                name: "Subtitles",
-                onTap: () {
-                  controller.controlsEventStreamController.add(
-                    ControlsEvent(
-                        eventType: ControlsEventType.onTapSubtitlesMenu),
-                  );
-                  Navigator.of(context).pop();
-                  _showSubtitlesSelectionWidget();
-                },
-              ),
-            _buildMoreOptionsListRow(
-              icon: controlsConfiguration.qualitiesIcon,
-              name: "Quality",
-              onTap: () {
-                controller.controlsEventStreamController.add(
-                  ControlsEvent(eventType: ControlsEventType.onTapQualityMenu),
-                );
-                Navigator.of(context).pop();
-                _showQualitiesSelectionWidget();
-              },
-            ),
-          ],
-        ),
+          _buildMoreOptionsListRow(
+            icon: controlsConfiguration.qualitiesIcon,
+            name: "Quality",
+            onTap: () {
+              controller.controlsEventStreamController.add(
+                ControlsEvent(eventType: ControlsEventType.onTapQualityMenu),
+              );
+              Navigator.of(context).pop();
+              _showQualitiesSelectionWidget();
+            },
+          ),
+        ],
       ),
     );
   }

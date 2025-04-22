@@ -342,7 +342,9 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     if (!value.initialized ||
         _isDisposed ||
         !value.isFullscreen ||
-        value.isExpanded) return;
+        value.isExpanded) {
+      return;
+    }
     VideoPlayerPlatform.instance.expand(_textureId);
     value = value.copyWith(
       eventType: VideoPlayerEventType.expandChanged,
@@ -354,7 +356,9 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     if (!value.initialized ||
         _isDisposed ||
         !value.isFullscreen ||
-        !value.isExpanded) return;
+        !value.isExpanded) {
+      return;
+    }
     VideoPlayerPlatform.instance.shrink(_textureId);
     value = value.copyWith(
       eventType: VideoPlayerEventType.expandChanged,

@@ -1,8 +1,8 @@
 import 'dart:async';
 
+import 'package:example/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import 'package:video_player_example/constants.dart';
 
 class BasicPlayerPage extends StatefulWidget {
   const BasicPlayerPage({super.key});

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import 'package:video_player_example/constants.dart';
+import 'package:example/constants.dart';
 
 class ScrollVideoPage extends StatefulWidget {
   const ScrollVideoPage({super.key});
@@ -28,40 +28,37 @@ class _ScrollVideoPageState extends State<ScrollVideoPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        appBar: AppBar(
-          title: const Text("Basic player"),
-        ),
-        body: PageView.builder(
-          scrollDirection: Axis.vertical,
-          physics: const BouncingScrollPhysics(),
-          itemBuilder: (context, index) {
-            return _Page(
-              index: index,
-              // stream: streamController.stream,
-            );
-          },
-          itemCount: 10,
-          onPageChanged: (value) {
-            print(value);
-            // streamController.sink.add(value);
-          },
-        )
-        // Column(
-        //   children: [
-        //     const SizedBox(height: 8),
-        //     AspectRatio(
-        //       aspectRatio: 16 / 9,
-        //       child: VideoPlayer(controller: controller),
-        //     ),
-        //   ],
-        // ),
-        );
+      appBar: AppBar(title: const Text("Basic player")),
+      body: PageView.builder(
+        scrollDirection: Axis.vertical,
+        physics: const BouncingScrollPhysics(),
+        itemBuilder: (context, index) {
+          return _Page(
+            index: index,
+            // stream: streamController.stream,
+          );
+        },
+        itemCount: 10,
+        onPageChanged: (value) {
+          print(value);
+          // streamController.sink.add(value);
+        },
+      ),
+      // Column(
+      //   children: [
+      //     const SizedBox(height: 8),
+      //     AspectRatio(
+      //       aspectRatio: 16 / 9,
+      //       child: VideoPlayer(controller: controller),
+      //     ),
+      //   ],
+      // ),
+    );
   }
 }
 
 class _Page extends StatefulWidget {
   const _Page({
-    super.key,
     required this.index,
     // required this.stream,
   });
@@ -90,10 +87,7 @@ class __PageState extends State<_Page> {
   }
 
   final controller = VideoPlayerController(
-    configuration: VideoPlayerConfiguration(
-      autoPlay: true,
-      autoLoop: true,
-    ),
+    configuration: VideoPlayerConfiguration(autoPlay: true, autoLoop: true),
   );
 
   @override
