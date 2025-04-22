@@ -24,10 +24,7 @@ class DrmVideoPage extends StatefulWidget {
 
 class _DrmVideoPageState extends State<DrmVideoPage> {
   final controller = VideoPlayerController(
-    configuration: VideoPlayerConfiguration(
-      autoPlay: false,
-      autoLoop: true,
-    ),
+    configuration: VideoPlayerConfiguration(autoPlay: false, autoLoop: true),
   );
 
   StreamSubscription? _controlsEventSubscription;
@@ -39,6 +36,9 @@ class _DrmVideoPageState extends State<DrmVideoPage> {
       fileUrl: _drmHlsFileUrl,
       drmHlsFileUrl: _drmHlsFileUrl,
       drmDashFileUrl: _drmDashFileUrl,
+      fairplayCertUrl: _fairplayCertUrl,
+      fairplayLicenseUrl: _fairplayLicenseUrl,
+      widevineLicenseUrl: _widevineLicenseUrl,
     );
     _controlsEventSubscription = controller.controlsEventStream.listen((event) {
       debugPrint(event.toString());
@@ -54,9 +54,7 @@ class _DrmVideoPageState extends State<DrmVideoPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Drm video"),
-      ),
+      appBar: AppBar(title: const Text("Drm video")),
       body: Column(
         children: [
           const SizedBox(height: 8),

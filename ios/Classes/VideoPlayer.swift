@@ -81,9 +81,9 @@ class VideoPlayer: NSObject {
     var duration: CMTime? {
         player.currentItem?.duration
     }
-    
+
     var autoLoop = false
-    
+
     var disableRemoteControl = false
 
     init(textureId: Int, eventChannel: FlutterEventChannel) {
@@ -160,16 +160,17 @@ class VideoPlayer: NSObject {
         addObservers(to: item)
     }
 
-    func setDrmDataSource(url: URL, headers: [String: String]?) {
+    func setDrmDataSource(url: URL, certUrl: String, licenseUrl: String, headers: [String: String]?) {
         let asset = AVURLAsset(url: url)
         if #available(iOS 11.2, tvOS 11.2, *) {
             ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
+            ContentKeyManager.shared.contentKeyDelegate.setDrmDataSource(certUrl: certUrl, licenseUrl: licenseUrl)
         }
-        
+
         let item = AVPlayerItem(asset: asset)
         item.addObserver(self, forKeyPath: "status", options: [.new, .old], context: nil)
 
-        
+
         item.preferredForwardBufferDuration = 100
         item.add(videoOutput)
         player.replaceCurrentItem(with: item)
@@ -229,7 +230,7 @@ class VideoPlayer: NSObject {
         guard let track = player.currentItem?.tracks.first(where: { $0.assetTrack?.mediaType == .video }) else {
             return 0
         }
-        
+
         return track.currentVideoFrameRate
     }
 

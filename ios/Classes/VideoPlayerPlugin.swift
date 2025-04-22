@@ -160,12 +160,19 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 let headers = dataSource["headers"] as? [String: String]
 
                 if let drmUrlString = dataSource["drmHlsFileUrl"] as? String,
-                   let drmUrl = URL(string: drmUrlString) {
-                    player.setDrmDataSource(url: drmUrl, headers: headers)
+                let certUrlString = dataSource["fairplayCertUrl"] as? String,
+                let licenseUrlString = dataSource["fairplayLicenseUrl"] as? String,
+                let drmUrl = URL(string: drmUrlString) {
+                    player.setDrmDataSource(
+                        url: drmUrl,
+                        certUrl: certUrlString,
+                        licenseUrl: licenseUrlString,
+                        headers: headers
+                    )
                     result(nil)
                     return
                 }
-                
+
                 guard let urlString = dataSource["fileUrl"] as? String,
                     let url = URL(string: urlString)
                 else {
