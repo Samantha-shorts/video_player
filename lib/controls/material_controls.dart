@@ -337,7 +337,7 @@ class HitAreaClickableButton extends StatelessWidget {
 }
 
 class _PipButton extends StatefulWidget {
-  const _PipButton({super.key});
+  const _PipButton();
 
   @override
   State<_PipButton> createState() => _PipButtonState();
@@ -424,7 +424,6 @@ class _PipButtonState extends VideoPlayerControllerState<_PipButton> {
 
 class _SkipBackButton extends StatefulWidget {
   const _SkipBackButton({
-    super.key,
     required this.onClicked,
   });
 
@@ -463,7 +462,6 @@ class _SkipBackButtonState extends VideoPlayerControllerState<_SkipBackButton> {
 
 class _SkipForwardButton extends StatefulWidget {
   const _SkipForwardButton({
-    super.key,
     required this.onClicked,
   });
 
@@ -501,7 +499,7 @@ class _SkipForwardButtonState
 }
 
 class _ReplayButton extends StatefulWidget {
-  const _ReplayButton({super.key});
+  const _ReplayButton();
 
   @override
   State<_ReplayButton> createState() => _ReplayButtonState();
@@ -547,7 +545,7 @@ class _ReplayButtonState extends VideoPlayerControllerState<_ReplayButton> {
 }
 
 class _PositionText extends StatefulWidget {
-  const _PositionText({super.key});
+  const _PositionText();
 
   @override
   State<_PositionText> createState() => _PositionTextState();

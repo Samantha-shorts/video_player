@@ -388,7 +388,6 @@ class VariantSelector {
 
 class _PlayPage extends StatelessWidget {
   const _PlayPage({
-    super.key,
     required this.offlineKey,
   });
 

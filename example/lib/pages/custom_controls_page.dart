@@ -1,7 +1,7 @@
+import 'package:example/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/controls/controls.dart';
 import 'package:video_player/video_player.dart';
-import 'package:video_player_example/constants.dart';
 
 class CustomControlsPage extends StatefulWidget {
   const CustomControlsPage({super.key});
@@ -61,7 +61,7 @@ class _CustomControlsPageState extends State<CustomControlsPage> {
                 noProvider: true,
               ),
             ),
-            SizedBox(
+            const SizedBox(
               height: 42,
               child: MaterialVideoProgressBar(),
             ),

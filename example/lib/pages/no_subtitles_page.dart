@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import 'package:video_player_example/constants.dart';
+import 'package:example/constants.dart';
 
 class NoSubtitlesPage extends StatefulWidget {
   const NoSubtitlesPage({super.key});
@@ -11,9 +11,7 @@ class NoSubtitlesPage extends StatefulWidget {
 
 class _NoSubtitlesPageState extends State<NoSubtitlesPage> {
   final controller = VideoPlayerController(
-    configuration: VideoPlayerConfiguration(
-      autoPlay: true,
-    ),
+    configuration: VideoPlayerConfiguration(autoPlay: true),
   );
 
   @override
@@ -31,9 +29,7 @@ class _NoSubtitlesPageState extends State<NoSubtitlesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("No Subtitles"),
-      ),
+      appBar: AppBar(title: const Text("No Subtitles")),
       body: Column(
         children: [
           const SizedBox(height: 8),
