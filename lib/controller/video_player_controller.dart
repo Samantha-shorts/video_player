@@ -292,6 +292,15 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       dataSource.headers,
     );
     if (data == null) return;
+    if (!data.trimLeft().startsWith('#EXTM3U')) {
+      final String errorDescription =
+          "Invalid HLS manifest: does not start with #EXTM3U url = ${dataSource.fileUrl} data = $data";
+      throw PlayerException(
+        errorDescription: errorDescription,
+        invalid: true,
+        code: null,
+      );
+    }
 
     final abrData = await AbrDataHolder.parse(dataSource.fileUrl!, data);
 
