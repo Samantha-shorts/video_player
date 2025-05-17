@@ -1,6 +1,6 @@
-# video_player_example
+# example
 
-Demonstrates how to use the video_player plugin.
+A new Flutter project.
 
 ## Getting Started
 

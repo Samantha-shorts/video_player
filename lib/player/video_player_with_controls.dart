@@ -57,7 +57,6 @@ class VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
 
 class _Player extends StatefulWidget {
   const _Player({
-    super.key,
     required this.controller,
   });
 
