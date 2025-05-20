@@ -12,7 +12,7 @@ class PipListener {
     private var pipRunnable: Runnable? = null
 
     @RequiresApi(Build.VERSION_CODES.N)
-    fun startPictureInPictureListenerTimer(activity: Activity, player: VideoPlayer) {
+    fun startPictureInPictureListenerTimer(activity: Activity, player: VideoPlayerView) {
         pipHandler = Handler(Looper.getMainLooper())
         pipRunnable = Runnable {
             if (isInPip != activity.isInPictureInPictureMode) {

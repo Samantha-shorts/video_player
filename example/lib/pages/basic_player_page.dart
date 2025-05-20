@@ -1,8 +1,8 @@
 import 'dart:async';
 
+import 'package:example/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import 'package:video_player_example/constants.dart';
 
 class BasicPlayerPage extends StatefulWidget {
   const BasicPlayerPage({super.key});
@@ -25,7 +25,7 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
   void initState() {
     super.initState();
     controller.setNetworkDataSource(
-      Constants.m3u8_16x9,
+      fileUrl: Constants.m3u8_16x9,
       notificationConfiguration: const VideoPlayerNotificationConfiguration(
         title: "video example title",
         author: "video author",

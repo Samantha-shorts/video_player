@@ -1,11 +1,12 @@
+import 'package:example/pages/basic_player_page.dart';
+import 'package:example/pages/custom_controls_page.dart';
+import 'package:example/pages/download_hls_page.dart';
+import 'package:example/pages/drm_video_page.dart';
+import 'package:example/pages/external_vtt_page.dart';
+import 'package:example/pages/no_subtitles_page.dart';
+import 'package:example/pages/scroll_video_page.dart';
+import 'package:example/pages/srt_subtitle_page.dart';
 import 'package:flutter/material.dart';
-import 'package:video_player_example/pages/basic_player_page.dart';
-import 'package:video_player_example/pages/custom_controls_page.dart';
-import 'package:video_player_example/pages/download_hls_page.dart';
-import 'package:video_player_example/pages/external_vtt_page.dart';
-import 'package:video_player_example/pages/no_subtitles_page.dart';
-import 'package:video_player_example/pages/scroll_video_page.dart';
-import 'package:video_player_example/pages/srt_subtitle_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -57,6 +58,9 @@ class _WelcomePageState extends State<WelcomePage> {
       _buildExampleElementWidget("Basic player", () {
         _navigateToPage(const BasicPlayerPage());
       }),
+      _buildExampleElementWidget("Drm video player", () {
+        _navigateToPage(const DrmVideoPage());
+      }),
       _buildExampleElementWidget("Custom Controls", () {
         _navigateToPage(const CustomControlsPage());
       }),
@@ -92,7 +96,7 @@ class _WelcomePageState extends State<WelcomePage> {
                 style: const TextStyle(fontSize: 16),
               ),
             ),
-            Divider(),
+            const Divider(),
           ],
         ),
       ),

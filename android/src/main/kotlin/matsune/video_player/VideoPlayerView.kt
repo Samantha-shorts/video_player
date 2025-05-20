@@ -23,6 +23,7 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.*
 import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.trackselection.AdaptiveTrackSelection
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
@@ -35,20 +36,34 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.EventChannel.EventSink
 import java.util.*
 import io.flutter.view.TextureRegistry.SurfaceTextureEntry
+import android.net.Uri
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.MediaItem.ClippingConfiguration
+import androidx.media3.common.MediaItem.DrmConfiguration
+import androidx.media3.common.util.Util
+import com.google.common.collect.ImmutableMap
+import androidx.media3.ui.PlayerView
+import io.flutter.plugin.platform.PlatformView
+import android.view.SurfaceHolder
+import android.view.SurfaceView
+import android.view.View
+import io.flutter.plugin.common.BinaryMessenger
 
-class VideoPlayer(
+class VideoPlayerView(
     private val context: Context,
+    private val messenger: BinaryMessenger,
     private val eventChannel: EventChannel,
-    private val textureEntry: SurfaceTextureEntry,
     private val customDefaultLoadControl: CustomDefaultLoadControl
-) {
+) : PlatformView {
+    private val playerView: PlayerView = PlayerView(context)
 
     private val loadControl: LoadControl
     private val exoPlayer: ExoPlayer
     private val eventSink = QueuingEventSink()
     private val bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
     private val trackSelector = DefaultTrackSelector(context, AdaptiveTrackSelection.Factory())
-    private var surface: Surface? = null
     private var isInitialized = false
     private var lastSendBufferedPosition = 0L
     private var mediaSession: MediaSessionCompat? = null
@@ -101,7 +116,9 @@ class VideoPlayer(
                 .setLoadControl(loadControl)
                 .setBandwidthMeter(bandwidthMeter)
                 .build()
-        setupVideoPlayer(eventChannel, textureEntry)
+        playerView.useController = false
+        playerView.player = exoPlayer
+        setupVideoPlayer(eventChannel)
         workManager = WorkManager.getInstance(context)
         workerObserverMap = HashMap()
         runnable =
@@ -127,7 +144,9 @@ class VideoPlayer(
             }
     }
 
-    fun dispose() {
+    override fun getView(): View = playerView
+
+    override fun dispose() {
         disposeMediaSession()
         disposeRemoteNotifications()
         handler.removeCallbacks(bufferingRunnable)
@@ -137,12 +156,11 @@ class VideoPlayer(
             exoPlayer.stop()
         }
         eventChannel.setStreamHandler(null)
-        textureEntry.release()
-        surface?.release()
         exoPlayer.release()
+        playerView.player = null
     }
 
-    private fun setupVideoPlayer(eventChannel: EventChannel, textureEntry: SurfaceTextureEntry) {
+    private fun setupVideoPlayer(eventChannel: EventChannel) {
         eventChannel.setStreamHandler(
             object : EventChannel.StreamHandler {
                 override fun onListen(o: Any?, sink: EventSink) {
@@ -154,8 +172,24 @@ class VideoPlayer(
                 }
             }
         )
-        surface = Surface(textureEntry.surfaceTexture())
-        exoPlayer.setVideoSurface(surface)
+        val surfaceView = playerView.videoSurfaceView
+        if (surfaceView is SurfaceView) {
+            surfaceView.holder.addCallback(object : SurfaceHolder.Callback {
+                override fun surfaceCreated(holder: SurfaceHolder) {
+                    if (exoPlayer.applicationLooper.thread.isAlive) {
+                        exoPlayer.setVideoSurface(holder.surface)
+                    } else {
+                        Log.e(TAG, "Surface created, but ExoPlayer is already released.")
+                    }
+                }
+                override fun surfaceDestroyed(holder: SurfaceHolder) {
+                    val surface = surfaceView.holder.surface
+                    surface.release()
+                    exoPlayer.setVideoSurface(null)
+                }
+                override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
+            })
+        }
         exoPlayer.setAudioAttributes(
             AudioAttributes.Builder().setContentType(AUDIO_CONTENT_TYPE_MOVIE).build(),
             true
@@ -266,6 +300,52 @@ class VideoPlayer(
         val mediaSourceFactory = HlsMediaSource.Factory(dataSourceFactory)
         val mediaItem = MediaItem.fromUri(uri)
         val mediaSource = mediaSourceFactory.createMediaSource(mediaItem)
+        setMediaSource(mediaSource)
+    }
+
+    fun setDrmDataSource(contentUrl: String, licenseUrl: String, headers: Map<String, String>) {
+        val uri = Uri.parse(contentUrl)
+
+        val mediaItemBuilder = MediaItem.Builder()
+            .setUri(uri)
+            .setMediaMetadata(MediaMetadata.Builder().setTitle("DRM Content").build())
+            .setMimeType(Util.getAdaptiveMimeTypeForContentType(Util.inferContentType(uri)))
+            .setClippingConfiguration(
+                ClippingConfiguration.Builder().build()
+            )
+
+        val requestHeaders: MutableMap<String, String> = HashMap()
+        requestHeaders["Content-Type"] = "application/octet-stream"
+        requestHeaders["Accept"] = "application/octet-stream"
+        requestHeaders.putAll(headers)
+        val drmLicenseRequestHeaders = ImmutableMap.copyOf(requestHeaders)
+
+        val drmConfiguration = MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
+            .setLicenseUri(licenseUrl)
+            .setLicenseRequestHeaders(drmLicenseRequestHeaders)
+            .setMultiSession(true)
+            .build()
+        mediaItemBuilder.setDrmConfiguration(drmConfiguration)
+
+        val mediaItem = mediaItemBuilder.build()
+
+        val dataSourceFactory = DefaultHttpDataSource.Factory()
+            .setAllowCrossProtocolRedirects(true)
+            .setDefaultRequestProperties(headers)
+            .setTransferListener(bandwidthMeter)
+
+        val mediaSource: MediaSource = when {
+            contentUrl.endsWith(".mpd") -> {
+                DashMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+            }
+            contentUrl.endsWith(".m3u8") -> {
+                HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+            }
+            else -> {
+                throw IllegalArgumentException("Unsupported DRM content type: $contentUrl")
+            }
+        }
+
         setMediaSource(mediaSource)
     }
 
@@ -546,6 +626,7 @@ class VideoPlayer(
     companion object {
         private const val TAG = "VideoPlayer"
 
+        private const val EVENTS_CHANNEL = "video_player_channel/videoEvents"
         private const val EVENT_INITIALIZED = "initialized"
         private const val EVENT_IS_PLAYING_CHANGED = "isPlayingChanged"
         private const val EVENT_POSITION_CHANGED = "positionChanged"

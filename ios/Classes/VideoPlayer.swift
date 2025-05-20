@@ -81,9 +81,9 @@ class VideoPlayer: NSObject {
     var duration: CMTime? {
         player.currentItem?.duration
     }
-    
+
     var autoLoop = false
-    
+
     var disableRemoteControl = false
 
     init(textureId: Int, eventChannel: FlutterEventChannel) {
@@ -150,7 +150,7 @@ class VideoPlayer: NSObject {
     func setDataSource(url: URL, headers: [String: String]?) {
         let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers ?? [:]])
         let item = AVPlayerItem(asset: asset)
-        item.preferredForwardBufferDuration = 100 
+        item.preferredForwardBufferDuration = 100
         item.add(videoOutput)
         player.replaceCurrentItem(with: item)
         if let group = asset.mediaSelectionGroup(forMediaCharacteristic: .legible) {
@@ -160,6 +160,26 @@ class VideoPlayer: NSObject {
         addObservers(to: item)
     }
 
+    func setDrmDataSource(url: URL, certUrl: String, licenseUrl: String, headers: [String: String]?) {
+        let asset = AVURLAsset(url: url)
+        if #available(iOS 11.2, tvOS 11.2, *) {
+            ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
+            ContentKeyManager.shared.contentKeyDelegate.setDrmDataSource(certUrl: certUrl, licenseUrl: licenseUrl)
+        }
+
+        let item = AVPlayerItem(asset: asset)
+        item.addObserver(self, forKeyPath: "status", options: [.new, .old], context: nil)
+
+
+        item.preferredForwardBufferDuration = 100
+        item.add(videoOutput)
+        player.replaceCurrentItem(with: item)
+        if let group = asset.mediaSelectionGroup(forMediaCharacteristic: .legible) {
+            // disable AVPlayer's CC
+            item.select(nil, in: group)
+        }
+        addObservers(to: item)
+    }
     func selectLegibleMediaGroup(at index: Int?) {
         if #available(iOS 15.0, *) {
             player.currentItem?.asset.loadMediaSelectionGroup(for: .legible, completionHandler: { [weak self] group, error in
@@ -210,7 +230,7 @@ class VideoPlayer: NSObject {
         guard let track = player.currentItem?.tracks.first(where: { $0.assetTrack?.mediaType == .video }) else {
             return 0
         }
-        
+
         return track.currentVideoFrameRate
     }
 
@@ -219,6 +239,28 @@ class VideoPlayer: NSObject {
         paramsWithEvent["event"] = eventType.rawValue
         DispatchQueue.main.async { [weak self] in
             self?.eventSink?(paramsWithEvent)
+        }
+    }
+
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        if keyPath == "status", let item = object as? AVPlayerItem {
+            switch item.status {
+            case .readyToPlay:
+                readyToPlay()
+            case .failed:
+                let nsError = item.error as? NSError
+                let invalid = nsError?.code == NSURLErrorNoPermissionsToReadFile
+                let errorCode = nsError?.code
+                sendEvent(.error, [
+                    "error": item.error?.localizedDescription ?? "unknown",
+                    "invalid": invalid,
+                    "code": errorCode as Any
+                ])
+            default:
+                break
+            }
+        } else {
+            super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
         }
     }
 
@@ -337,13 +379,15 @@ class VideoPlayer: NSObject {
             if let timeObserver = timeObserver {
                 player.removeTimeObserver(timeObserver)
             }
+            if let currentItem = player.currentItem {
+                currentItem.removeObserver(self, forKeyPath: "status")
+            }
             rateObservation = nil
             statusObservation = nil
             presentationSizeObservation = nil
-            rateObservation = nil
             loadedTimeRangesObservation = nil
-            NotificationCenter.default.removeObserver(self)
             isMutedObservation = nil
+            NotificationCenter.default.removeObserver(self)
         }
     }
 
