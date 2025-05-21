@@ -204,9 +204,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     String? fileUrl,
     String? drmDashFileUrl,
     String? drmHlsFileUrl,
-    String? fairplayCertUrl,
-    String? fairplayLicenseUrl,
-    String? widevineLicenseUrl,
     Duration? startPosition,
     List<VideoPlayerSubtitlesSource>? subtitles,
     Map<String, String?>? headers,
@@ -219,9 +216,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
         fileUrl: fileUrl,
         drmDashFileUrl: drmDashFileUrl,
         drmHlsFileUrl: drmHlsFileUrl,
-        fairplayCertUrl: fairplayCertUrl,
-        fairplayLicenseUrl: fairplayLicenseUrl,
-        widevineLicenseUrl: widevineLicenseUrl,
         startPosition: startPosition,
         subtitles: subtitles,
         headers: headers,
@@ -263,7 +257,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     tracksController.reset();
     subtitlesController.reset();
 
-    if (dataSource.sourceType == VideoPlayerDataSourceType.network) {
+    if (dataSource.sourceType == VideoPlayerDataSourceType.network &&
+        !dataSource.isDrm) {
       if (Utils.isDataSourceHls(dataSource.fileUrl)) {
         _loadAbrManifest(dataSource);
       }
