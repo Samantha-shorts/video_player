@@ -168,7 +168,7 @@ class VideoPlayer: NSObject {
         }
 
         let item = AVPlayerItem(asset: asset)
-        item.addObserver(self, forKeyPath: "status", options: [.new, .old], context: nil)
+        // item.addObserver(self, forKeyPath: "status", options: [.new, .old], context: nil)
 
 
         item.preferredForwardBufferDuration = 100
