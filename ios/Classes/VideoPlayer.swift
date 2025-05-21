@@ -168,7 +168,7 @@ class VideoPlayer: NSObject {
         }
 
         let item = AVPlayerItem(asset: asset)
-        // item.addObserver(self, forKeyPath: "status", options: [.new, .old], context: nil)
+        item.addObserver(self, forKeyPath: "status", options: [.new, .old], context: nil)
 
 
         item.preferredForwardBufferDuration = 100
@@ -380,7 +380,7 @@ class VideoPlayer: NSObject {
                 player.removeTimeObserver(timeObserver)
             }
             if let currentItem = player.currentItem {
-                currentItem.removeObserver(self, forKeyPath: "status")
+                // currentItem.removeObserver(self, forKeyPath: "status")
             }
             rateObservation = nil
             statusObservation = nil
