@@ -251,46 +251,39 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   }
 
   Future<void> _setDataSource(VideoPlayerDataSource dataSource) async {
-    try {
-      if (_isDisposed) {
-        return;
-      }
-      value = VideoPlayerValue();
-      if (!createCompleter.isCompleted) await createCompleter.future;
-      _initializeCompleter = Completer<void>();
-
-      await VideoPlayerPlatform.instance.setDataSource(textureId, dataSource);
-
-      tracksController.reset();
-      subtitlesController.reset();
-
-      if (dataSource.sourceType == VideoPlayerDataSourceType.network) {
-        if (Utils.isDataSourceHls(dataSource.fileUrl)) {
-          _loadAbrManifest(dataSource);
-        }
-      }
-
-      await _initializeCompleter.future;
-      await VideoPlayerPlatform.instance.setAutoLoop(
-        textureId,
-        configuration.autoLoop,
-      );
-      if (configuration.autoFullscreen) {
-        enterFullscreen();
-      }
-      if (configuration.autoPlay) {
-        play();
-      }
-      if (dataSource.startPosition != null) {
-        await seekTo(dataSource.startPosition);
-      }
+    if (_isDisposed) {
       return;
-    } catch (e) {
-      debugPrint('Error setting data source: $e');
-      if (!_initializeCompleter.isCompleted) {
-        _initializeCompleter.completeError(e);
+    }
+    value = VideoPlayerValue();
+    if (!createCompleter.isCompleted) await createCompleter.future;
+    _initializeCompleter = Completer<void>();
+
+    await VideoPlayerPlatform.instance.setDataSource(textureId, dataSource);
+
+    tracksController.reset();
+    subtitlesController.reset();
+
+    if (dataSource.sourceType == VideoPlayerDataSourceType.network) {
+      if (Utils.isDataSourceHls(dataSource.fileUrl)) {
+        _loadAbrManifest(dataSource);
       }
     }
+
+    await _initializeCompleter.future;
+    await VideoPlayerPlatform.instance.setAutoLoop(
+      textureId,
+      configuration.autoLoop,
+    );
+    if (configuration.autoFullscreen) {
+      enterFullscreen();
+    }
+    if (configuration.autoPlay) {
+      play();
+    }
+    if (dataSource.startPosition != null) {
+      await seekTo(dataSource.startPosition);
+    }
+    return;
   }
 
   Future<void> _loadAbrManifest(VideoPlayerDataSource dataSource) async {
