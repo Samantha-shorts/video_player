@@ -7,7 +7,7 @@ buildscript {
     ext.multidexVersion = "2.0.1"
     ext.lifecycleVersion = "2.4.0"
     ext.workVersion = "2.7.0"
-    
+
     repositories {
         google()
         mavenCentral()
@@ -30,6 +30,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
 android {
+    namespace 'matsune.video_player'
     compileSdkVersion 31
 
     compileOptions {
