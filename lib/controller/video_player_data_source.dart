@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:video_player/configurations/configurations.dart';
 import 'package:video_player/subtitles/subtitles.dart';
 
@@ -63,6 +65,10 @@ class VideoPlayerDataSource {
   /// The URL to the Widevine license. Only set for [DataSourceType.network] videos.
   String widevineLicenseUrl =
       const String.fromEnvironment('WIDEVINE_LICENSE_URL');
+
+  bool get isDrm =>
+      (Platform.isAndroid && drmDashFileUrl != null) ||
+      (Platform.isIOS && drmHlsFileUrl != null);
 }
 
 /// The way in which the video was originally loaded.
