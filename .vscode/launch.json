@@ -25,21 +25,30 @@
             "name": "example",
             "cwd": "example",
             "request": "launch",
-            "type": "dart"
+            "type": "dart",
+            "args": [
+                "--dart-define-from-file=.env"
+            ]
         },
         {
             "name": "example (profile mode)",
             "cwd": "example",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "profile"
+            "flutterMode": "profile",
+            "args": [
+                "--dart-define-from-file=.env"
+            ]
         },
         {
             "name": "example (release mode)",
             "cwd": "example",
             "request": "launch",
             "type": "dart",
-            "flutterMode": "release"
+            "flutterMode": "release",
+            "args": [
+                "--dart-define-from-file="
+            ]
         }
     ]
 }
