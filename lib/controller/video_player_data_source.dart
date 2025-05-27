@@ -7,9 +7,6 @@ class VideoPlayerDataSource {
     this.fileUrl,
     this.drmDashFileUrl,
     this.drmHlsFileUrl,
-    this.fairplayCertUrl,
-    this.fairplayLicenseUrl,
-    this.widevineLicenseUrl,
     this.offlineKey,
     this.startPosition,
     this.subtitles,
@@ -37,15 +34,6 @@ class VideoPlayerDataSource {
   /// The URL to the hls drm file. Only set for [DataSourceType.network] videos.
   final String? drmHlsFileUrl;
 
-  /// The URL to the FairPlay cert. Only set for [DataSourceType.network] videos.
-  final String? fairplayCertUrl;
-
-  /// The URL to the FairPlay license. Only set for [DataSourceType.network] videos.
-  final String? fairplayLicenseUrl;
-
-  /// The URL to the Widevine license. Only set for [DataSourceType.network] videos.
-  final String? widevineLicenseUrl;
-
   /// The key of the downloaded video file. Only set for [DataSourceType.offline] videos.
   final String? offlineKey;
 
@@ -64,6 +52,17 @@ class VideoPlayerDataSource {
   final VideoPlayerNotificationConfiguration? notificationConfiguration;
 
   final bool disableRemoteControl;
+
+  /// The URL to the FairPlay cert. Only set for [DataSourceType.network] videos.
+  String fairplayCertUrl = const String.fromEnvironment('FAIRPLAY_CERT_URL');
+
+  /// The URL to the FairPlay license. Only set for [DataSourceType.network] videos.
+  String fairplayLicenseUrl =
+      const String.fromEnvironment('FAIRPLAY_LICENSE_URL');
+
+  /// The URL to the Widevine license. Only set for [DataSourceType.network] videos.
+  String widevineLicenseUrl =
+      const String.fromEnvironment('WIDEVINE_LICENSE_URL');
 }
 
 /// The way in which the video was originally loaded.
