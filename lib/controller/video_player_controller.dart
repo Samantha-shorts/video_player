@@ -257,7 +257,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     tracksController.reset();
     subtitlesController.reset();
 
-    if (dataSource.sourceType == VideoPlayerDataSourceType.network) {
+    if (dataSource.sourceType == VideoPlayerDataSourceType.network &&
+        !dataSource.isDrm) {
       if (Utils.isDataSourceHls(dataSource.fileUrl)) {
         _loadAbrManifest(dataSource);
       }
