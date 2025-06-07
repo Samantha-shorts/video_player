@@ -148,7 +148,9 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
           value = value.copyWith(
             eventType: VideoPlayerEventType.ended,
           );
-          exitFullscreen();
+          if (!configuration.remainFullscreenWhenEnded) {
+            exitFullscreen();
+          }
           break;
         default:
           break;
