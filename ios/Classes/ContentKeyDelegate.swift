@@ -113,6 +113,7 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
         let url = URL(string: licenseUrl)!
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
+
         // 必要ならリクエストヘッダを指定
         req.addValue("application/json", forHTTPHeaderField: "content-type")
 
@@ -120,6 +121,9 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
         let spcBase64 = spcData.base64EncodedString()
         let bodyJson = String(format: "{\"spc\": \"%@\"}", spcBase64)
         req.httpBody = bodyJson.data(using: .utf8)
+
+        print("[ContentKeyDelegate] ➜ License Request URL: \(licenseUrl)")
+        print("[ContentKeyDelegate] ➜ SPC base64 length: \(spcBase64.count) chars")
 
         var data: Data? = nil
         var response: URLResponse? = nil
@@ -136,38 +140,42 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
         semaphore.wait()
 
         if let e = error {
-            print("[ContentKeyDelegate] License request error: \(e.localizedDescription)")
+            print("[ContentKeyDelegate] ❌ License request error: \(e.localizedDescription)")
             throw e
         }
+
         guard let res = response as? HTTPURLResponse else {
-            print("[ContentKeyDelegate] License request failed: no HTTP response.")
+            print("[ContentKeyDelegate] ❌ License request failed: no HTTP response.")
             throw ProgramError.missingApplicationCertificate
         }
+
+        print("[ContentKeyDelegate] ➜ HTTP status: \(res.statusCode)")
+
         guard res.statusCode >= 200 && res.statusCode < 300 else {
-            print("[ContentKeyDelegate] License request HTTP status = \(res.statusCode)")
-            throw ProgramError.noCKCReturnedByKSM
-        }
-        guard let json = data else {
-            print("[ContentKeyDelegate] License request returned empty data.")
+            let bodyText = data.flatMap { String(data: $0, encoding: .utf8) } ?? "<no body>"
+            print("[ContentKeyDelegate] ❌ License request failed. Body:\n\(bodyText.prefix(500))")
             throw ProgramError.noCKCReturnedByKSM
         }
 
-        // ここでは簡易的に JSON をパース → "ckc" フィールド取り出し
+        guard let json = data else {
+            print("[ContentKeyDelegate] ❌ License request returned empty data.")
+            throw ProgramError.noCKCReturnedByKSM
+        }
+
         let licenseDict = (try? JSONSerialization.jsonObject(with: json, options: [])) as? [String: String]
         guard let ckcBase64 = licenseDict?["ckc"] else {
-            print("[ContentKeyDelegate] License response JSON did not contain 'ckc' field.")
-            throw ProgramError.noCKCReturnedByKSM
-        }
-        guard let ckcData = Data(base64Encoded: ckcBase64) else {
-            print("[ContentKeyDelegate] Failed to decode base64 'ckc' from license response.")
+            print("[ContentKeyDelegate] ❌ License response JSON did not contain 'ckc' field.")
             throw ProgramError.noCKCReturnedByKSM
         }
 
-        print("[ContentKeyDelegate] License request succeeded. CKC size=\(ckcData.count) bytes.")
+        guard let ckcData = Data(base64Encoded: ckcBase64) else {
+            print("[ContentKeyDelegate] ❌ Failed to decode base64 'ckc' from license response.")
+            throw ProgramError.noCKCReturnedByKSM
+        }
+
+        print("[ContentKeyDelegate] ✅ License request succeeded. CKC size=\(ckcData.count) bytes.")
         return ckcData
     }
-
-
     /// Returns whether or not a content key should be persistable on disk.
     func shouldRequestPersistableContentKey(withIdentifier identifier: String) -> Bool {
         return pendingPersistableContentKeyIdentifiers.contains(identifier)
