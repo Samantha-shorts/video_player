@@ -161,25 +161,46 @@ class VideoPlayer: NSObject {
     }
 
     func setDrmDataSource(url: URL, certUrl: String, licenseUrl: String, headers: [String: String]?) {
-        let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers ?? [:]])
+        print("[VideoPlayer] setDrmDataSource() called")
+        print("[DEBUG] drmURL: \(url.absoluteString)")
+        print("[DEBUG] certUrl: \(certUrl)")
+        print("[DEBUG] licenseUrl: \(licenseUrl)")
+        print("[DEBUG] headers: \(headers ?? [:])")
+
+        let assetOptions = ["AVURLAssetHTTPHeaderFieldsKey": headers ?? [:]]
+        let asset = AVURLAsset(url: url, options: assetOptions)
+        print("[DEBUG] AVURLAsset created: \(asset)")
+
         if #available(iOS 11.2, tvOS 11.2, *) {
+            print("[DEBUG] addContentKeyRecipient called")
             ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
-            ContentKeyManager.shared.contentKeyDelegate.setDrmDataSource(certUrl: certUrl, licenseUrl: licenseUrl)
+            ContentKeyManager.shared.contentKeyDelegate.setDrmDataSource(
+                certUrl: certUrl,
+                licenseUrl: licenseUrl,
+                headers: headers
+            )
+        } else {
+            print("[WARN] DRM not supported on this iOS version")
         }
 
         let item = AVPlayerItem(asset: asset)
+        print("[DEBUG] AVPlayerItem created")
+
         item.addObserver(self, forKeyPath: "status", options: [.new, .old], context: nil)
-
-
         item.preferredForwardBufferDuration = 100
         item.add(videoOutput)
         player.replaceCurrentItem(with: item)
+
         if let group = asset.mediaSelectionGroup(forMediaCharacteristic: .legible) {
-            // disable AVPlayer's CC
+            print("[DEBUG] AVMediaSelectionGroup found for legible")
             item.select(nil, in: group)
+        } else {
+            print("[DEBUG] No AVMediaSelectionGroup found for legible")
         }
+
         addObservers(to: item)
     }
+
     func selectLegibleMediaGroup(at index: Int?) {
         if #available(iOS 15.0, *) {
             player.currentItem?.asset.loadMediaSelectionGroup(for: .legible, completionHandler: { [weak self] group, error in
@@ -249,10 +270,17 @@ class VideoPlayer: NSObject {
                 readyToPlay()
             case .failed:
                 let nsError = item.error as? NSError
+                let error = item.error?.localizedDescription ?? "unknown"
                 let invalid = nsError?.code == NSURLErrorNoPermissionsToReadFile
                 let errorCode = nsError?.code
+
+                print("[AVPlayerItem status = failed]")
+                print("Error: \(error)")
+                print("Code: \(String(describing: errorCode))")
+                print("Invalid: \(invalid)")
+
                 sendEvent(.error, [
-                    "error": item.error?.localizedDescription ?? "unknown",
+                    "error": error,
                     "invalid": invalid,
                     "code": errorCode as Any
                 ])
@@ -380,7 +408,7 @@ class VideoPlayer: NSObject {
                 player.removeTimeObserver(timeObserver)
             }
             if let currentItem = player.currentItem {
-                // currentItem.removeObserver(self, forKeyPath: "status")
+                currentItem.removeObserver(self, forKeyPath: "status")
             }
             rateObservation = nil
             statusObservation = nil
