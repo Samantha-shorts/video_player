@@ -164,7 +164,7 @@ class VideoPlayer: NSObject {
         let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers ?? [:]])
         if #available(iOS 11.2, tvOS 11.2, *) {
             ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
-            ContentKeyManager.shared.contentKeyDelegate.setDrmDataSource(certUrl: certUrl, licenseUrl: licenseUrl)
+            ContentKeyManager.shared.contentKeyDelegate.setDrmDataSource(certUrl: certUrl, licenseUrl: licenseUrl, headers: headers)
         }
 
         let item = AVPlayerItem(asset: asset)
