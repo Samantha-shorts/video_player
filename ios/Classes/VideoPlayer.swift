@@ -252,6 +252,12 @@ class VideoPlayer: NSObject {
                 let error = item.error?.localizedDescription ?? "unknown"
                 let invalid = nsError?.code == NSURLErrorNoPermissionsToReadFile
                 let errorCode = nsError?.code
+
+                print("[AVPlayerItem status = failed]")
+                print("Error: \(error)")
+                print("Code: \(String(describing: errorCode))")
+                print("Invalid: \(invalid)")
+
                 sendEvent(.error, [
                     "error": error,
                     "invalid": invalid,
