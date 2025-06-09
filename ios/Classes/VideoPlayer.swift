@@ -249,10 +249,11 @@ class VideoPlayer: NSObject {
                 readyToPlay()
             case .failed:
                 let nsError = item.error as? NSError
+                let error = item.error?.localizedDescription ?? "unknown"
                 let invalid = nsError?.code == NSURLErrorNoPermissionsToReadFile
                 let errorCode = nsError?.code
                 sendEvent(.error, [
-                    "error": item.error?.localizedDescription ?? "unknown",
+                    "error": error,
                     "invalid": invalid,
                     "code": errorCode as Any
                 ])
