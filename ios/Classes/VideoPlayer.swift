@@ -174,7 +174,11 @@ class VideoPlayer: NSObject {
         if #available(iOS 11.2, tvOS 11.2, *) {
             print("[DEBUG] addContentKeyRecipient called")
             ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
-            ContentKeyManager.shared.contentKeyDelegate.setDrmDataSource(certUrl: certUrl, licenseUrl: licenseUrl, headers: headers)
+            ContentKeyManager.shared.contentKeyDelegate.setDrmDataSource(
+                certUrl: certUrl,
+                licenseUrl: licenseUrl,
+                headers: headers
+            )
         } else {
             print("[WARN] DRM not supported on this iOS version")
         }
