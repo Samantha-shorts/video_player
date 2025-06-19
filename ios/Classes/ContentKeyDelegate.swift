@@ -76,6 +76,12 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
             throw ProgramError.missingApplicationCertificate
         }
         print("[DEBUG] cert HTTP status: \(res.statusCode)")
+        if let cert = data {
+            let responseText = String(data: cert, encoding: .utf8) ?? "<binary or non-UTF8 data>"
+            print("[DEBUG] cert response body: \(responseText)")
+        } else {
+            print("[DEBUG] cert response body: <no data>")
+        }
         guard res.statusCode >= 200 && res.statusCode < 300 else {
             throw ProgramError.missingApplicationCertificate
         }
