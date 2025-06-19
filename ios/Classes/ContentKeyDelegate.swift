@@ -184,9 +184,7 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
                            contentKeyRequest keyRequest: AVContentKeyRequest,
                            didFailWithError err: Error) {
         print("[ContentKeyDelegate] contentKeySession didFailWithError: \(err.localizedDescription)")
-        // ここは fatalError ではなく、本番アプリならエラー処理を適宜行う
-        fatalError(err.localizedDescription)
-
+        print("[ContentKeyDelegate] didFailWithError: \(err.localizedDescription)")
     }
 
     func handleStreamingContentKeyRequest(keyRequest: AVContentKeyRequest) {
