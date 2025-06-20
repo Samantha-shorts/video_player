@@ -42,6 +42,8 @@ class VideoPlayerConfiguration {
   ///The playback speed rate at which the video will start
   final double initialPlayBackSpeedRate;
 
+  final bool remainFullscreenWhenEnded;
+
   VideoPlayerConfiguration({
     this.aspectRatio,
     this.autoPlay = false,
@@ -61,6 +63,7 @@ class VideoPlayerConfiguration {
     this.quarityTrackSelectable,
     this.hidesControls = false,
     this.initialPlayBackSpeedRate = 1.0,
+    this.remainFullscreenWhenEnded = false,
   });
 
   VideoPlayerConfiguration copyWith({
@@ -77,6 +80,7 @@ class VideoPlayerConfiguration {
     bool? hidesControls,
     bool? remoteControlEnable,
     double? initialPlayBackSpeedRate,
+    bool? remainFullscreenWhenEnded,
   }) {
     return VideoPlayerConfiguration(
       autoPlay: autoPlay ?? this.autoPlay,
@@ -98,6 +102,8 @@ class VideoPlayerConfiguration {
       hidesControls: hidesControls ?? this.hidesControls,
       initialPlayBackSpeedRate:
           initialPlayBackSpeedRate ?? this.initialPlayBackSpeedRate,
+      remainFullscreenWhenEnded:
+          remainFullscreenWhenEnded ?? this.remainFullscreenWhenEnded,
     );
   }
 }
