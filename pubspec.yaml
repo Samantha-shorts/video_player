@@ -13,6 +13,7 @@ dependencies:
   plugin_platform_interface: ^2.0.2
   flutter_hls_parser: ^2.0.1
   collection: ^1.15.0
+  provider: ^6.1.5
 
 dev_dependencies:
   flutter_test:

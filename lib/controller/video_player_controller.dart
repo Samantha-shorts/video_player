@@ -117,6 +117,12 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
             isPlaying: event.isPlaying,
           );
           break;
+        case PlatformEventType.onPlaybackStateChanged:
+          value = value.copyWith(
+            eventType: VideoPlayerEventType.onPlaybackStateChanged,
+            state: event.state,
+          );
+          break;
         case PlatformEventType.positionChanged:
           value = value.copyWith(
             eventType: VideoPlayerEventType.positionChanged,
@@ -324,6 +330,11 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   Future<void> pause() async {
     if (!value.initialized || _isDisposed || !value.isPlaying) return;
     await VideoPlayerPlatform.instance.pause(textureId);
+  }
+
+  Future<void> refreshPlayer() async {
+    if (!value.initialized || _isDisposed) return;
+    await VideoPlayerPlatform.instance.refreshPlayer(textureId);
   }
 
   Future<void> seekTo(Duration? position) async {

@@ -186,7 +186,7 @@ class VideoPlayer: NSObject {
         let item = AVPlayerItem(asset: asset)
         print("[DEBUG] AVPlayerItem created")
 
-        item.addObserver(self, forKeyPath: "status", options: [.new, .old], context: nil)
+        // item.addObserver(self, forKeyPath: "status", options: [.new, .old], context: nil)
         item.preferredForwardBufferDuration = 100
         item.add(videoOutput)
         player.replaceCurrentItem(with: item)
@@ -260,35 +260,6 @@ class VideoPlayer: NSObject {
         paramsWithEvent["event"] = eventType.rawValue
         DispatchQueue.main.async { [weak self] in
             self?.eventSink?(paramsWithEvent)
-        }
-    }
-
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        if keyPath == "status", let item = object as? AVPlayerItem {
-            switch item.status {
-            case .readyToPlay:
-                readyToPlay()
-            case .failed:
-                let nsError = item.error as? NSError
-                let error = item.error?.localizedDescription ?? "unknown"
-                let invalid = nsError?.code == NSURLErrorNoPermissionsToReadFile
-                let errorCode = nsError?.code
-
-                print("[AVPlayerItem status = failed]")
-                print("Error: \(error)")
-                print("Code: \(String(describing: errorCode))")
-                print("Invalid: \(invalid)")
-
-                sendEvent(.error, [
-                    "error": error,
-                    "invalid": invalid,
-                    "code": errorCode as Any
-                ])
-            default:
-                break
-            }
-        } else {
-            super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
         }
     }
 
@@ -407,15 +378,13 @@ class VideoPlayer: NSObject {
             if let timeObserver = timeObserver {
                 player.removeTimeObserver(timeObserver)
             }
-            if let currentItem = player.currentItem {
-                currentItem.removeObserver(self, forKeyPath: "status")
-            }
             rateObservation = nil
             statusObservation = nil
             presentationSizeObservation = nil
+            rateObservation = nil
             loadedTimeRangesObservation = nil
-            isMutedObservation = nil
             NotificationCenter.default.removeObserver(self)
+            isMutedObservation = nil
         }
     }
 

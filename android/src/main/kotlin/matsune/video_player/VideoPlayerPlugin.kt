@@ -14,15 +14,16 @@ import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
+import io.flutter.plugin.common.EventChannel.EventSink
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
-import io.flutter.view.TextureRegistry
 import io.flutter.plugin.platform.PlatformViewRegistry
+import io.flutter.view.TextureRegistry
 
 class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
-    private val videoPlayers = LongSparseArray<VideoPlayerView>()
+    private val videoPlayers = LongSparseArray<VideoPlayer>()
     private val dataSources = LongSparseArray<Map<String, Any?>>()
     private var flutterState: FlutterState? = null
     private var activity: Activity? = null
@@ -143,20 +144,35 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 )
         }
         val viewId = System.currentTimeMillis().toLong()
-        val eventChannel = EventChannel(flutterState.binaryMessenger, EVENTS_CHANNEL + viewId)
+        val eventChannel = EventChannel(flutterState!!.binaryMessenger, EVENTS_CHANNEL + viewId)
 
-        var videoPlayerView = VideoPlayerView(
+        var videoPlayer = VideoPlayer(
             flutterState!!.applicationContext,
             flutterState!!.binaryMessenger,
-            eventChannel,
             customDefaultLoadControl,
         )
 
-        videoPlayers.put(viewId, videoPlayerView)
+        eventChannel.setStreamHandler(
+            object : EventChannel.StreamHandler {
+                override fun onListen(o: Any?, sink: EventSink) {
+                    videoPlayer.eventSink.setDelegate(sink)
+                }
+
+                override fun onCancel(o: Any?) {
+                    videoPlayer.eventSink.setDelegate(null)
+                }
+            }
+        )
+
+        videoPlayers.put(viewId, videoPlayer)
 
         flutterState!!.platformViewRegistry.registerViewFactory(
             "matsune.video_player/VideoPlayerView$viewId",
-            VideoPlayerFactory(flutterState!!.binaryMessenger, videoPlayerView)
+            VideoPlayerFactory(
+                flutterState!!.applicationContext,
+                eventChannel,
+                videoPlayer,
+            )
         )
 
         return viewId
@@ -228,7 +244,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         call: MethodCall,
         result: MethodChannel.Result,
         textureId: Long,
-        player: VideoPlayerView
+        player: VideoPlayer
     ) {
         when (call.method) {
             METHOD_SET_DATA_SOURCE -> {
@@ -249,6 +265,11 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             }
             METHOD_PAUSE -> {
                 player.pause()
+                result.success(null)
+            }
+            METHOD_REFRESH_PLAYER -> {
+                val location = player.exoPlayer.currentPosition.toInt() + 1
+                player.seekTo(location)
                 result.success(null)
             }
             METHOD_SEEK_TO -> {
@@ -320,7 +341,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     }
 
     @RequiresApi(Build.VERSION_CODES.M)
-    private fun setupNotification(context: Context, textureId: Long, player: VideoPlayerView) {
+    private fun setupNotification(context: Context, textureId: Long, player: VideoPlayer) {
         if (textureId == currentNotificationTextureId) {
             return
         }
@@ -350,7 +371,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         }
     }
 
-    private fun setDataSource(call: MethodCall, textureId: Long, player: VideoPlayerView) {
+    private fun setDataSource(call: MethodCall, textureId: Long, player: VideoPlayer) {
         val dataSource = call.argument<Map<String, Any?>>("dataSource")!!
         dataSources.put(textureId, dataSource)
         val disableRemoteControl = DataSourceUtils.getParameter<Boolean>(dataSource, "disableRemoteControl", false)
@@ -373,7 +394,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         }
     }
 
-    private fun dispose(player: VideoPlayerView, textureId: Long) {
+    private fun dispose(player: VideoPlayer, textureId: Long) {
         pipListener.stopPipHandler()
         player.dispose()
         videoPlayers.remove(textureId)
@@ -381,13 +402,13 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun enablePictureInPicture(context: Context, activity: Activity, player: VideoPlayerView) {
+    private fun enablePictureInPicture(context: Context, activity: Activity, player: VideoPlayer) {
         player.setupMediaSession(context)
         activity.enterPictureInPictureMode(PictureInPictureParams.Builder().build())
         pipListener.startPictureInPictureListenerTimer(activity, player)
     }
 
-    private fun disablePictureInPicture(player: VideoPlayerView) {
+    private fun disablePictureInPicture(player: VideoPlayer) {
         pipListener.stopPipHandler()
         activity?.moveTaskToBack(false)
         player.disposeMediaSession()
@@ -434,6 +455,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         private const val METHOD_SET_AUTO_LOOP = "setAutoLoop"
         private const val METHOD_PLAY = "play"
         private const val METHOD_PAUSE = "pause"
+        private const val METHOD_REFRESH_PLAYER = "refreshPlayer"
         private const val METHOD_SEEK_TO = "seekTo"
         private const val METHOD_DISPOSE = "dispose"
         private const val METHOD_WILL_EXIT_FULLSCREEN = "willExitFullscreen"
