@@ -78,6 +78,11 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
             duration: Duration(milliseconds: map['duration'] as int),
             size: size,
           );
+        case PlatformEventType.onPlaybackStateChanged:
+          return PlatformEvent(
+            eventType: eventType,
+            state: map["state"] as int,
+          );
         case PlatformEventType.isPlayingChanged:
           return PlatformEvent(
             eventType: eventType,
@@ -124,17 +129,21 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
   }
 
   @override
-  Widget buildView(int? textureId, bool isFullscreen) {
+  Widget buildView(int? textureId, VideoPlayerController controller) {
     const viewType = "matsune.video_player/VideoPlayerView";
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       return UiKitView(
         viewType: viewType,
         creationParamsCodec: const StandardMessageCodec(),
-        creationParams: {'textureId': textureId!, 'isFullscreen': isFullscreen},
+        creationParams: {
+          'textureId': textureId!,
+          'isFullscreen': controller.value.isFullscreen
+        },
       );
     } else {
       final androidViewType = "$viewType$textureId";
       return PlatformViewLink(
+        key: ValueKey(DateTime.now().millisecondsSinceEpoch),
         viewType: androidViewType,
         surfaceFactory: (context, controller) {
           return AndroidViewSurface(
@@ -234,6 +243,16 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
         'pause',
         <String, dynamic>{'textureId': textureId},
       );
+
+  @override
+  Future<void> refreshPlayer(int? textureId) {
+    return methodChannel.invokeMethod<void>(
+      'refreshPlayer',
+      <String, dynamic>{
+        'textureId': textureId,
+      },
+    );
+  }
 
   @override
   Future<void> seekTo(int? textureId, Duration position) {

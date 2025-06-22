@@ -46,7 +46,7 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
       throw UnimplementedError('eventStreamFor() has not been implemented.');
 
   /// Returns a widget displaying the video with a given textureID.
-  Widget buildView(int? textureId, bool isFullscreen) =>
+  Widget buildView(int? textureId, VideoPlayerController controller) =>
       throw UnimplementedError('buildView() has not been implemented.');
 
   Future<void> setDataSource(
@@ -60,6 +60,9 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
       throw UnimplementedError('play() has not been implemented.');
 
   Future<void> pause(int? textureId) =>
+      throw UnimplementedError('pause() has not been implemented.');
+
+  Future<void> refreshPlayer(int? textureId) =>
       throw UnimplementedError('pause() has not been implemented.');
 
   /// Sets the video position to a [Duration] from the start.
@@ -133,8 +136,10 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
       throw UnimplementedError('expand() has not been implemented.');
 
   Future<double> getCurrentVideoResolution(int? textureId) =>
-      throw UnimplementedError('getCurrentVideoResolution() has not been implemented.');
+      throw UnimplementedError(
+          'getCurrentVideoResolution() has not been implemented.');
 
   Future<double> getCurrentVideoFrameRate(int? textureId) =>
-      throw UnimplementedError('getCurrentVideoFrameRate() has not been implemented.');
+      throw UnimplementedError(
+          'getCurrentVideoFrameRate() has not been implemented.');
 }
