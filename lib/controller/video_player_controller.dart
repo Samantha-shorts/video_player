@@ -32,8 +32,9 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   VideoPlayerController({
     required this.configuration,
     VideoPlayerDataSource? dataSource,
+    AbrTrack? track,
   }) : super(VideoPlayerValue()) {
-    _create();
+    _create(track);
     if (dataSource != null) _setDataSource(dataSource);
   }
 
@@ -91,10 +92,13 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     }
   }
 
-  Future<void> _create() async {
+  Future<void> _create(AbrTrack? track) async {
     _textureId = await VideoPlayerPlatform.instance
         .create(configuration.bufferingConfiguration);
     tracksController.textureId = _textureId;
+    if (track != null) {
+      tracksController.selectTrack(track);
+    }
     setPlaybackRate(configuration.initialPlayBackSpeedRate);
     createCompleter.complete(null);
 
