@@ -22,7 +22,7 @@ class VideoPlayerValue {
   /// rest will initialize with default values when unset.
   VideoPlayerValue({
     this.eventType,
-    this.state = 0,
+    this.plaingState = 0,
     this.duration,
     this.size,
     this.buffered,
@@ -38,12 +38,12 @@ class VideoPlayerValue {
     this.invalid,
     this.errorCode,
     int? stateChangedTimestamp,
-  }) : stateChangedTimestamp =
+  }) : plaingStateChangedTimestamp =
             stateChangedTimestamp ?? DateTime.now().millisecondsSinceEpoch;
 
   VideoPlayerEventType? eventType;
 
-  final int state;
+  final int plaingState;
 
   /// The total duration of the video.
   ///
@@ -86,13 +86,13 @@ class VideoPlayerValue {
 
   bool get isFinished => position.inSeconds == duration?.inSeconds;
 
-  int stateChangedTimestamp;
+  int plaingStateChangedTimestamp;
 
   /// Returns a new instance that has the same values as this current instance,
   /// except for any overrides passed in as arguments to [copyWidth].
   VideoPlayerValue copyWith({
     VideoPlayerEventType? eventType,
-    int? state,
+    int? plaingState,
     Duration? duration,
     Size? size,
     DurationRange? buffered,
@@ -108,13 +108,13 @@ class VideoPlayerValue {
     bool? invalid,
     int? errorCode,
   }) {
-    int? stateChangedTimestamp;
-    if (state != this.state && state == 3) {
-      stateChangedTimestamp = DateTime.now().millisecondsSinceEpoch;
+    int? plaingStateChangedTimestamp;
+    if (plaingState != this.plaingState && plaingState == 3) {
+      plaingStateChangedTimestamp = DateTime.now().millisecondsSinceEpoch;
     }
     return VideoPlayerValue(
       eventType: eventType ?? this.eventType,
-      state: state ?? this.state,
+      plaingState: plaingState ?? this.plaingState,
       duration: duration ?? this.duration,
       size: size ?? this.size,
       buffered: buffered ?? this.buffered,
@@ -130,7 +130,7 @@ class VideoPlayerValue {
       invalid: invalid ?? this.invalid,
       errorCode: errorCode ?? this.errorCode,
       stateChangedTimestamp:
-          stateChangedTimestamp ?? this.stateChangedTimestamp,
+          plaingStateChangedTimestamp ?? this.plaingStateChangedTimestamp,
     );
   }
 
@@ -153,6 +153,6 @@ class VideoPlayerValue {
         'errorDetails: $errorDetails), '
         'invalid: $invalid), '
         'errorCode: $errorCode), '
-        'stateChangedTimestamp: $stateChangedTimestamp';
+        'stateChangedTimestamp: $plaingStateChangedTimestamp';
   }
 }

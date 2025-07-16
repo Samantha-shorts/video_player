@@ -135,7 +135,7 @@ class _PlayerState extends State<_Player> {
         builder: (context, value, child) {
           final androidViewType = "$viewType$_textureId";
           return PlatformViewLink(
-            key: ValueKey(value.stateChangedTimestamp),
+            key: ValueKey(value.plaingStateChangedTimestamp),
             viewType: androidViewType,
             surfaceFactory: (context, controller) {
               return AndroidViewSurface(

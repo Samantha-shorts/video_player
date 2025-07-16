@@ -8,11 +8,6 @@ const _drmHlsFileUrl =
 const _drmDashFileUrl =
     'https://d1qg19f7rqukzl.cloudfront.net/big_buck_bunny_dev_20240823/DASH/big_buck_bunny_1080p_h264.mpd';
 
-// const _drmHlsFileUrl =
-//     'https://d173fw6w6ru1im.cloudfront.net/converted/735/drm/HLS/8ea271709e67344fcb9b1a085d04226d.m3u8';
-// const _drmDashFileUrl =
-//     'https://d173fw6w6ru1im.cloudfront.net/converted/735/drm/DASH/8ea271709e67344fcb9b1a085d04226d.mpd';
-
 class DrmVideoPage extends StatefulWidget {
   const DrmVideoPage({super.key});
   @override

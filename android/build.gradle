@@ -32,7 +32,6 @@ apply plugin: 'kotlin-android'
 android {
     namespace 'matsune.video_player'
     compileSdkVersion 31
-    namespace "matsune.video_player"
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8

@@ -13,17 +13,7 @@ class _ScrollVideoPageState extends State<ScrollVideoPage> {
   @override
   void initState() {
     super.initState();
-
-    // _controlsEventSubscription = controller.controlsEventStream.listen((event) {
-    //   print(event);
-    // });
   }
-
-  // final streamController = StreamController<int>.broadcast();
-  // @override
-  // void dispose() {
-  //   super.dispose();
-  // }
 
   @override
   Widget build(BuildContext context) {
@@ -33,37 +23,20 @@ class _ScrollVideoPageState extends State<ScrollVideoPage> {
         scrollDirection: Axis.vertical,
         physics: const BouncingScrollPhysics(),
         itemBuilder: (context, index) {
-          return _Page(
-            index: index,
-            // stream: streamController.stream,
-          );
+          return _Page(index: index);
         },
         itemCount: 10,
         onPageChanged: (value) {
           print(value);
-          // streamController.sink.add(value);
         },
       ),
-      // Column(
-      //   children: [
-      //     const SizedBox(height: 8),
-      //     AspectRatio(
-      //       aspectRatio: 16 / 9,
-      //       child: VideoPlayer(controller: controller),
-      //     ),
-      //   ],
-      // ),
     );
   }
 }
 
 class _Page extends StatefulWidget {
-  const _Page({
-    required this.index,
-    // required this.stream,
-  });
+  const _Page({required this.index});
 
-  // final Stream<int> stream;
   final int index;
 
   @override
