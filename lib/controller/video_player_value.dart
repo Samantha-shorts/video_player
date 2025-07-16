@@ -142,6 +142,7 @@ class VideoPlayerValue {
     // ignore: no_runtimetype_tostring
     return '$runtimeType('
         'eventType: $eventType, '
+        'playbackState: $playbackState, '
         'duration: $duration, '
         'size: $size, '
         'isPlaying: $isPlaying, '
