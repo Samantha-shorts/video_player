@@ -32,9 +32,9 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   VideoPlayerController({
     required this.configuration,
     VideoPlayerDataSource? dataSource,
-    AbrTrack? track,
+    this.initialTrack,
   }) : super(VideoPlayerValue()) {
-    _create(track);
+    _create();
     if (dataSource != null) _setDataSource(dataSource);
   }
 
@@ -43,6 +43,8 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   int? _textureId;
 
   int? get textureId => _textureId;
+
+  AbrTrack? initialTrack;
 
   StreamSubscription<PlatformEvent>? _eventSubscription;
 
@@ -92,16 +94,10 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     }
   }
 
-  Future<void> _create(AbrTrack? track) async {
+  Future<void> _create() async {
     _textureId = await VideoPlayerPlatform.instance
         .create(configuration.bufferingConfiguration);
     tracksController.textureId = _textureId;
-    if (track != null) {
-      tracksController.selectTrack(
-        track,
-        initialize: true,
-      );
-    }
     setPlaybackRate(configuration.initialPlayBackSpeedRate);
     createCompleter.complete(null);
 
@@ -265,6 +261,13 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       if (Utils.isDataSourceHls(dataSource.url)) {
         _loadAbrManifest(dataSource);
       }
+    }
+
+    if (initialTrack != null) {
+      tracksController.selectTrack(
+        initialTrack!,
+        initialize: true,
+      );
     }
 
     await _initializeCompleter.future;
