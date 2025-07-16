@@ -22,7 +22,7 @@ class VideoPlayerValue {
   /// rest will initialize with default values when unset.
   VideoPlayerValue({
     this.eventType,
-    this.plaingState = 0,
+    this.playbackState = 0,
     this.duration,
     this.size,
     this.buffered,
@@ -38,12 +38,14 @@ class VideoPlayerValue {
     this.invalid,
     this.errorCode,
     int? stateChangedTimestamp,
-  }) : plaingStateChangedTimestamp =
+  }) : playbackStateChangedTimestamp =
             stateChangedTimestamp ?? DateTime.now().millisecondsSinceEpoch;
 
   VideoPlayerEventType? eventType;
 
-  final int plaingState;
+  /// Only use Android platform.
+  /// https://developer.android.com/media/media3/exoplayer/listening-to-player-events?utm_source=chatgpt.com&hl=ja#playback-state
+  final int playbackState;
 
   /// The total duration of the video.
   ///
@@ -86,13 +88,14 @@ class VideoPlayerValue {
 
   bool get isFinished => position.inSeconds == duration?.inSeconds;
 
-  int plaingStateChangedTimestamp;
+  /// Only use Android platform.
+  int playbackStateChangedTimestamp;
 
   /// Returns a new instance that has the same values as this current instance,
   /// except for any overrides passed in as arguments to [copyWidth].
   VideoPlayerValue copyWith({
     VideoPlayerEventType? eventType,
-    int? plaingState,
+    int? playbackState,
     Duration? duration,
     Size? size,
     DurationRange? buffered,
@@ -108,13 +111,13 @@ class VideoPlayerValue {
     bool? invalid,
     int? errorCode,
   }) {
-    int? plaingStateChangedTimestamp;
-    if (plaingState != this.plaingState && plaingState == 3) {
-      plaingStateChangedTimestamp = DateTime.now().millisecondsSinceEpoch;
+    int? playbackStateChangedTimestamp;
+    if (playbackState != this.playbackState && playbackState == 3) {
+      playbackStateChangedTimestamp = DateTime.now().millisecondsSinceEpoch;
     }
     return VideoPlayerValue(
       eventType: eventType ?? this.eventType,
-      plaingState: plaingState ?? this.plaingState,
+      playbackState: playbackState ?? this.playbackState,
       duration: duration ?? this.duration,
       size: size ?? this.size,
       buffered: buffered ?? this.buffered,
@@ -130,7 +133,7 @@ class VideoPlayerValue {
       invalid: invalid ?? this.invalid,
       errorCode: errorCode ?? this.errorCode,
       stateChangedTimestamp:
-          plaingStateChangedTimestamp ?? this.plaingStateChangedTimestamp,
+          playbackStateChangedTimestamp ?? this.playbackStateChangedTimestamp,
     );
   }
 
@@ -153,6 +156,6 @@ class VideoPlayerValue {
         'errorDetails: $errorDetails), '
         'invalid: $invalid), '
         'errorCode: $errorCode), '
-        'stateChangedTimestamp: $plaingStateChangedTimestamp';
+        'stateChangedTimestamp: $playbackStateChangedTimestamp';
   }
 }

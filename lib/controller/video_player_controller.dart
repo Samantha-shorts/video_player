@@ -120,7 +120,7 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
         case PlatformEventType.onPlaybackStateChanged:
           value = value.copyWith(
             eventType: VideoPlayerEventType.onPlaybackStateChanged,
-            plaingState: event.state,
+            playbackState: event.state,
           );
           break;
         case PlatformEventType.positionChanged:
