@@ -97,7 +97,10 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
         .create(configuration.bufferingConfiguration);
     tracksController.textureId = _textureId;
     if (track != null) {
-      tracksController.selectTrack(track);
+      tracksController.selectTrack(
+        track,
+        initialize: true,
+      );
     }
     setPlaybackRate(configuration.initialPlayBackSpeedRate);
     createCompleter.complete(null);
