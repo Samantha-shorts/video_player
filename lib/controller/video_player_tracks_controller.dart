@@ -4,6 +4,7 @@ import 'package:video_player/abr/abr.dart';
 import 'package:video_player/platform/platform.dart';
 
 enum VideoPlayerTracksStreamEvent {
+  initialize,
   didUpdate,
 }
 
@@ -36,7 +37,10 @@ class VideoPlayerTracksController {
     _abrTracks = tracks;
   }
 
-  void selectTrack(AbrTrack track) {
+  void selectTrack(
+    AbrTrack track, {
+    bool initialize = false,
+  }) {
     VideoPlayerPlatform.instance.setTrackParameters(
       textureId,
       track.width,
@@ -46,8 +50,11 @@ class VideoPlayerTracksController {
 
     if (_selectedTrack == null || _selectedTrack != track) {
       _selectedTrack = track;
-      _videoPlayerTracksStreamController
-          .add(VideoPlayerTracksStreamEvent.didUpdate);
+      _videoPlayerTracksStreamController.add(
+        initialize
+            ? VideoPlayerTracksStreamEvent.initialize
+            : VideoPlayerTracksStreamEvent.didUpdate,
+      );
     }
   }
 }
