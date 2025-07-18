@@ -1,22 +1,22 @@
 import 'dart:async';
 
-import 'package:example/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
-class BasicPlayerPage extends StatefulWidget {
-  const BasicPlayerPage({super.key});
+const _drmHlsFileUrl =
+    'https://d1qg19f7rqukzl.cloudfront.net/big_buck_bunny_dev_20240917/HLS/big_buck_bunny_1080p_h264.m3u8';
+const _drmDashFileUrl =
+    'https://d1qg19f7rqukzl.cloudfront.net/big_buck_bunny_dev_20240823/DASH/big_buck_bunny_1080p_h264.mpd';
 
+class DrmVideoPage extends StatefulWidget {
+  const DrmVideoPage({super.key});
   @override
-  State<BasicPlayerPage> createState() => _BasicPlayerPageState();
+  State<DrmVideoPage> createState() => _DrmVideoPageState();
 }
 
-class _BasicPlayerPageState extends State<BasicPlayerPage> {
+class _DrmVideoPageState extends State<DrmVideoPage> {
   final controller = VideoPlayerController(
-    configuration: VideoPlayerConfiguration(
-      autoPlay: false,
-      autoLoop: true,
-    ),
+    configuration: VideoPlayerConfiguration(autoPlay: false, autoLoop: true),
   );
 
   StreamSubscription? _controlsEventSubscription;
@@ -25,14 +25,12 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
   void initState() {
     super.initState();
     controller.setNetworkDataSource(
-      fileUrl: Constants.m3u8_16x9,
-      notificationConfiguration: const VideoPlayerNotificationConfiguration(
-        title: "video example title",
-        author: "video author",
-      ),
+      fileUrl: _drmHlsFileUrl,
+      drmHlsFileUrl: _drmHlsFileUrl,
+      drmDashFileUrl: _drmDashFileUrl,
     );
     _controlsEventSubscription = controller.controlsEventStream.listen((event) {
-      print(event);
+      debugPrint(event.toString());
     });
   }
 
@@ -45,9 +43,7 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Basic player"),
-      ),
+      appBar: AppBar(title: const Text("Drm video")),
       body: Column(
         children: [
           const SizedBox(height: 8),

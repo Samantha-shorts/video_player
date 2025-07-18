@@ -135,7 +135,7 @@ class HlsProxyServer {
                     return completion(GCDWebServerErrorResponse(statusCode: 500))
                 }
                 let m3u8 = self.rewriteM3u8(with: data, forOriginURL: originURL)
-//                os_log("%@", log: .proxyServer, type: .debug, m3u8)
+                // os_log("%@", log: .proxyServer, type: .debug, m3u8)
                 completion(
                     GCDWebServerDataResponse(
                         data: m3u8.data(using: .utf8)!,

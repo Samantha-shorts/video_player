@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import 'package:video_player_example/constants.dart';
+import 'package:example/constants.dart';
 
 class SrtSubtitlePage extends StatefulWidget {
   const SrtSubtitlePage({super.key});
@@ -11,16 +11,14 @@ class SrtSubtitlePage extends StatefulWidget {
 
 class _SrtSubtitlePageState extends State<SrtSubtitlePage> {
   final controller = VideoPlayerController(
-    configuration: VideoPlayerConfiguration(
-      autoPlay: true,
-    ),
+    configuration: VideoPlayerConfiguration(autoPlay: true),
   );
 
   @override
   void initState() {
     super.initState();
     controller.setNetworkDataSource(
-      Constants.m3u8_16x9,
+      fileUrl: Constants.m3u8_16x9,
       subtitles: [
         VideoPlayerSubtitlesSource(
           type: VideoPlayerSubtitlesSourceType.network,
@@ -44,9 +42,7 @@ class _SrtSubtitlePageState extends State<SrtSubtitlePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("SRT Subtitle"),
-      ),
+      appBar: AppBar(title: const Text("SRT Subtitle")),
       body: Column(
         children: [
           const SizedBox(height: 8),

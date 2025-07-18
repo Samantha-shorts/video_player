@@ -3,7 +3,7 @@ import 'package:video_player/controller/controller.dart';
 import 'package:video_player/controls/progress_bar_painter.dart';
 
 class MaterialVideoProgressBar extends StatefulWidget {
-  MaterialVideoProgressBar({
+  const MaterialVideoProgressBar({
     Key? key,
     this.dragStart,
     this.dragEnd,

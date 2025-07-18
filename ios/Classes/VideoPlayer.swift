@@ -81,9 +81,9 @@ class VideoPlayer: NSObject {
     var duration: CMTime? {
         player.currentItem?.duration
     }
-    
+
     var autoLoop = false
-    
+
     var disableRemoteControl = false
 
     init(textureId: Int, eventChannel: FlutterEventChannel) {
@@ -150,13 +150,54 @@ class VideoPlayer: NSObject {
     func setDataSource(url: URL, headers: [String: String]?) {
         let asset = AVURLAsset(url: url, options: ["AVURLAssetHTTPHeaderFieldsKey": headers ?? [:]])
         let item = AVPlayerItem(asset: asset)
-        item.preferredForwardBufferDuration = 100 
+        item.preferredForwardBufferDuration = 100
         item.add(videoOutput)
         player.replaceCurrentItem(with: item)
         if let group = asset.mediaSelectionGroup(forMediaCharacteristic: .legible) {
             // disable AVPlayer's CC
             item.select(nil, in: group)
         }
+        addObservers(to: item)
+    }
+
+    func setDrmDataSource(url: URL, certUrl: String, licenseUrl: String, headers: [String: String]?) {
+        print("[VideoPlayer] setDrmDataSource() called")
+        print("[DEBUG] drmURL: \(url.absoluteString)")
+        print("[DEBUG] certUrl: \(certUrl)")
+        print("[DEBUG] licenseUrl: \(licenseUrl)")
+        print("[DEBUG] headers: \(headers ?? [:])")
+
+        let assetOptions = ["AVURLAssetHTTPHeaderFieldsKey": headers ?? [:]]
+        let asset = AVURLAsset(url: url, options: assetOptions)
+        print("[DEBUG] AVURLAsset created: \(asset)")
+
+        if #available(iOS 11.2, tvOS 11.2, *) {
+            print("[DEBUG] addContentKeyRecipient called")
+            ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
+            ContentKeyManager.shared.contentKeyDelegate.setDrmDataSource(
+                certUrl: certUrl,
+                licenseUrl: licenseUrl,
+                headers: headers
+            )
+        } else {
+            print("[WARN] DRM not supported on this iOS version")
+        }
+
+        let item = AVPlayerItem(asset: asset)
+        print("[DEBUG] AVPlayerItem created")
+
+        // item.addObserver(self, forKeyPath: "status", options: [.new, .old], context: nil)
+        item.preferredForwardBufferDuration = 100
+        item.add(videoOutput)
+        player.replaceCurrentItem(with: item)
+
+        if let group = asset.mediaSelectionGroup(forMediaCharacteristic: .legible) {
+            print("[DEBUG] AVMediaSelectionGroup found for legible")
+            item.select(nil, in: group)
+        } else {
+            print("[DEBUG] No AVMediaSelectionGroup found for legible")
+        }
+
         addObservers(to: item)
     }
 
@@ -210,7 +251,7 @@ class VideoPlayer: NSObject {
         guard let track = player.currentItem?.tracks.first(where: { $0.assetTrack?.mediaType == .video }) else {
             return 0
         }
-        
+
         return track.currentVideoFrameRate
     }
 

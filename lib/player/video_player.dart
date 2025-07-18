@@ -22,7 +22,7 @@ class VideoPlayer extends StatefulWidget {
   }
 
   factory VideoPlayer.network(
-    String url, {
+    String fileUrl, {
     VideoPlayerConfiguration? configuration,
   }) =>
       VideoPlayer(
@@ -30,7 +30,7 @@ class VideoPlayer extends StatefulWidget {
           configuration: configuration ?? VideoPlayerConfiguration(),
           dataSource: VideoPlayerDataSource(
             sourceType: VideoPlayerDataSourceType.network,
-            url: url,
+            fileUrl: fileUrl,
           ),
         ),
       );

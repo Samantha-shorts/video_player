@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/configurations/configurations.dart';
 import 'package:video_player/controller/controller.dart';
@@ -38,8 +40,8 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
     return map["textureId"] as int?;
   }
 
-  EventChannel _eventChannelFor(int? textureId) =>
-      EventChannel('video_player_channel/videoEvents$textureId');
+  EventChannel _eventChannelFor(int? viewId) =>
+      EventChannel('video_player_channel/videoEvents$viewId');
 
   @override
   Stream<PlatformEvent> eventStreamFor(int? textureId) {
@@ -75,6 +77,11 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
             eventType: eventType,
             duration: Duration(milliseconds: map['duration'] as int),
             size: size,
+          );
+        case PlatformEventType.onPlaybackStateChanged:
+          return PlatformEvent(
+            eventType: eventType,
+            state: map["state"] as int,
           );
         case PlatformEventType.isPlayingChanged:
           return PlatformEvent(
@@ -122,19 +129,41 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
   }
 
   @override
-  Widget buildView(int? textureId, bool isFullscreen) {
+  Widget buildView(int? textureId, VideoPlayerController controller) {
     const viewType = "matsune.video_player/VideoPlayerView";
     if (defaultTargetPlatform == TargetPlatform.iOS) {
       return UiKitView(
         viewType: viewType,
         creationParamsCodec: const StandardMessageCodec(),
-        creationParams: {'textureId': textureId!, 'isFullscreen': isFullscreen},
+        creationParams: {
+          'textureId': textureId!,
+          'isFullscreen': controller.value.isFullscreen
+        },
       );
     } else {
-      final Map<String, dynamic> creationParams = <String, dynamic>{
-        "textureId": textureId
-      };
-      return Texture(textureId: textureId!);
+      final androidViewType = "$viewType$textureId";
+      return PlatformViewLink(
+        key: ValueKey(DateTime.now().millisecondsSinceEpoch),
+        viewType: androidViewType,
+        surfaceFactory: (context, controller) {
+          return AndroidViewSurface(
+            controller: controller as AndroidViewController,
+            gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
+            hitTestBehavior: PlatformViewHitTestBehavior.opaque,
+          );
+        },
+        onCreatePlatformView: (params) {
+          // NOTE: ここでcontrollerの初期化処理を行う この時textureIdを渡す
+          return PlatformViewsService.initSurfaceAndroidView(
+            id: params.id,
+            viewType: androidViewType,
+            layoutDirection: TextDirection.ltr,
+            creationParamsCodec: const StandardMessageCodec(),
+          )
+            ..addOnPlatformViewCreatedListener(params.onPlatformViewCreated)
+            ..create();
+        },
+      );
     }
   }
 
@@ -143,7 +172,12 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
     switch (dataSource.sourceType) {
       case VideoPlayerDataSourceType.network:
         return {
-          'url': dataSource.url,
+          'fileUrl': dataSource.fileUrl,
+          'drmDashFileUrl': dataSource.drmDashFileUrl,
+          'drmHlsFileUrl': dataSource.drmHlsFileUrl,
+          'fairplayCertUrl': dataSource.fairplayCertUrl,
+          'fairplayLicenseUrl': dataSource.fairplayLicenseUrl,
+          'widevineLicenseUrl': dataSource.widevineLicenseUrl,
           'headers': dataSource.headers,
           'subtitles': dataSource.subtitles
               ?.map(
@@ -209,6 +243,16 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
         'pause',
         <String, dynamic>{'textureId': textureId},
       );
+
+  @override
+  Future<void> refreshPlayer(int? textureId) {
+    return methodChannel.invokeMethod<void>(
+      'refreshPlayer',
+      <String, dynamic>{
+        'textureId': textureId,
+      },
+    );
+  }
 
   @override
   Future<void> seekTo(int? textureId, Duration position) {

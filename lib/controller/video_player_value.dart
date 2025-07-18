@@ -6,6 +6,7 @@ import 'package:video_player/platform/platform.dart';
 enum VideoPlayerEventType {
   initialized,
   isPlayingChanged,
+  onPlaybackStateChanged,
   positionChanged,
   bufferChanged,
   pipChanged,
@@ -21,6 +22,7 @@ class VideoPlayerValue {
   /// rest will initialize with default values when unset.
   VideoPlayerValue({
     this.eventType,
+    this.playbackState = 0,
     this.duration,
     this.size,
     this.buffered,
@@ -35,9 +37,15 @@ class VideoPlayerValue {
     this.errorDetails,
     this.invalid,
     this.errorCode,
-  });
+    int? stateChangedTimestamp,
+  }) : playbackStateChangedTimestamp =
+            stateChangedTimestamp ?? DateTime.now().millisecondsSinceEpoch;
 
   VideoPlayerEventType? eventType;
+
+  /// Only use Android platform.
+  /// https://developer.android.com/media/media3/exoplayer/listening-to-player-events?utm_source=chatgpt.com&hl=ja#playback-state
+  final int playbackState;
 
   /// The total duration of the video.
   ///
@@ -80,10 +88,14 @@ class VideoPlayerValue {
 
   bool get isFinished => position.inSeconds == duration?.inSeconds;
 
+  /// Only use Android platform.
+  int playbackStateChangedTimestamp;
+
   /// Returns a new instance that has the same values as this current instance,
   /// except for any overrides passed in as arguments to [copyWidth].
   VideoPlayerValue copyWith({
     VideoPlayerEventType? eventType,
+    int? playbackState,
     Duration? duration,
     Size? size,
     DurationRange? buffered,
@@ -99,8 +111,13 @@ class VideoPlayerValue {
     bool? invalid,
     int? errorCode,
   }) {
+    int? playbackStateChangedTimestamp;
+    if (playbackState != this.playbackState && playbackState == 3) {
+      playbackStateChangedTimestamp = DateTime.now().millisecondsSinceEpoch;
+    }
     return VideoPlayerValue(
       eventType: eventType ?? this.eventType,
+      playbackState: playbackState ?? this.playbackState,
       duration: duration ?? this.duration,
       size: size ?? this.size,
       buffered: buffered ?? this.buffered,
@@ -115,6 +132,8 @@ class VideoPlayerValue {
       errorDetails: errorDetails ?? this.errorDetails,
       invalid: invalid ?? this.invalid,
       errorCode: errorCode ?? this.errorCode,
+      stateChangedTimestamp:
+          playbackStateChangedTimestamp ?? this.playbackStateChangedTimestamp,
     );
   }
 
@@ -123,6 +142,7 @@ class VideoPlayerValue {
     // ignore: no_runtimetype_tostring
     return '$runtimeType('
         'eventType: $eventType, '
+        'playbackState: $playbackState, '
         'duration: $duration, '
         'size: $size, '
         'isPlaying: $isPlaying, '
@@ -136,6 +156,7 @@ class VideoPlayerValue {
         'errorDescription: $errorDescription, '
         'errorDetails: $errorDetails), '
         'invalid: $invalid), '
-        'errorCode: $errorCode)';
+        'errorCode: $errorCode), '
+        'stateChangedTimestamp: $playbackStateChangedTimestamp';
   }
 }

@@ -14,10 +14,12 @@ import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
+import io.flutter.plugin.common.EventChannel.EventSink
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import io.flutter.plugin.platform.PlatformViewRegistry
 import io.flutter.view.TextureRegistry
 
 class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
@@ -43,6 +45,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             binding.applicationContext,
             binding.binaryMessenger,
             binding.textureRegistry,
+            binding.platformViewRegistry,
         )
         flutterState?.startListening(this)
 
@@ -100,8 +103,10 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     result.error(ERR_CODE_INVALID_TEXTURE_ID, "textureId is null", null)
                     return
                 }
-                val player = videoPlayers[textureId]
-                if (player == null) {
+
+                val videoPlayerView = videoPlayers[textureId]
+
+                if (videoPlayerView == null) {
                     result.error(
                         ERR_CODE_INVALID_TEXTURE_ID,
                         "No video player associated with texture id $textureId",
@@ -109,7 +114,8 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     )
                     return
                 }
-                onPlayerMethodCall(flutterState, call, result, textureId, player)
+
+                onPlayerMethodCall(flutterState, call, result, textureId, videoPlayerView)
             }
         }
     }
@@ -123,10 +129,6 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     }
 
     private fun createPlayer(flutterState: FlutterState, call: MethodCall): Long {
-        val textureEntry = flutterState.textureRegistry.createSurfaceTexture()
-        val textureId = textureEntry.id()
-        val eventChannel =
-            EventChannel(flutterState.binaryMessenger, EVENTS_CHANNEL + textureId)
         var customDefaultLoadControl = CustomDefaultLoadControl()
         if (call.hasArgument("minBufferMs") &&
             call.hasArgument("maxBufferMs") &&
@@ -141,15 +143,39 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     call.argument("bufferForPlaybackAfterRebufferMs")
                 )
         }
-        val player =
-            VideoPlayer(
-                flutterState.applicationContext,
+        val viewId = System.currentTimeMillis().toLong()
+        val eventChannel = EventChannel(flutterState!!.binaryMessenger, EVENTS_CHANNEL + viewId)
+
+        var videoPlayer = VideoPlayer(
+            flutterState!!.applicationContext,
+            flutterState!!.binaryMessenger,
+            customDefaultLoadControl,
+        )
+
+        eventChannel.setStreamHandler(
+            object : EventChannel.StreamHandler {
+                override fun onListen(o: Any?, sink: EventSink) {
+                    videoPlayer.eventSink.setDelegate(sink)
+                }
+
+                override fun onCancel(o: Any?) {
+                    videoPlayer.eventSink.setDelegate(null)
+                }
+            }
+        )
+
+        videoPlayers.put(viewId, videoPlayer)
+
+        flutterState!!.platformViewRegistry.registerViewFactory(
+            "matsune.video_player/VideoPlayerView$viewId",
+            VideoPlayerFactory(
+                flutterState!!.applicationContext,
                 eventChannel,
-                textureEntry,
-                customDefaultLoadControl,
+                videoPlayer,
             )
-        videoPlayers.put(textureId, player)
-        return textureId
+        )
+
+        return viewId
     }
 
     private fun onDownloadMethodCall(
@@ -239,6 +265,11 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             }
             METHOD_PAUSE -> {
                 player.pause()
+                result.success(null)
+            }
+            METHOD_REFRESH_PLAYER -> {
+                val location = player.exoPlayer.currentPosition.toInt() + 1
+                player.seekTo(location)
                 result.success(null)
             }
             METHOD_SEEK_TO -> {
@@ -351,8 +382,15 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         } else {
             val headers: Map<String, String> =
                 DataSourceUtils.getParameter(dataSource, "headers", HashMap())
-            val url = DataSourceUtils.getParameter(dataSource, "url", "")
-            player.setNetworkDataSource(url, headers)
+            val fileUrl = DataSourceUtils.getParameter(dataSource, "fileUrl", "")
+            val drmDashFileUrl = DataSourceUtils.getParameter(dataSource, "drmDashFileUrl", "")
+            val widevineLicenseUrl = DataSourceUtils.getParameter(dataSource, "widevineLicenseUrl", "")
+
+            if (drmDashFileUrl.isNotEmpty() && widevineLicenseUrl.isNotEmpty()) {
+                player.setDrmDataSource(drmDashFileUrl, widevineLicenseUrl, headers)
+            } else {
+                player.setNetworkDataSource(fileUrl, headers)
+            }
         }
     }
 
@@ -380,6 +418,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         val applicationContext: Context,
         val binaryMessenger: BinaryMessenger,
         val textureRegistry: TextureRegistry,
+        val platformViewRegistry: PlatformViewRegistry,
     ) {
         private val methodChannel: MethodChannel = MethodChannel(binaryMessenger, CHANNEL)
 
@@ -416,6 +455,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         private const val METHOD_SET_AUTO_LOOP = "setAutoLoop"
         private const val METHOD_PLAY = "play"
         private const val METHOD_PAUSE = "pause"
+        private const val METHOD_REFRESH_PLAYER = "refreshPlayer"
         private const val METHOD_SEEK_TO = "seekTo"
         private const val METHOD_DISPOSE = "dispose"
         private const val METHOD_WILL_EXIT_FULLSCREEN = "willExitFullscreen"

@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.net.Uri
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -15,13 +16,19 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import android.view.Surface
+import android.view.View
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.Observer
 import androidx.media3.common.*
-import androidx.media3.common.C.AUDIO_CONTENT_TYPE_MOVIE
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaItem.ClippingConfiguration
+import androidx.media3.common.MediaItem.DrmConfiguration
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.util.Util
 import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.*
+import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.trackselection.AdaptiveTrackSelection
@@ -31,31 +38,27 @@ import androidx.media3.ui.PlayerNotificationManager
 import androidx.media3.ui.PlayerNotificationManager.BitmapCallback
 import androidx.media3.ui.PlayerNotificationManager.MediaDescriptionAdapter
 import androidx.work.*
-import io.flutter.plugin.common.EventChannel
-import io.flutter.plugin.common.EventChannel.EventSink
+import com.google.common.collect.ImmutableMap
+import io.flutter.plugin.common.BinaryMessenger
 import java.util.*
-import io.flutter.view.TextureRegistry.SurfaceTextureEntry
 
 class VideoPlayer(
     private val context: Context,
-    private val eventChannel: EventChannel,
-    private val textureEntry: SurfaceTextureEntry,
+    private val messenger: BinaryMessenger,
     private val customDefaultLoadControl: CustomDefaultLoadControl
 ) {
-
     private val loadControl: LoadControl
-    private val exoPlayer: ExoPlayer
-    private val eventSink = QueuingEventSink()
+    val exoPlayer: ExoPlayer
+    val eventSink = QueuingEventSink()
     private val bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
     private val trackSelector = DefaultTrackSelector(context, AdaptiveTrackSelection.Factory())
-    private var surface: Surface? = null
-    private var isInitialized = false
+    var isInitialized = false
     private var lastSendBufferedPosition = 0L
     private var mediaSession: MediaSessionCompat? = null
 
-    private var handler = Handler(Looper.getMainLooper())
-    private val runnable: Runnable
-    private val bufferingRunnable: Runnable
+    var handler = Handler(Looper.getMainLooper())
+    val runnable: Runnable
+    val bufferingRunnable: Runnable
 
     private var playerNotificationManager: PlayerNotificationManager? = null
     private var refreshHandler: Handler? = null
@@ -65,7 +68,7 @@ class VideoPlayer(
     private val workManager: WorkManager
     private val workerObserverMap: HashMap<UUID, Observer<WorkInfo?>>
     var disableRemoteControl: Boolean = false
-    private var isBufferingRunnableStarted = false
+    var isBufferingRunnableStarted = false
 
     var isMuted: Boolean
         get() = exoPlayer.volume == 0f
@@ -101,7 +104,6 @@ class VideoPlayer(
                 .setLoadControl(loadControl)
                 .setBandwidthMeter(bandwidthMeter)
                 .build()
-        setupVideoPlayer(eventChannel, textureEntry)
         workManager = WorkManager.getInstance(context)
         workerObserverMap = HashMap()
         runnable =
@@ -127,6 +129,7 @@ class VideoPlayer(
             }
     }
 
+
     fun dispose() {
         disposeMediaSession()
         disposeRemoteNotifications()
@@ -136,93 +139,10 @@ class VideoPlayer(
         if (isInitialized) {
             exoPlayer.stop()
         }
-        eventChannel.setStreamHandler(null)
-        textureEntry.release()
-        surface?.release()
         exoPlayer.release()
     }
 
-    private fun setupVideoPlayer(eventChannel: EventChannel, textureEntry: SurfaceTextureEntry) {
-        eventChannel.setStreamHandler(
-            object : EventChannel.StreamHandler {
-                override fun onListen(o: Any?, sink: EventSink) {
-                    eventSink.setDelegate(sink)
-                }
-
-                override fun onCancel(o: Any?) {
-                    eventSink.setDelegate(null)
-                }
-            }
-        )
-        surface = Surface(textureEntry.surfaceTexture())
-        exoPlayer.setVideoSurface(surface)
-        exoPlayer.setAudioAttributes(
-            AudioAttributes.Builder().setContentType(AUDIO_CONTENT_TYPE_MOVIE).build(),
-            true
-        )
-        exoPlayer.addListener(
-            object : Player.Listener {
-                override fun onPlaybackStateChanged(playbackState: Int) {
-                    when (playbackState) {
-                        Player.STATE_BUFFERING -> {
-                            // no-op
-                        }
-                        Player.STATE_READY -> {
-                            if (!isInitialized) {
-                                setInitialized()
-                                return
-                            }
-                        }
-                        Player.STATE_ENDED -> {
-                            pause()
-                            sendEvent(EVENT_ENDED)
-                        }
-                        Player.STATE_IDLE -> {
-                            // no-op
-                        }
-                    }
-                }
-
-                override fun onPlayerError(error: PlaybackException) {
-                    var invalid = false;
-
-                    when (val cause = error.cause) {
-                        is HttpDataSource.InvalidResponseCodeException -> {
-                            val responseCode = cause.responseCode
-                            if (responseCode == 403) {
-                                invalid = true
-                            }
-                        }
-                    }
-
-                    sendEvent(
-                        EVENT_ERROR,
-                        mapOf("error" to error.localizedMessage, "invalid" to invalid)
-                    )
-                }
-
-                override fun onIsPlayingChanged(isPlaying: Boolean) {
-                    if (isPlaying) {
-                        handler.post(runnable)
-
-                        if (!isBufferingRunnableStarted) {
-                            handler.post(bufferingRunnable)
-                            isBufferingRunnableStarted = true
-                        }
-                    } else {
-                        handler.removeCallbacks(runnable)
-                    }
-                    sendEvent(EVENT_IS_PLAYING_CHANGED, mapOf("isPlaying" to isPlaying))
-                }
-
-                override fun onVolumeChanged(volume: Float) {
-                    sendEvent(EVENT_MUTE_CHANGED, mapOf("isMuted" to (volume == 0f)))
-                }
-            }
-        )
-    }
-
-    private fun setInitialized() {
+    fun setInitialized() {
         if (isInitialized) return
         isInitialized = true
 
@@ -244,7 +164,7 @@ class VideoPlayer(
         sendEvent(EVENT_INITIALIZED, event)
     }
 
-    private fun sendEvent(event: String, params: Map<String, Any>? = null) {
+    fun sendEvent(event: String, params: Map<String, Any>? = null) {
         val result: MutableMap<String, Any> = params?.toMutableMap() ?: HashMap()
         result["event"] = event
         eventSink.success(result)
@@ -254,7 +174,7 @@ class VideoPlayer(
         sendEvent(EVENT_POSITION_CHANGED, mapOf("position" to exoPlayer.currentPosition + 250))
     }
 
-    fun setAutoLoop(value: Boolean) {
+    public fun setAutoLoop(value: Boolean) {
         exoPlayer.repeatMode = if (value) Player.REPEAT_MODE_ALL else Player.REPEAT_MODE_OFF;
     }
 
@@ -266,6 +186,52 @@ class VideoPlayer(
         val mediaSourceFactory = HlsMediaSource.Factory(dataSourceFactory)
         val mediaItem = MediaItem.fromUri(uri)
         val mediaSource = mediaSourceFactory.createMediaSource(mediaItem)
+        setMediaSource(mediaSource)
+    }
+
+    fun setDrmDataSource(contentUrl: String, licenseUrl: String, headers: Map<String, String>) {
+        val uri = Uri.parse(contentUrl)
+
+        val mediaItemBuilder = MediaItem.Builder()
+            .setUri(uri)
+            .setMediaMetadata(MediaMetadata.Builder().setTitle("DRM Content").build())
+            .setMimeType(Util.getAdaptiveMimeTypeForContentType(Util.inferContentType(uri)))
+            .setClippingConfiguration(
+                ClippingConfiguration.Builder().build()
+            )
+
+        val requestHeaders: MutableMap<String, String> = HashMap()
+        requestHeaders["Content-Type"] = "application/octet-stream"
+        requestHeaders["Accept"] = "application/octet-stream"
+        requestHeaders.putAll(headers)
+        val drmLicenseRequestHeaders = ImmutableMap.copyOf(requestHeaders)
+
+        val drmConfiguration = MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
+            .setLicenseUri(licenseUrl)
+            .setLicenseRequestHeaders(drmLicenseRequestHeaders)
+            .setMultiSession(true)
+            .build()
+        mediaItemBuilder.setDrmConfiguration(drmConfiguration)
+
+        val mediaItem = mediaItemBuilder.build()
+
+        val dataSourceFactory = DefaultHttpDataSource.Factory()
+            .setAllowCrossProtocolRedirects(true)
+            .setDefaultRequestProperties(headers)
+            .setTransferListener(bandwidthMeter)
+
+        val mediaSource: MediaSource = when {
+            contentUrl.endsWith(".mpd") -> {
+                DashMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+            }
+            contentUrl.endsWith(".m3u8") -> {
+                HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
+            }
+            else -> {
+                throw IllegalArgumentException("Unsupported DRM content type: $contentUrl")
+            }
+        }
+
         setMediaSource(mediaSource)
     }
 
@@ -546,6 +512,7 @@ class VideoPlayer(
     companion object {
         private const val TAG = "VideoPlayer"
 
+        private const val EVENTS_CHANNEL = "video_player_channel/videoEvents"
         private const val EVENT_INITIALIZED = "initialized"
         private const val EVENT_IS_PLAYING_CHANGED = "isPlayingChanged"
         private const val EVENT_POSITION_CHANGED = "positionChanged"

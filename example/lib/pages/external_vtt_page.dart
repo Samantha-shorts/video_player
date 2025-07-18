@@ -1,6 +1,6 @@
+import 'package:example/constants.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
-import 'package:video_player_example/constants.dart';
 
 class ExternalVttPage extends StatefulWidget {
   const ExternalVttPage({super.key});
@@ -20,7 +20,7 @@ class _ExternalVttPagePageState extends State<ExternalVttPage> {
   void initState() {
     super.initState();
     controller.setNetworkDataSource(
-      Constants.m3u8_16x9,
+      fileUrl: Constants.m3u8_16x9,
       subtitles: [
         VideoPlayerSubtitlesSource(
           type: VideoPlayerSubtitlesSourceType.network,

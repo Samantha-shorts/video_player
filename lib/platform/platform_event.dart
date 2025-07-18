@@ -4,6 +4,7 @@ enum PlatformEventType {
   unknown,
   initialized,
   isPlayingChanged,
+  onPlaybackStateChanged,
   positionChanged,
   bufferChanged,
   pipChanged,
@@ -29,6 +30,7 @@ class PlatformEvent {
     this.buffered,
     this.isPip = false,
     this.isMuted = false,
+    this.state = 0,
   });
 
   final PlatformEventType eventType;
@@ -46,6 +48,8 @@ class PlatformEvent {
   final bool isPip;
 
   final bool isMuted;
+
+  final int state;
 }
 
 class PlayerException implements Exception {
