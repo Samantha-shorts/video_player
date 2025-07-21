@@ -43,7 +43,7 @@ class AbrTrack {
   int get hashCode => super.hashCode;
 
   @override
-  bool operator ==(dynamic other) {
+  bool operator ==(Object other) {
     return other is AbrTrack &&
         width == other.width &&
         height == other.height &&
