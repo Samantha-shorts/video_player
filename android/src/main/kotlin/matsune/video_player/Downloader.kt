@@ -81,8 +81,8 @@ object Downloader {
         return httpDataSourceFactory!!
     }
 
-    private fun getDownloadManager(context: Context): DownloadManager {
-        ensureDownloadManagerInitialized(context)
+    private fun getDownloadManager(context: Context, headers: Map<String, String>?): DownloadManager {
+        ensureDownloadManagerInitialized(context, headers)
         return downloadManager!!
     }
 
@@ -138,13 +138,13 @@ object Downloader {
         return downloadDirectory!!
     }
 
-    private fun ensureDownloadManagerInitialized(context: Context) {
+    private fun ensureDownloadManagerInitialized(context: Context, headers: Map<String, String>?) {
         if (downloadManager == null) {
             downloadManager = DownloadManager(
                 context,
                 getDatabaseProvider(context),
                 getDownloadCache(context),
-                getHttpDataSourceFactory(null),
+                getHttpDataSourceFactory(headers),
                 Executors.newFixedThreadPool( /* nThreads= */6)
             )
             downloadIndex = downloadManager?.downloadIndex
@@ -188,7 +188,7 @@ object Downloader {
 
     fun startDownload(context: Context, key: String, url: String, headers: Map<String, String>?) {
         val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit()
-        val downloadManager = getDownloadManager(context)
+        val downloadManager = getDownloadManager(context, headers)
         val downloadHelper = DownloadHelper.forMediaItem(
             context,
             MediaItem.fromUri(url),
@@ -236,7 +236,7 @@ object Downloader {
     }
 
     fun removeDownload(context: Context, key: String) {
-        ensureDownloadManagerInitialized(context)
+        ensureDownloadManagerInitialized(context, null)
         val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE)
         val editor = prefs.edit()
         prefs.getString(key, "")?.let {
@@ -247,7 +247,7 @@ object Downloader {
     }
 
     fun getDownloadKeys(context: Context): List<String> {
-        ensureDownloadManagerInitialized(context)
+        ensureDownloadManagerInitialized(context, null)
         val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE)
         val editor = prefs.edit()
         for (entry in prefs.all) {
