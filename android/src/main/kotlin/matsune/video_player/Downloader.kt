@@ -70,14 +70,12 @@ object Downloader {
     }
 
     private fun getHttpDataSourceFactory(headers: Map<String, String>?): DataSource.Factory {
-        if (httpDataSourceFactory == null) {
-            val cookieManager = CookieManager()
-            cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ORIGINAL_SERVER)
-            CookieHandler.setDefault(cookieManager)
-            httpDataSourceFactory = DefaultHttpDataSource.Factory().apply {
-                headers?.let {
-                    setDefaultRequestProperties(it)
-                }
+        val cookieManager = CookieManager()
+        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ORIGINAL_SERVER)
+        CookieHandler.setDefault(cookieManager)
+        httpDataSourceFactory = DefaultHttpDataSource.Factory().apply {
+            headers?.let {
+                setDefaultRequestProperties(it)
             }
         }
         return httpDataSourceFactory!!
