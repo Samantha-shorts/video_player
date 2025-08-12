@@ -155,6 +155,10 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 }
                 let assetURL = URL(fileURLWithPath: NSHomeDirectory())
                     .appendingPathComponent(path)
+
+                let asset = AVURLAsset(url: assetURL, options: nil)
+                ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
+
                 player.setDataSource(url: assetURL, headers: nil)
             } else {
                 let headers = dataSource["headers"] as? [String: String]
