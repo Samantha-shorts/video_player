@@ -148,13 +148,15 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 player.disableRemoteControl = disableRemoteControl
             }
             if let key = dataSource["offlineKey"] as? String {
-                guard let path = DownloadPathManager.assetPath(forKey: key)
-                else {
+                guard let path = DownloadPathManager.assetPath(forKey: key) else {
                     result(FlutterError.assetNotFound())
                     return
                 }
-                let assetURL = URL(fileURLWithPath: NSHomeDirectory())
-                    .appendingPathComponent(path)
+
+                // .movpkg はディレクトリ。isDirectory: true で作る
+                let assetURL: URL = path.hasPrefix("/") ?
+                    URL(fileURLWithPath: path, isDirectory: true) :
+                    URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true).appendingPathComponent(path, isDirectory: true)
 
                 print("[DEBUG][offline] key=\(key)")
                 print("[DEBUG][offline] raw path from plist: \(path)")
@@ -162,9 +164,22 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 print("[DEBUG][offline] file exists? \(FileManager.default.fileExists(atPath: assetURL.path))")
 
                 let asset = AVURLAsset(url: assetURL, options: nil)
-                ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
 
-                player.setDataSource(url: assetURL, headers: nil)
+                ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
+                asset.resourceLoader.preloadsEligibleContentKeys = true
+
+                let item = AVPlayerItem(asset: asset)
+                item.preferredForwardBufferDuration = 100
+                item.add(player.videoOutput)
+                player.player.replaceCurrentItem(with: item)
+
+                if let group = asset.mediaSelectionGroup(forMediaCharacteristic: .legible) {
+                    player.player.currentItem?.select(nil, in: group)
+                }
+
+                player.addObservers(to: item)
+                result(nil)
+                return
             } else {
                 let headers = dataSource["headers"] as? [String: String]
 
