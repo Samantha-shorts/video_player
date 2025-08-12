@@ -156,6 +156,11 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 let assetURL = URL(fileURLWithPath: NSHomeDirectory())
                     .appendingPathComponent(path)
 
+                print("[DEBUG][offline] key=\(key)")
+                print("[DEBUG][offline] raw path from plist: \(path)")
+                print("[DEBUG][offline] resolved file URL: \(assetURL.absoluteString)")
+                print("[DEBUG][offline] file exists? \(FileManager.default.fileExists(atPath: assetURL.path))")
+
                 let asset = AVURLAsset(url: assetURL, options: nil)
                 ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
 

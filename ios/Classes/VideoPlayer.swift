@@ -300,6 +300,16 @@ class VideoPlayer: NSObject {
                         invalid = nsError.code == NSURLErrorNoPermissionsToReadFile
                         errorCode = nsError.code
                     }
+
+                    if let avAsset = item.asset as? AVURLAsset {
+                        print("[DEBUG][error] url=\(avAsset.url.absoluteString)")
+                    } else {
+                        print("[DEBUG][error] url=<not AVURLAsset>")
+                    }
+                    if let nsError = item.error as NSError? {
+                        print("[DEBUG][error] domain=\(nsError.domain) code=\(nsError.code) userInfo=\(nsError.userInfo)")
+                    }
+
                     self?.sendEvent(.error, ["error": item.error?.localizedDescription as Any, "invalid": invalid, "code": errorCode as Any])
                 case .readyToPlay:
                     self?.readyToPlay()

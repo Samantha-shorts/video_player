@@ -181,6 +181,11 @@ extension Downloader: AVAssetDownloadDelegate {
             forUrl: assetDownloadTask.urlAsset.url.absoluteString,
             path: location.relativePath
         )
+
+        print("[DEBUG][download] finished. source=\(assetDownloadTask.urlAsset.url.absoluteString)")
+        print("[DEBUG][download] saved absolute path: \(location.path)")
+        print("[DEBUG][download] file exists? \(FileManager.default.fileExists(atPath: location.path))")
+
         let url = assetDownloadTask.urlAsset.url.absoluteString
         guard let key = DownloadPathManager.key(forUrl: url) else {
             fatalError("key not found for url \(url)")
