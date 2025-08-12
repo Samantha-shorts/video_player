@@ -163,12 +163,64 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
 
     func contentKeySession(_ session: AVContentKeySession, didProvide keyRequest: AVContentKeyRequest) {
         print("[ContentKeyDelegate] didProvide keyRequest: ID=\(String(describing: keyRequest.identifier))")
-        handleStreamingContentKeyRequest(keyRequest: keyRequest)
+        do {
+            try keyRequest.respondByRequestingPersistableContentKeyRequestAndReturnError()
+        } catch {
+            keyRequest.processContentKeyResponseError(error)
+        }
     }
 
     func contentKeySession(_ session: AVContentKeySession, didProvideRenewingContentKeyRequest keyRequest: AVContentKeyRequest) {
         print("[ContentKeyDelegate] didProvideRenewingContentKeyRequest: ID=\(String(describing: keyRequest.identifier))")
-        handleStreamingContentKeyRequest(keyRequest: keyRequest)
+        do {
+            try keyRequest.respondByRequestingPersistableContentKeyRequestAndReturnError()
+        } catch {
+            keyRequest.processContentKeyResponseError(error)
+            // or フォールバック: handleStreamingContentKeyRequest(keyRequest: keyRequest)
+        }
+    }
+
+    func contentKeySession(_ s: AVContentKeySession, didProvide r: AVPersistableContentKeyRequest) {
+        guard let idStr = r.identifier as? String, let u = URL(string: idStr) else {
+            return r.processContentKeyResponseError(ProgramError.noCKCReturnedByKSM)
+        }
+        let assetID = (u.host ?? "") + u.path
+        guard let assetIDData = assetID.data(using: .utf8) else {
+            return r.processContentKeyResponseError(ProgramError.noCKCReturnedByKSM)
+        }
+
+        do {
+            let appCert = try requestApplicationCertificate()
+
+            if #available(iOS 11.2, *) {
+                r.makeStreamingContentKeyRequestData(
+                    forApp: appCert,
+                    contentIdentifier: assetIDData,
+                    options: [AVContentKeyRequestProtocolVersionsKey: [1]]
+                ) { [weak self] spcData, error in
+                    guard let self = self else { return }
+                    if let error = error {
+                        r.processContentKeyResponseError(error)
+                        return
+                    }
+                    guard let spc = spcData else {
+                        r.processContentKeyResponseError(ProgramError.noCKCReturnedByKSM)
+                        return
+                    }
+                    do {
+                        let ckc = try self.requestContentKeyFromKeySecurityModule(spcData: spc, assetID: assetID)
+                        let pck = try r.persistableContentKey(fromKeyVendorResponse: ckc, options: nil)
+                        r.processContentKeyResponse(AVContentKeyResponse(fairPlayStreamingKeyResponseData: pck))
+                    } catch {
+                        r.processContentKeyResponseError(error)
+                    }
+                }
+            } else {
+                r.processContentKeyResponseError(ProgramError.noCKCReturnedByKSM)
+            }
+        } catch {
+            r.processContentKeyResponseError(error)
+        }
     }
 
     func contentKeySession(_ session: AVContentKeySession,

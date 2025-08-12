@@ -405,6 +405,8 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
     required String key,
     required String url,
     Map<String, String?>? headers,
+    String? fairplayCertUrl,     // ★追加
+    String? fairplayLicenseUrl,  // ★追加
   }) async {
     await methodChannel.invokeMethod(
       'downloadOfflineAsset',
@@ -412,6 +414,8 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
         'key': key,
         'url': url,
         'headers': headers,
+        if (fairplayCertUrl != null) 'fairplayCertUrl': fairplayCertUrl,       // ★追加
+        if (fairplayLicenseUrl != null) 'fairplayLicenseUrl': fairplayLicenseUrl, // ★追加
       },
     );
   }

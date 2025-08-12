@@ -41,6 +41,11 @@ class Downloader: NSObject {
         let options = ["AVURLAssetHTTPHeaderFieldsKey": headers ?? [:]]
         let asset = AVURLAsset(url: url, options: options)
         let assetTitle = url.lastPathComponent
+
+        // ★ 鍵セッション登録 & 事前取得ON（ここは維持）
+        ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
+        asset.resourceLoader.preloadsEligibleContentKeys = true
+
         let downloadTask = downloadSession.makeAssetDownloadTask(
             asset: asset,
             assetTitle: assetTitle,

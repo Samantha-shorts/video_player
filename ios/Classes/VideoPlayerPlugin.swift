@@ -307,6 +307,17 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 result(FlutterError.invalidArgs(message: "requires key and valid url"))
                 return
             }
+
+            let headers = args["headers"] as? [String: String]
+            // ★ DRM パラメータ（Flutter 側から渡す）
+            if let cert = args["fairplayCertUrl"] as? String,
+            let license = args["fairplayLicenseUrl"] as? String {
+                // ここで必ず先にセット（ログは既存のまま）
+                ContentKeyManager.shared.contentKeyDelegate.setDrmDataSource(
+                    certUrl: cert, licenseUrl: license, headers: headers
+                )
+            }
+
             downloader.startDownload(
                 key: key,
                 url: url,
