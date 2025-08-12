@@ -148,6 +148,17 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 player.disableRemoteControl = disableRemoteControl
             }
             if let key = dataSource["offlineKey"] as? String {
+                // ★ オフラインでもDRM情報を渡す
+                if let certUrlString = dataSource["fairplayCertUrl"] as? String,
+                let licenseUrlString = dataSource["fairplayLicenseUrl"] as? String {
+                    let headers = dataSource["headers"] as? [String: String]
+                    ContentKeyManager.shared.contentKeyDelegate.setDrmDataSource(
+                        certUrl: certUrlString,
+                        licenseUrl: licenseUrlString,
+                        headers: headers
+                    )
+                }
+
                 guard let path = DownloadPathManager.assetPath(forKey: key) else {
                     result(FlutterError.assetNotFound())
                     return
