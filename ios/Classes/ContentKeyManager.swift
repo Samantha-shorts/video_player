@@ -33,14 +33,13 @@ class ContentKeyManager {
     // MARK: Initialization.
 
     private init() {
-        let dir = ContentKeyManager.shared.contentKeyDelegate.contentKeyDirectory
+        contentKeyDelegate = ContentKeyDelegate()
+        let dir = contentKeyDelegate.contentKeyDirectory
 
         contentKeySession = AVContentKeySession(
             keySystem: .fairPlayStreaming,
             storageDirectoryAt: dir
         )
-
-        contentKeyDelegate = ContentKeyDelegate()
         contentKeySession.setDelegate(contentKeyDelegate, queue: contentKeyDelegateQueue)
     }
 }
