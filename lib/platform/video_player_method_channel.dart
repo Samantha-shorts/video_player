@@ -198,6 +198,9 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
       case VideoPlayerDataSourceType.offline:
         return {
           'offlineKey': dataSource.offlineKey,
+          'fairplayCertUrl': dataSource.fairplayCertUrl,
+          'fairplayLicenseUrl': dataSource.fairplayLicenseUrl,
+          'widevineLicenseUrl': dataSource.widevineLicenseUrl,
           'title': dataSource.notificationConfiguration?.title,
           'author': dataSource.notificationConfiguration?.author,
           'imageUrl': dataSource.notificationConfiguration?.imageUrl,
