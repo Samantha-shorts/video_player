@@ -110,8 +110,6 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
     required String key,
     required String url,
     Map<String, String?>? headers,
-    String? fairplayCertUrl, // ★追加
-    String? fairplayLicenseUrl,
   }) =>
       throw UnimplementedError(
           'downloadOfflineAsset() has not been implemented.');
