@@ -41,6 +41,7 @@ import androidx.work.*
 import com.google.common.collect.ImmutableMap
 import io.flutter.plugin.common.BinaryMessenger
 import java.util.*
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 
 class VideoPlayer(
     private val context: Context,
@@ -236,10 +237,31 @@ class VideoPlayer(
     }
 
     fun setOfflineDataSource(offlineKey: String) {
-        val download = Downloader.getDownloadByKey(context, offlineKey)!!
+        val download = Downloader.getDownloadByKey(context, offlineKey)
+            ?: throw IllegalStateException("Download not found for key=$offlineKey")
+
+        val request = download.request
+        var mediaItem = request.toMediaItem()
+
+        val drmConf = mediaItem.localConfiguration?.drmConfiguration
+        val keySetIdFromRequest: ByteArray? = request.data
+
+        if (drmConf != null && keySetIdFromRequest != null) {
+            val withKey = drmConf.buildUpon()
+                .setKeySetId(keySetIdFromRequest)
+                .build()
+            mediaItem = mediaItem.buildUpon()
+                .setDrmConfiguration(withKey)
+                .build()
+            Log.d("VideoPlayer", "[offline] keySetId applied (${keySetIdFromRequest.size} bytes)")
+        } else if (drmConf?.keySetId != null) {
+            Log.d("VideoPlayer", "[offline] request.data missing but MediaItem already has keySetId (${drmConf.keySetId!!.size} bytes)")
+        } else {
+            Log.w("VideoPlayer", "[offline] no keySetId; playback may require network")
+        }
+
         val dataSourceFactory = Downloader.getDataSourceFactory(context)
-        val mediaSourceFactory = HlsMediaSource.Factory(dataSourceFactory)
-        val mediaItem = download.request.toMediaItem()
+        val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
         val mediaSource = mediaSourceFactory.createMediaSource(mediaItem)
         setMediaSource(mediaSource)
     }
