@@ -165,9 +165,14 @@ object Downloader {
                         }
                         Download.STATE_COMPLETED -> {
                             stopDownloadTimer(download)
-                            downloadHelpers.remove(download.request.uri)?.release()
-                            val key = getKeyByDownloadId(context, download.request.id)!!
-                            sendEvent(DOWNLOAD_EVENT_FINISHED, mapOf("key" to key))
+                            val req = download.request
+                            if (req.data == null || req.data!!.isEmpty()) {
+                                sendEvent(DOWNLOAD_EVENT_ERROR, mapOf("error" to "Download finished without offline license (keySetId)."))
+                            } else {
+                                downloadHelpers.remove(req.uri)?.release()
+                                val key = getKeyByDownloadId(context, req.id)!!
+                                sendEvent(DOWNLOAD_EVENT_FINISHED, mapOf("key" to key))
+                            }
                         }
                         Download.STATE_FAILED -> {
                             stopDownloadTimer(download)
@@ -198,7 +203,6 @@ object Downloader {
         widevineLicenseUrl: String?,
     ) {
         val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit()
-
         val drmReqHeaders = headers ?: emptyMap()
 
         val httpFactory = DefaultHttpDataSource.Factory().apply {
@@ -218,8 +222,6 @@ object Downloader {
         }
 
         val mediaItem = baseMediaItemBuilder.build()
-
-        // 以下は既存処理そのまま
         val downloadManager = getDownloadManager(context, drmReqHeaders)
         val downloadHelper = DownloadHelper.forMediaItem(
             context,
@@ -230,7 +232,7 @@ object Downloader {
 
         downloadHelper.prepare(object : DownloadHelper.Callback {
             override fun onPrepared(helper: DownloadHelper) {
-                // DRM付きFormatを探索
+                // 既存の drmFormat 探索を利用
                 val drmFormat: Format? = run {
                     for (periodIndex in 0 until helper.periodCount) {
                         val groups = helper.getTrackGroups(periodIndex)
@@ -257,11 +259,15 @@ object Downloader {
                         )
                         val keySetId: ByteArray = licenseHelper.downloadLicense(drmFormat)
                         licenseHelper.release()
-                        // keySetId を DownloadRequest.data に載せる（DownloadIndex に一緒に保存される）
                         requestData = keySetId
                     } catch (e: Exception) {
-                        Log.w("DownloadUtil", "Offline license acquisition failed: ${e.message}", e)
+                        sendEvent("error", mapOf("error" to ("Offline license acquisition failed: ${e.message}")))
+                        return
                     }
+                }
+                if (!widevineLicenseUrl.isNullOrEmpty() && requestData == null) {
+                    sendEvent("error", mapOf("error" to "Offline license (keySetId) missing; aborting download"))
+                    return
                 }
 
                 val request = helper.getDownloadRequest(requestData)

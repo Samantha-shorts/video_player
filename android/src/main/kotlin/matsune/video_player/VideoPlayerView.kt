@@ -93,21 +93,19 @@ class VideoPlayerView(
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
-                    var invalid = false;
-
+                    val map = mutableMapOf<String, Any>(
+                        "error" to (error.localizedMessage ?: "Playback error"),
+                        "code" to error.errorCode
+                    )
+                    var invalid = false
                     when (val cause = error.cause) {
                         is HttpDataSource.InvalidResponseCodeException -> {
-                            val responseCode = cause.responseCode
-                            if (responseCode == 403) {
-                                invalid = true
-                            }
+                            if (cause.responseCode == 403) invalid = true
+                            map["httpResponseCode"] = cause.responseCode
                         }
                     }
-
-                    videoPlayer.sendEvent(
-                        EVENT_ERROR,
-                        mapOf("error" to error.localizedMessage, "invalid" to invalid)
-                    )
+                    map["invalid"] = invalid
+                    videoPlayer.sendEvent(EVENT_ERROR, map)
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {

@@ -246,18 +246,17 @@ class VideoPlayer(
         val drmConf = mediaItem.localConfiguration?.drmConfiguration
         val keySetIdFromRequest: ByteArray? = request.data
 
-        if (drmConf != null && keySetIdFromRequest != null) {
-            val withKey = drmConf.buildUpon()
-                .setKeySetId(keySetIdFromRequest)
-                .build()
-            mediaItem = mediaItem.buildUpon()
-                .setDrmConfiguration(withKey)
-                .build()
+        Log.d("VideoPlayer", "[offline] drmConf? ${drmConf != null}, data(bytes)=${keySetIdFromRequest?.size}")
+
+        if (drmConf != null && keySetIdFromRequest != null && keySetIdFromRequest.isNotEmpty()) {
+            val withKey = drmConf.buildUpon().setKeySetId(keySetIdFromRequest).build()
+            mediaItem = mediaItem.buildUpon().setDrmConfiguration(withKey).build()
             Log.d("VideoPlayer", "[offline] keySetId applied (${keySetIdFromRequest.size} bytes)")
-        } else if (drmConf?.keySetId != null) {
-            Log.d("VideoPlayer", "[offline] request.data missing but MediaItem already has keySetId (${drmConf.keySetId!!.size} bytes)")
         } else {
-            Log.w("VideoPlayer", "[offline] no keySetId; playback may require network")
+            // ここで確実に原因を可視化
+            Log.e("VideoPlayer", "[offline] keySetId missing (drmConf=${drmConf != null}, request.data=${keySetIdFromRequest != null})")
+            // keySetId が無いならオフライン再生は不可。早期に明示的エラーを投げて原因特定しやすくする
+            throw IllegalStateException("Offline license (keySetId) not found. Re-download with license.")
         }
 
         val dataSourceFactory = Downloader.getDataSourceFactory(context)
