@@ -42,6 +42,7 @@ import com.google.common.collect.ImmutableMap
 import io.flutter.plugin.common.BinaryMessenger
 import java.util.*
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import android.util.Base64
 
 class VideoPlayer(
     private val context: Context,
@@ -229,20 +230,34 @@ class VideoPlayer(
             ?: throw IllegalStateException("Download not found for key=$offlineKey")
 
         val request = download.request
-        var mediaItem = request.toMediaItem()
+        val baseItem = request.toMediaItem()
+        val uri = baseItem.localConfiguration?.uri ?: request.uri
 
-        val drmConf = mediaItem.localConfiguration?.drmConfiguration
-        val keySetIdFromRequest: ByteArray? = request.data
+        val keySetId: ByteArray? = request.data
+        val keySetIdLen = keySetId?.size ?: 0
+        val keySetIdB64 = if (keySetId != null) Base64.encodeToString(keySetId, Base64.NO_WRAP) else "null"
+        Log.i("VideoPlayer", "★ keySetId bytes at playback: $keySetIdLen, key=$offlineKey, b64=$keySetIdB64")
 
-        // ★ ここで keySetId のサイズを必ずログ
-        Log.i("VideoPlayer", "★ keySetId bytes at playback: ${keySetIdFromRequest?.size ?: 0}")
-
-        if (drmConf == null || keySetIdFromRequest == null || keySetIdFromRequest.isEmpty()) {
-            throw IllegalStateException("Offline license (keySetId) not found. Re-download with license.")
+        if (keySetId == null || keySetId.isEmpty()) {
+            throw IllegalStateException("Offline license (keySetId) not found. Re-download with license. key=$offlineKey")
         }
 
-        val withKey = drmConf.buildUpon().setKeySetId(keySetIdFromRequest).build()
-        mediaItem = mediaItem.buildUpon().setDrmConfiguration(withKey).build()
+        val existing = baseItem.localConfiguration?.drmConfiguration
+        val drmCfg = if (existing != null) {
+            existing.buildUpon()
+                .setKeySetId(keySetId)
+                .build()
+        } else {
+            MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
+                .setKeySetId(keySetId)
+                .build()
+        }
+
+        val mediaItem = MediaItem.Builder()
+            .setUri(uri)
+            .setMimeType(MimeTypes.APPLICATION_MPD) // .mpd（DASH）想定
+            .setDrmConfiguration(drmCfg)
+            .build()
 
         val dataSourceFactory = Downloader.getDataSourceFactory(context)
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
