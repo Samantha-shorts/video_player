@@ -167,7 +167,8 @@ object Downloader {
                             stopDownloadTimer(download)
                             val req = download.request
                             if (req.data == null || req.data!!.isEmpty()) {
-                                sendEvent(DOWNLOAD_EVENT_ERROR, mapOf("error" to "Download finished without offline license (keySetId)."))
+                                sendEvent(DOWNLOAD_EVENT_ERROR,
+                                    mapOf("error" to "Download finished without offline license (keySetId)."))
                             } else {
                                 downloadHelpers.remove(req.uri)?.release()
                                 val key = getKeyByDownloadId(context, req.id)!!
@@ -203,7 +204,9 @@ object Downloader {
         widevineLicenseUrl: String?,
     ) {
         val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit()
-        val drmReqHeaders = headers ?: emptyMap()
+        val drmReqHeaders = (headers ?: emptyMap()).toMutableMap()
+        drmReqHeaders.putIfAbsent("Content-Type", "application/octet-stream")
+        drmReqHeaders.putIfAbsent("Accept", "application/octet-stream")
 
         val httpFactory = DefaultHttpDataSource.Factory().apply {
             setAllowCrossProtocolRedirects(true)
@@ -257,16 +260,18 @@ object Downloader {
                             drmReqHeaders,
                             DrmSessionEventListener.EventDispatcher()
                         )
-                        val keySetId: ByteArray = licenseHelper.downloadLicense(drmFormat)
+                        val keySetId = licenseHelper.downloadLicense(drmFormat)
                         licenseHelper.release()
                         requestData = keySetId
                     } catch (e: Exception) {
-                        sendEvent("error", mapOf("error" to ("Offline license acquisition failed: ${e.message}")))
-                        return
+                        sendEvent(DOWNLOAD_EVENT_ERROR,
+                            mapOf("error" to ("Offline license acquisition failed: ${e.message}")))
+                        return // ★失敗は黙殺しない
                     }
                 }
-                if (!widevineLicenseUrl.isNullOrEmpty() && requestData == null) {
-                    sendEvent("error", mapOf("error" to "Offline license (keySetId) missing; aborting download"))
+                if (!widevineLicenseUrl.isNullOrEmpty() && (requestData == null || requestData!!.isEmpty())) {
+                    sendEvent(DOWNLOAD_EVENT_ERROR,
+                        mapOf("error" to "Offline license (keySetId) missing; aborting download"))
                     return
                 }
 

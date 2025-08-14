@@ -193,45 +193,33 @@ class VideoPlayer(
     fun setDrmDataSource(contentUrl: String, licenseUrl: String, headers: Map<String, String>) {
         val uri = Uri.parse(contentUrl)
 
-        val mediaItemBuilder = MediaItem.Builder()
-            .setUri(uri)
-            .setMediaMetadata(MediaMetadata.Builder().setTitle("DRM Content").build())
-            .setMimeType(Util.getAdaptiveMimeTypeForContentType(Util.inferContentType(uri)))
-            .setClippingConfiguration(
-                ClippingConfiguration.Builder().build()
-            )
-
-        val requestHeaders: MutableMap<String, String> = HashMap()
+        val requestHeaders = mutableMapOf<String, String>()
         requestHeaders["Content-Type"] = "application/octet-stream"
         requestHeaders["Accept"] = "application/octet-stream"
         requestHeaders.putAll(headers)
-        val drmLicenseRequestHeaders = ImmutableMap.copyOf(requestHeaders)
 
         val drmConfiguration = MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
             .setLicenseUri(licenseUrl)
-            .setLicenseRequestHeaders(drmLicenseRequestHeaders)
+            .setLicenseRequestHeaders(ImmutableMap.copyOf(requestHeaders))
             .setMultiSession(true)
             .build()
-        mediaItemBuilder.setDrmConfiguration(drmConfiguration)
 
-        val mediaItem = mediaItemBuilder.build()
+        val mediaItem = MediaItem.Builder()
+            .setUri(uri)
+            .setMimeType(Util.getAdaptiveMimeTypeForContentType(Util.inferContentType(uri)))
+            .setDrmConfiguration(drmConfiguration)
+            .build()
 
         val dataSourceFactory = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
             .setDefaultRequestProperties(headers)
-            .setTransferListener(bandwidthMeter)
 
-        val mediaSource: MediaSource = when {
-            contentUrl.endsWith(".mpd") -> {
+        val mediaSource =
+            if (contentUrl.endsWith(".mpd"))
                 DashMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
-            }
-            contentUrl.endsWith(".m3u8") -> {
+            else if (contentUrl.endsWith(".m3u8"))
                 HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
-            }
-            else -> {
-                throw IllegalArgumentException("Unsupported DRM content type: $contentUrl")
-            }
-        }
+            else throw IllegalArgumentException("Unsupported DRM content type: $contentUrl")
 
         setMediaSource(mediaSource)
     }
@@ -246,23 +234,16 @@ class VideoPlayer(
         val drmConf = mediaItem.localConfiguration?.drmConfiguration
         val keySetIdFromRequest: ByteArray? = request.data
 
-        Log.d("VideoPlayer", "[offline] drmConf? ${drmConf != null}, data(bytes)=${keySetIdFromRequest?.size}")
-
-        if (drmConf != null && keySetIdFromRequest != null && keySetIdFromRequest.isNotEmpty()) {
-            val withKey = drmConf.buildUpon().setKeySetId(keySetIdFromRequest).build()
-            mediaItem = mediaItem.buildUpon().setDrmConfiguration(withKey).build()
-            Log.d("VideoPlayer", "[offline] keySetId applied (${keySetIdFromRequest.size} bytes)")
-        } else {
-            // ここで確実に原因を可視化
-            Log.e("VideoPlayer", "[offline] keySetId missing (drmConf=${drmConf != null}, request.data=${keySetIdFromRequest != null})")
-            // keySetId が無いならオフライン再生は不可。早期に明示的エラーを投げて原因特定しやすくする
+        if (drmConf == null || keySetIdFromRequest == null || keySetIdFromRequest.isEmpty()) {
             throw IllegalStateException("Offline license (keySetId) not found. Re-download with license.")
         }
 
+        val withKey = drmConf.buildUpon().setKeySetId(keySetIdFromRequest).build()
+        mediaItem = mediaItem.buildUpon().setDrmConfiguration(withKey).build()
+
         val dataSourceFactory = Downloader.getDataSourceFactory(context)
         val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
-        val mediaSource = mediaSourceFactory.createMediaSource(mediaItem)
-        setMediaSource(mediaSource)
+        setMediaSource(mediaSourceFactory.createMediaSource(mediaItem))
     }
 
     private fun setMediaSource(mediaSource: MediaSource) {

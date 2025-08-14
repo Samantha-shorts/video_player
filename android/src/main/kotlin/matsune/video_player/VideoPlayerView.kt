@@ -97,14 +97,9 @@ class VideoPlayerView(
                         "error" to (error.localizedMessage ?: "Playback error"),
                         "code" to error.errorCode
                     )
-                    var invalid = false
                     when (val cause = error.cause) {
-                        is HttpDataSource.InvalidResponseCodeException -> {
-                            if (cause.responseCode == 403) invalid = true
-                            map["httpResponseCode"] = cause.responseCode
-                        }
+                        is HttpDataSource.InvalidResponseCodeException -> map["httpResponseCode"] = cause.responseCode
                     }
-                    map["invalid"] = invalid
                     videoPlayer.sendEvent(EVENT_ERROR, map)
                 }
 
