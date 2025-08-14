@@ -234,6 +234,9 @@ class VideoPlayer(
         val drmConf = mediaItem.localConfiguration?.drmConfiguration
         val keySetIdFromRequest: ByteArray? = request.data
 
+        // ★ ここで keySetId のサイズを必ずログ
+        Log.i("VideoPlayer", "★ keySetId bytes at playback: ${keySetIdFromRequest?.size ?: 0}")
+
         if (drmConf == null || keySetIdFromRequest == null || keySetIdFromRequest.isEmpty()) {
             throw IllegalStateException("Offline license (keySetId) not found. Re-download with license.")
         }

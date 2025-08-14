@@ -254,19 +254,30 @@ object Downloader {
                 if (!widevineLicenseUrl.isNullOrEmpty() && drmFormat != null) {
                     try {
                         val licenseHelper = OfflineLicenseHelper.newWidevineInstance(
-                            widevineLicenseUrl,
-                            false,
-                            httpFactory,
-                            drmReqHeaders,
+                            widevineLicenseUrl, false, httpFactory, drmReqHeaders,
                             DrmSessionEventListener.EventDispatcher()
                         )
-                        val keySetId = licenseHelper.downloadLicense(drmFormat)
+                        val keySetId: ByteArray = licenseHelper.downloadLicense(drmFormat)
+
+                        // ★ ここで keySetId を必ずログ
+                        Log.i("Downloader", "★ keySetId acquired: bytes=${keySetId.size}, key=$key")
+
+                        // ★ 空チェック（空ならエラーを送って中断）
+                        if (keySetId.isEmpty()) {
+                            sendEvent(DOWNLOAD_EVENT_ERROR, mapOf(
+                                "key" to key,
+                                "error" to "Offline license (keySetId) is empty"
+                            ))
+                            licenseHelper.release()
+                            return
+                        }
+
                         licenseHelper.release()
                         requestData = keySetId
                     } catch (e: Exception) {
                         sendEvent(DOWNLOAD_EVENT_ERROR,
                             mapOf("error" to ("Offline license acquisition failed: ${e.message}")))
-                        return // ★失敗は黙殺しない
+                        return
                     }
                 }
                 if (!widevineLicenseUrl.isNullOrEmpty() && (requestData == null || requestData!!.isEmpty())) {
