@@ -382,8 +382,33 @@ object Downloader {
     }
 
     fun getDownloadByKey(context: Context, key: String): Download? {
+        // まず初期化
+        ensureDownloadManagerInitialized(context, null)
+
         val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE)
-        return prefs.getString(key, "")?.let { downloadIndex?.getDownload(it) }
+        val id = prefs.getString(key, null) ?: return null
+
+        val d = downloadIndex?.getDownload(id)
+        if (d == null) {
+            // デバッグ用：インデックス内の id 一覧をログ
+            val ids = mutableListOf<String>()
+            val cursor = downloadIndex?.getDownloads()
+            if (cursor != null) {
+                try {
+                    while (cursor.moveToNext()) {
+                        val dl = cursor.getDownload() // ← プロパティではなくメソッドで取得
+                        ids.add(dl.request.id)
+                    }
+                } finally {
+                    cursor.close()
+                }
+            }
+            Log.w(
+                "Downloader",
+                "Download not found for key=$key (id=$id); index has ids=${ids.joinToString()}"
+            )
+        }
+        return d
     }
 
     fun getKeyByDownloadId(context: Context, id: String): String? {
