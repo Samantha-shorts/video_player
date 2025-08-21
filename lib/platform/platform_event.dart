@@ -153,8 +153,8 @@ class PlatformDownloadEvent {
   final PlatformDownloadEventType eventType;
   final String? key;
   final double? progress;
-  final double? bytesDownloaded;
-  final double? bytesTotal;
+  final int? bytesDownloaded;
+  final int? bytesTotal;
   final String? error;
 
   @override
