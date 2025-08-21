@@ -370,6 +370,8 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
             eventType: eventType,
             key: map["key"] as String?,
             progress: map["progress"] as double,
+            bytesDownloaded: map["bytesDownloaded"] as double?,
+            bytesTotal: map["bytesTotal"] as double?,
           );
         case PlatformDownloadEventType.finished:
           return PlatformDownloadEvent(

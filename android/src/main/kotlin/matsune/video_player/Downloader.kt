@@ -306,8 +306,10 @@ object Downloader {
                 // maybe called after download completed so check download is still going here
                 if (downloadHelpers.containsKey(download.request.uri)) {
                     val progress = download.percentDownloaded / 100
+                    var bytesDownloaded = download.bytesDownloaded
+                    var bytesTotal = download.contentLength
                     val key = getKeyByDownloadId(context, download.request.id)!!
-                    sendEvent(DOWNLOAD_EVENT_PROGRESS, mapOf("key" to key, "progress" to progress))
+                    sendEvent(DOWNLOAD_EVENT_PROGRESS, mapOf("key" to key, "progress" to progress, "bytesDownloaded" to bytesDownloaded, "bytesTotal" to bytesTotal))
                     handler.postDelayed(this, 1000)
                 } else {
                     stopDownloadTimer(download)

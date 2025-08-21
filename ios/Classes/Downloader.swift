@@ -143,6 +143,8 @@ extension Downloader: AVAssetDownloadDelegate {
         sendEvent(.progress, [
             "key": key,
             "progress": percentComplete,
+            "bytesDownloaded": assetDownloadTask.countOfBytesReceived,
+            "bytesTotal": assetDownloadTask.countOfBytesExpectedToReceive
         ])
     }
 

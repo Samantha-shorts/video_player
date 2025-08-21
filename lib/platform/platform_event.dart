@@ -145,12 +145,16 @@ class PlatformDownloadEvent {
     required this.eventType,
     this.key,
     this.progress,
+    this.bytesDownloaded,
+    this.bytesTotal,
     this.error,
   });
 
   final PlatformDownloadEventType eventType;
   final String? key;
   final double? progress;
+  final double? bytesDownloaded;
+  final double? bytesTotal;
   final String? error;
 
   @override
@@ -159,6 +163,8 @@ class PlatformDownloadEvent {
         'eventType: $eventType, '
         'key: $key, '
         'progress: $progress, '
+        'bytesDownloaded: $bytesDownloaded, '
+        'bytesTotal: $bytesTotal, '
         'error: $error)';
   }
 }
