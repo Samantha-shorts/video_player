@@ -229,38 +229,30 @@ class VideoPlayer(
         val download = Downloader.getDownloadByKey(context, offlineKey)
             ?: throw IllegalStateException("Download not found for key=$offlineKey")
 
-        val request = download.request
-        val baseItem = request.toMediaItem()
-        val uri = baseItem.localConfiguration?.uri ?: request.uri
-
-        val keySetId: ByteArray? = request.data
-        val keySetIdLen = keySetId?.size ?: 0
-        val keySetIdB64 = if (keySetId != null) Base64.encodeToString(keySetId, Base64.NO_WRAP) else "null"
-        Log.i("VideoPlayer", "★ keySetId bytes at playback: $keySetIdLen, key=$offlineKey, b64=$keySetIdB64")
-
-        if (keySetId == null || keySetId.isEmpty()) {
-            throw IllegalStateException("Offline license (keySetId) not found. Re-download with license. key=$offlineKey")
+        val req = download.request
+        val baseItem = req.toMediaItem()
+        val keySetId: ByteArray? = req.data
+        require(!(keySetId == null || keySetId.isEmpty())) {
+            "Offline license (keySetId) not found. Re-download with license. key=$offlineKey"
         }
 
-        val existing = baseItem.localConfiguration?.drmConfiguration
-        val drmCfg = if (existing != null) {
-            existing.buildUpon()
-                .setKeySetId(keySetId)
-                .build()
-        } else {
-            MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
-                .setKeySetId(keySetId)
-                .build()
-        }
+        // 既存 LocalConfiguration / Drm を尊重
+        val existingLocal = baseItem.localConfiguration
+        val existingDrm = existingLocal?.drmConfiguration
+
+        val drmCfg = (existingDrm?.buildUpon() ?: MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID))
+            .setKeySetId(keySetId)
+            .setLicenseUri(null as String?)
+            .setLicenseRequestHeaders(emptyMap())
+            .build()
 
         val mediaItem = MediaItem.Builder()
-            .setUri(uri)
-            .setMimeType(MimeTypes.APPLICATION_MPD) // .mpd（DASH）想定
+            .setUri(existingLocal?.uri ?: req.uri)
+            .setMimeType(existingLocal?.mimeType)
             .setDrmConfiguration(drmCfg)
             .build()
 
-        val dataSourceFactory = Downloader.getDataSourceFactory(context)
-        val mediaSourceFactory = DefaultMediaSourceFactory(dataSourceFactory)
+        val mediaSourceFactory = DefaultMediaSourceFactory(Downloader.getDataSourceFactory(context))
         setMediaSource(mediaSourceFactory.createMediaSource(mediaItem))
     }
 
