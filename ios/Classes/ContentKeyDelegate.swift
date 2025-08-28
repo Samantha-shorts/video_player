@@ -163,6 +163,28 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
 
     func contentKeySession(_ session: AVContentKeySession, didProvide keyRequest: AVContentKeyRequest) {
         print("[ContentKeyDelegate] didProvide keyRequest: ID=\(String(describing: keyRequest.identifier))")
+
+        guard let assetID = keyRequest.identifier as? String else {
+            return keyRequest.processContentKeyResponseError(ProgramError.noCKCReturnedByKSM)
+        }
+
+        // 保存済み PCK のファイルを探す
+        let fileURL = persistableContentKeyURL(forAssetID: assetID)
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            do {
+                let pckData = try Data(contentsOf: fileURL)
+                let response = AVContentKeyResponse(fairPlayStreamingKeyResponseData: pckData)
+                keyRequest.processContentKeyResponse(response)
+                print("[DEBUG] Reused persistable key for assetID=\(assetID)")
+                return
+            } catch {
+                print("[ERROR] Failed to load persistable key: \(error)")
+                keyRequest.processContentKeyResponseError(error)
+                return
+            }
+        }
+
+        // 保存が無ければオンライン用の処理へ
         do {
             try keyRequest.respondByRequestingPersistableContentKeyRequestAndReturnError()
         } catch {
@@ -172,11 +194,32 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
 
     func contentKeySession(_ session: AVContentKeySession, didProvideRenewingContentKeyRequest keyRequest: AVContentKeyRequest) {
         print("[ContentKeyDelegate] didProvideRenewingContentKeyRequest: ID=\(String(describing: keyRequest.identifier))")
+
+        guard let assetID = keyRequest.identifier as? String else {
+            return keyRequest.processContentKeyResponseError(ProgramError.noCKCReturnedByKSM)
+        }
+
+        // 保存済み PCK があるか確認
+        let fileURL = persistableContentKeyURL(forAssetID: assetID)
+        if FileManager.default.fileExists(atPath: fileURL.path) {
+            do {
+                let pckData = try Data(contentsOf: fileURL)
+                let response = AVContentKeyResponse(fairPlayStreamingKeyResponseData: pckData)
+                keyRequest.processContentKeyResponse(response)
+                print("[DEBUG] Reused persistable key for renewing request, assetID=\(assetID)")
+                return
+            } catch {
+                print("[ERROR] Failed to load persistable key: \(error)")
+                keyRequest.processContentKeyResponseError(error)
+                return
+            }
+        }
+
+        // 保存済みキーがなければ通常フローへ（オンライン前提）
         do {
             try keyRequest.respondByRequestingPersistableContentKeyRequestAndReturnError()
         } catch {
             keyRequest.processContentKeyResponseError(error)
-            // or フォールバック: handleStreamingContentKeyRequest(keyRequest: keyRequest)
         }
     }
 
@@ -200,17 +243,28 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
                 ) { [weak self] spcData, error in
                     guard let self = self else { return }
                     if let error = error {
-                        r.processContentKeyResponseError(error)
-                        return
+                        return r.processContentKeyResponseError(error)
                     }
                     guard let spc = spcData else {
-                        r.processContentKeyResponseError(ProgramError.noCKCReturnedByKSM)
-                        return
+                        return r.processContentKeyResponseError(ProgramError.noCKCReturnedByKSM)
                     }
+
                     do {
-                        let ckc = try self.requestContentKeyFromKeySecurityModule(spcData: spc, assetID: assetID)
+                        let ckc = try self.requestContentKeyFromKeySecurityModule(
+                            spcData: spc,
+                            assetID: assetID
+                        )
                         let pck = try r.persistableContentKey(fromKeyVendorResponse: ckc, options: nil)
-                        r.processContentKeyResponse(AVContentKeyResponse(fairPlayStreamingKeyResponseData: pck))
+
+                        // ★ ここで保存
+                        let fileURL = self.persistableContentKeyURL(forAssetID: assetID)
+                        try pck.write(to: fileURL, options: .atomic)
+                        print("[DEBUG] Saved PCK at \(fileURL.path)")
+
+                        // ★ その後 AVPlayer に応答
+                        let response = AVContentKeyResponse(fairPlayStreamingKeyResponseData: pck)
+                        r.processContentKeyResponse(response)
+
                     } catch {
                         r.processContentKeyResponseError(error)
                     }
@@ -296,5 +350,9 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
         }
 
         provideOnlineKey()
+    }
+
+    private func persistableContentKeyURL(forAssetID assetID: String) -> URL {
+        return contentKeyDirectory.appendingPathComponent(assetID).appendingPathExtension("key")
     }
 }
