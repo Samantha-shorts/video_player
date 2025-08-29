@@ -8,6 +8,12 @@ import 'package:video_player/controller/controller.dart';
 import 'package:video_player/platform/platform.dart';
 import 'package:video_player/utils.dart';
 
+enum DownloadQuality {
+  low,
+  medium,
+  high,
+}
+
 /// An implementation of [VideoPlayerPlatform] that uses method channels.
 class MethodChannelVideoPlayer extends VideoPlayerPlatform {
   /// The method channel used to interact with the native platform.
@@ -409,6 +415,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
   Future<void> downloadOfflineAsset({
     required String key,
     required String url,
+    required DownloadQuality quality,
     Map<String, String?>? headers,
   }) async {
     await methodChannel.invokeMethod(
