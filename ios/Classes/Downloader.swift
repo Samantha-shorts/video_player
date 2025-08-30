@@ -9,6 +9,7 @@ import AVKit
 import Flutter
 
 class Downloader: NSObject {
+    enum Quality { case low, medium, high }
 
     let eventChannel: FlutterEventChannel
     private var eventSink: FlutterEventSink?
@@ -37,23 +38,91 @@ class Downloader: NSObject {
         eventChannel.setStreamHandler(nil)
     }
 
-    func startDownload(key: String, url: URL, headers: [String: String]?) {
+    func startDownload(key: String, url: URL, headers: [String: String]?, quality: Quality) {
         let options = ["AVURLAssetHTTPHeaderFieldsKey": headers ?? [:]]
         let asset = AVURLAsset(url: url, options: options)
         let assetTitle = url.lastPathComponent
 
-        // ★ 鍵セッション登録 & 事前取得ON（ここは維持）
+        // FairPlay の準備は現状どおり
         ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
         asset.resourceLoader.preloadsEligibleContentKeys = true
+
+        // ★ ここでマスター m3u8 を読んでビットレートを決める
+        let selectedBitrate = selectBitrateForQuality(masterURL: url, headers: headers, fallback: quality)
+
+        var dlOptions: [String: Any] = options
+        if let br = selectedBitrate {
+            dlOptions[AVAssetDownloadTaskMinimumRequiredMediaBitrateKey] = NSNumber(value: br)
+        }
 
         let downloadTask = downloadSession.makeAssetDownloadTask(
             asset: asset,
             assetTitle: assetTitle,
             assetArtworkData: nil,
-            options: options
+            options: dlOptions
         )
         downloadTask?.resume()
         DownloadPathManager.add(key: key, url: url.absoluteString)
+    }
+
+    private func selectBitrateForQuality(masterURL: URL, headers: [String: String]?, fallback: Quality) -> Int? {
+        // マスター playlist を取得（同期）
+        var request = URLRequest(url: masterURL)
+        headers?.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
+
+        let semaphore = DispatchSemaphore(value: 1)
+        var data: Data?
+        var response: URLResponse?
+        var error: Error?
+
+        URLSession.shared.dataTask(with: request) { d, r, e in
+            data = d; response = r; error = e
+            semaphore.signal()
+        }.resume()
+        semaphore.wait()
+
+        guard error == nil, let body = data.flatMap({ String(data: $0, encoding: .utf8) }) else {
+            // 失敗時は閾値の固定値（例）にフォールバック
+            switch fallback {
+            case .low:    return 600_000
+            case .medium: return 2_000_000
+            case .high:   return 5_000_000
+            }
+        }
+
+        // #EXT-X-STREAM-INF の BANDWIDTH を全て取り出す
+        // 例: #EXT-X-STREAM-INF:BANDWIDTH=800000,AVERAGE-BANDWIDTH=600000,...
+        let lines = body.components(separatedBy: .newlines)
+        var bandwidths = [Int]()
+        let pattern = #"BANDWIDTH=(\d+)"#
+        let regex = try? NSRegularExpression(pattern: pattern, options: [])
+
+        for line in lines where line.contains("#EXT-X-STREAM-INF:") {
+            if let m = regex?.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
+            let r = Range(m.range(at: 1), in: line),
+            let bw = Int(line[r]) {
+                bandwidths.append(bw)
+            }
+        }
+
+        guard !bandwidths.isEmpty else {
+            // 候補が取れなければ固定閾値へ
+            switch fallback {
+            case .low:    return 600_000
+            case .medium: return 2_000_000
+            case .high:   return 5_000_000
+            }
+        }
+
+        let sorted = bandwidths.sorted()
+        switch fallback {
+        case .low:
+            return sorted.first
+        case .high:
+            return sorted.last
+        case .medium:
+            return sorted[sorted.count / 2]
+        }
     }
 
     func getAllDownloadTasks(_ completion: @escaping ([AVAssetDownloadTask]) -> Void) {

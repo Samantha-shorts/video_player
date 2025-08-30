@@ -352,11 +352,14 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                     certUrl: cert, licenseUrl: license, headers: headers
                 )
             }
+            let qualityStr = (args["quality"] as? String)?.lowercased() ?? "high"
+            let quality: Downloader.Quality = (qualityStr == "low") ? .low : (qualityStr == "medium" ? .medium : .high)
 
             downloader.startDownload(
                 key: key,
                 url: url,
-                headers: args["headers"] as? [String: String]
+                headers: args["headers"] as? [String: String],
+                quality: quality
             )
             result(nil)
         case .pauseDownload:

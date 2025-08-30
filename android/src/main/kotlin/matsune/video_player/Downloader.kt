@@ -45,6 +45,8 @@ object Downloader {
     private val handler = Handler(Looper.getMainLooper())
     private val runnableMap: HashMap<Uri, Runnable> = hashMapOf()
 
+    enum class Quality { LOW, MEDIUM, HIGH }
+
     var eventChannel: EventChannel? = null
         private set
     private val eventSink = QueuingEventSink()
@@ -202,6 +204,7 @@ object Downloader {
         url: String,
         headers: Map<String, String>?,
         widevineLicenseUrl: String?,
+        quality: Quality,
     ) {
         val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit()
         val drmReqHeaders = (headers ?: emptyMap()).toMutableMap()
@@ -224,6 +227,7 @@ object Downloader {
             baseMediaItemBuilder.setDrmConfiguration(drmConf)
         }
 
+
         val mediaItem = baseMediaItemBuilder.build()
         val downloadManager = getDownloadManager(context, drmReqHeaders)
         val downloadHelper = DownloadHelper.forMediaItem(
@@ -235,7 +239,7 @@ object Downloader {
 
         downloadHelper.prepare(object : DownloadHelper.Callback {
             override fun onPrepared(helper: DownloadHelper) {
-                // 既存の drmFormat 探索を利用
+                // --- 既存の DRM ライセンス取得処理はそのまま ---
                 val drmFormat: Format? = run {
                     for (periodIndex in 0 until helper.periodCount) {
                         val groups = helper.getTrackGroups(periodIndex)
@@ -258,11 +262,7 @@ object Downloader {
                             DrmSessionEventListener.EventDispatcher()
                         )
                         val keySetId: ByteArray = licenseHelper.downloadLicense(drmFormat)
-
-                        // ★ ここで keySetId を必ずログ
                         Log.i("Downloader", "★ keySetId acquired: bytes=${keySetId.size}, key=$key")
-
-                        // ★ 空チェック（空ならエラーを送って中断）
                         if (keySetId.isEmpty()) {
                             sendEvent(DOWNLOAD_EVENT_ERROR, mapOf(
                                 "key" to key,
@@ -271,7 +271,6 @@ object Downloader {
                             licenseHelper.release()
                             return
                         }
-
                         licenseHelper.release()
                         requestData = keySetId
                     } catch (e: Exception) {
@@ -286,9 +285,68 @@ object Downloader {
                     return
                 }
 
-                val request = helper.getDownloadRequest(requestData)
+                val streamKeys = mutableListOf<androidx.media3.common.StreamKey>()
+
+                for (period in 0 until helper.periodCount) {
+                    val groups = helper.getTrackGroups(period)
+
+                    // (groupIndex, trackIndex, format) の候補を集める
+                    val videoCandidates = mutableListOf<Triple<Int, Int, Format>>()
+                    val audioCandidates = mutableListOf<Triple<Int, Int, Format>>() // ← 追加
+
+                    for (g in 0 until groups.length) {
+                        val group = groups.get(g)
+                        for (t in 0 until group.length) {
+                            val f = group.getFormat(t)
+                            val mime = f.sampleMimeType ?: continue
+                            when {
+                                mime.startsWith("video") -> videoCandidates.add(Triple(g, t, f))
+                                mime.startsWith("audio") -> audioCandidates.add(Triple(g, t, f)) // ← 追加
+                            }
+                        }
+                    }
+
+                    if (videoCandidates.isNotEmpty()) {
+                        videoCandidates.sortBy { it.third.bitrate.takeIf { b -> b > 0 } ?: 0 }
+                        val mid = (videoCandidates.size - 1) / 2
+                        val pickVideo = when (quality) {
+                            Quality.HIGH -> videoCandidates.last()
+                            Quality.LOW -> videoCandidates.first()
+                            Quality.MEDIUM -> videoCandidates[mid]
+                        }
+                        streamKeys.add(androidx.media3.common.StreamKey(period, pickVideo.first, pickVideo.second))
+                    } else {
+                        Log.w("Downloader", "No video formats found in period=$period; skipping video selection.")
+                    }
+
+                    if (audioCandidates.isNotEmpty()) {
+                        val pickAudio = audioCandidates.maxByOrNull { triple ->
+                            val f = triple.third
+                            val defaultScore = if (f.selectionFlags and C.SELECTION_FLAG_DEFAULT != 0) 1 else 0
+                            val langScore = if ((f.language ?: "").startsWith("ja", true)) 1 else 0
+                            defaultScore * 1_000_000_000 + langScore * 1_000_000 + (f.bitrate.takeIf { it > 0 } ?: 0)
+                        }!!
+                        streamKeys.add(androidx.media3.common.StreamKey(period, pickAudio.first, pickAudio.second))
+                    }
+                }
+
+                val request =
+                    if (streamKeys.isNotEmpty()) {
+                        val base = helper.getDownloadRequest(requestData)
+                        DownloadRequest.Builder(base.id, base.uri)
+                            .setMimeType(base.mimeType)
+                            .setCustomCacheKey(base.customCacheKey)
+                            .setData(base.data)
+                            .setStreamKeys(streamKeys)
+                            .build()
+                    } else {
+                        helper.getDownloadRequest(requestData)
+                    }
+
                 downloadHelpers[request.uri] = helper
                 downloadManager.addDownload(request)
+
+                val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit()
                 prefs.putString(key, request.id)
                 prefs.apply()
             }

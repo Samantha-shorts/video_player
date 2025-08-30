@@ -109,6 +109,7 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
   Future<void> downloadOfflineAsset({
     required String key,
     required String url,
+    required DownloadQuality quality,
     Map<String, String?>? headers,
   }) =>
       throw UnimplementedError(

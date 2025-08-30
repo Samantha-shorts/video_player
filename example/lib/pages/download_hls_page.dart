@@ -305,6 +305,7 @@ class _DownloadHlsPageState extends State<DownloadHlsPage> {
       await VideoPlayerPlatform.instance.downloadOfflineAsset(
         key: uri,
         url: url.toString(),
+        quality: DownloadQuality.high,
       );
     } else {
       setState(() {

@@ -424,6 +424,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
         'key': key,
         'url': url,
         'headers': headers,
+        'quality': quality.name,
         'fairplayCertUrl': const String.fromEnvironment('FAIRPLAY_CERT_URL'),
         'fairplayLicenseUrl':
             const String.fromEnvironment('FAIRPLAY_LICENSE_URL'),

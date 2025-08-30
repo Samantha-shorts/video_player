@@ -21,6 +21,7 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.platform.PlatformViewRegistry
 import io.flutter.view.TextureRegistry
+import java.util.Locale
 
 class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private val videoPlayers = LongSparseArray<VideoPlayer>()
@@ -198,7 +199,14 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
                 val widevineLicenseUrl = call.argument<String>("widevineLicenseUrl")
 
-                Downloader.startDownload(context, key, url, headers, widevineLicenseUrl)
+                val qualityStr = call.argument<String>("quality")?.lowercase(Locale.ROOT) ?: "high"
+                val quality = when (qualityStr) {
+                    "low" -> Downloader.Quality.LOW
+                    "medium" -> Downloader.Quality.MEDIUM
+                    else -> Downloader.Quality.HIGH
+                }
+
+                Downloader.startDownload(context, key, url, headers, widevineLicenseUrl, quality)
                 result.success(null)
             }
             METHOD_DELETE_OFFLINE_ASSET -> {
