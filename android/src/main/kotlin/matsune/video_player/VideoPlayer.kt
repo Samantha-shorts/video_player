@@ -252,7 +252,9 @@ class VideoPlayer(
             .setDrmConfiguration(drmCfg)
             .build()
 
-        val mediaSourceFactory = DefaultMediaSourceFactory(Downloader.getDataSourceFactory(context))
+        val mediaSourceFactory = DefaultMediaSourceFactory(
+            Downloader.getOfflineOnlyDataSourceFactory(context)
+        )
         setMediaSource(mediaSourceFactory.createMediaSource(mediaItem))
     }
 

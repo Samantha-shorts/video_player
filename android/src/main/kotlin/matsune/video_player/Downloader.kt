@@ -198,6 +198,15 @@ object Downloader {
         }
     }
 
+    fun getOfflineOnlyDataSourceFactory(context: Context): DataSource.Factory {
+        val cache = getDownloadCache(context)
+        val upstream = NoNetworkDataSource.Factory()
+        return CacheDataSource.Factory()
+            .setCache(cache)
+            .setUpstreamDataSourceFactory(upstream)
+            .setCacheWriteDataSinkFactory(null)
+    }
+
     fun startDownload(
         context: Context,
         key: String,
