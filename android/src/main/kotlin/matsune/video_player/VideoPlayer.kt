@@ -239,6 +239,7 @@ class VideoPlayer(
         // 既存 LocalConfiguration / Drm を尊重
         val existingLocal = baseItem.localConfiguration
         val existingDrm = existingLocal?.drmConfiguration
+        val customCacheKey = existingLocal?.customCacheKey ?: req.customCacheKey
 
         val drmCfg = (existingDrm?.buildUpon() ?: MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID))
             .setKeySetId(keySetId)
@@ -247,9 +248,10 @@ class VideoPlayer(
             .build()
 
         val mediaItem = MediaItem.Builder()
-            .setUri(existingLocal?.uri ?: req.uri)
+            .setUri(req.uri)
             .setMimeType(existingLocal?.mimeType)
             .setDrmConfiguration(drmCfg)
+            .setCustomCacheKey(customCacheKey)
             .build()
 
         val mediaSourceFactory = DefaultMediaSourceFactory(
