@@ -320,14 +320,25 @@ class _DownloadHlsPageState extends State<DownloadHlsPage> {
 
   Future<void> _downloadSubtitlesForKey(String key) async {
     try {
-      final subtitleUrls = await _findSubtitleUrls(key);
-      if (subtitleUrls.isEmpty) return;
+      // Try locale-aware download first; fall back to list-based.
+      final urlsByLocale = await _findSubtitleUrlsByLocale(key);
+      final subtitleUrls = urlsByLocale.isEmpty
+          ? await _findSubtitleUrls(key)
+          : <String>[];
+      if (urlsByLocale.isEmpty && subtitleUrls.isEmpty) return;
       final baseDir = await getApplicationDocumentsDirectory();
       final dir = Directory('${baseDir.path}/video_player_subtitles/${Uri.encodeComponent(key)}');
-      await OfflineSubtitlesHelper.downloadSubtitleFiles(
-        urls: subtitleUrls,
-        directory: dir,
-      );
+      if (urlsByLocale.isNotEmpty) {
+        await OfflineSubtitlesHelper.downloadSubtitleFilesByLocale(
+          urlsByLocale: urlsByLocale,
+          directory: dir,
+        );
+      } else {
+        await OfflineSubtitlesHelper.downloadSubtitleFiles(
+          urls: subtitleUrls,
+          directory: dir,
+        );
+      }
     } catch (_) {
       // ignore errors in example
     }
@@ -343,6 +354,30 @@ class _DownloadHlsPageState extends State<DownloadHlsPage> {
       }
     } catch (_) {}
     return [];
+  }
+
+  Future<Map<String, String>> _findSubtitleUrlsByLocale(String masterUrl) async {
+    try {
+      final data = await VariantSelector.getDataFromUrlString(masterUrl, null);
+      final playlist = await HlsPlaylistParser.create()
+          .parseString(Uri.parse(masterUrl), data);
+      if (playlist is HlsMasterPlaylist) {
+        final Map<String, String> map = {};
+        for (final rendition in playlist.subtitles) {
+          final url = rendition.url?.toString();
+          if (url == null) continue;
+          final language = rendition.format.language;
+          final name = rendition.format.label ?? rendition.name;
+          final key = (language?.isNotEmpty == true)
+              ? language!
+              : (name?.isNotEmpty == true ? name! : 'default');
+          // If duplicate keys appear, keep the first.
+          map.putIfAbsent(key, () => url);
+        }
+        return map;
+      }
+    } catch (_) {}
+    return {};
   }
 
   static bool containsVideoCodec(String codecs) {
@@ -455,20 +490,19 @@ class _PlayPage extends StatelessWidget {
     final dir = Directory('${baseDir.path}/video_player_subtitles/${Uri.encodeComponent(offlineKey)}');
     List<VideoPlayerSubtitlesSource> sources = [];
     if (await dir.exists()) {
-      final paths = dir
-          .listSync()
-          .whereType<File>()
-          .map((f) => f.path)
-          .toList();
-      if (paths.isNotEmpty) {
-        sources = [
+      final files = dir.listSync().whereType<File>().toList();
+      files.sort((a, b) => a.path.compareTo(b.path));
+      for (var i = 0; i < files.length; i++) {
+        final file = files[i];
+        final name = _extractLocaleFromFileName(file.path) ?? 'Subtitles';
+        sources.add(
           VideoPlayerSubtitlesSource(
             type: VideoPlayerSubtitlesSourceType.file,
-            name: 'Subtitles',
-            urls: paths,
-            selectedByDefault: true,
+            name: name,
+            urls: [file.path],
+            selectedByDefault: i == 0,
           ),
-        ];
+        );
       }
     }
 
@@ -476,5 +510,17 @@ class _PlayPage extends StatelessWidget {
       offlineKey,
       subtitles: sources,
     );
+  }
+
+  String? _extractLocaleFromFileName(String path) {
+    // Expect pattern: name__<locale>.ext
+    final fileName = path.split('/').last;
+    final dot = fileName.lastIndexOf('.');
+    final base = dot > 0 ? fileName.substring(0, dot) : fileName;
+    final idx = base.lastIndexOf('__');
+    if (idx >= 0 && idx + 2 < base.length) {
+      return base.substring(idx + 2);
+    }
+    return null;
   }
 }

@@ -28,11 +28,12 @@ class OfflineSubtitlesHelper {
         final uri = Uri.parse(url);
         final req = await client.getUrl(uri);
         headers?.forEach((k, v) {
-          if (v != null) req.headers.add(k, v);
+          req.headers.add(k, v);
         });
         final res = await req.close();
         if (res.statusCode < 200 || res.statusCode >= 300) {
-          throw HttpException('Failed to download subtitle: $url (${res.statusCode})');
+          throw HttpException(
+              'Failed to download subtitle: $url (${res.statusCode})');
         }
         final bytes = await consolidateHttpClientResponseBytes(res);
         final fileName = uri.pathSegments.isNotEmpty
@@ -43,6 +44,64 @@ class OfflineSubtitlesHelper {
         savedPaths.add(file.path);
       }
       return savedPaths;
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  /// Downloads subtitles provided as a map of locale -> URL into [directory].
+  /// Returns a map of locale -> absolute saved file path.
+  ///
+  /// To avoid name collisions when multiple locales share the same filename
+  /// (e.g. "subtitles.vtt"), saved files are suffixed with the sanitized
+  /// locale (e.g. "subtitles__en.vtt"). Existing files will be overwritten.
+  static Future<Map<String, String>> downloadSubtitleFilesByLocale({
+    required Map<String, String> urlsByLocale,
+    required Directory directory,
+    Map<String, String>? headers,
+  }) async {
+    if (!await directory.exists()) {
+      await directory.create(recursive: true);
+    }
+
+    String sanitizeLocale(String locale) =>
+        locale.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+
+    String withLocaleSuffix(String fileName, String locale) {
+      final idx = fileName.lastIndexOf('.');
+      final base = idx > 0 ? fileName.substring(0, idx) : fileName;
+      final ext = idx > 0 ? fileName.substring(idx) : '';
+      final safeLocale = sanitizeLocale(locale);
+      return '${base}__$safeLocale$ext';
+    }
+
+    final client = HttpClient();
+    final saved = <String, String>{};
+    try {
+      for (final entry in urlsByLocale.entries) {
+        final locale = entry.key;
+        final url = entry.value;
+        final uri = Uri.parse(url);
+
+        final req = await client.getUrl(uri);
+        headers?.forEach((k, v) {
+          req.headers.add(k, v);
+        });
+        final res = await req.close();
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          throw HttpException(
+              'Failed to download subtitle: $url (${res.statusCode})');
+        }
+        final bytes = await consolidateHttpClientResponseBytes(res);
+        final originalName = uri.pathSegments.isNotEmpty
+            ? uri.pathSegments.last
+            : 'subtitle_${DateTime.now().millisecondsSinceEpoch}.vtt';
+        final fileName = withLocaleSuffix(originalName, locale);
+        final file = File('${directory.path}/$fileName');
+        await file.writeAsBytes(bytes);
+        saved[locale] = file.path;
+      }
+      return saved;
     } finally {
       client.close(force: true);
     }
