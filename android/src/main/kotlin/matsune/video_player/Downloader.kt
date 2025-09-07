@@ -301,7 +301,7 @@ object Downloader {
 
                     // (groupIndex, trackIndex, format) の候補を集める
                     val videoCandidates = mutableListOf<Triple<Int, Int, Format>>()
-                    val audioCandidates = mutableListOf<Triple<Int, Int, Format>>() // ← 追加
+                    val audioCandidates = mutableListOf<Triple<Int, Int, Format>>()
 
                     for (g in 0 until groups.length) {
                         val group = groups.get(g)
@@ -310,7 +310,7 @@ object Downloader {
                             val mime = f.sampleMimeType ?: continue
                             when {
                                 mime.startsWith("video") -> videoCandidates.add(Triple(g, t, f))
-                                mime.startsWith("audio") -> audioCandidates.add(Triple(g, t, f)) // ← 追加
+                                mime.startsWith("audio") -> audioCandidates.add(Triple(g, t, f))
                             }
                         }
                     }

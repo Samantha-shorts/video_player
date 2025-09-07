@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_hls_parser/flutter_hls_parser.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:video_player/subtitles/offline_subtitles_helper.dart';
 import 'package:video_player/platform/platform.dart';
 import 'package:video_player/video_player.dart';
 
@@ -302,6 +304,8 @@ class _DownloadHlsPageState extends State<DownloadHlsPage> {
       );
     });
     if (url != null) {
+      // Download overlay subtitles (if any) and save under a directory per key.
+      unawaited(_downloadSubtitlesForKey(uri));
       await VideoPlayerPlatform.instance.downloadOfflineAsset(
         key: uri,
         url: url.toString(),
@@ -312,6 +316,33 @@ class _DownloadHlsPageState extends State<DownloadHlsPage> {
         state.status = DownloadStatus.notDownloaded;
       });
     }
+  }
+
+  Future<void> _downloadSubtitlesForKey(String key) async {
+    try {
+      final subtitleUrls = await _findSubtitleUrls(key);
+      if (subtitleUrls.isEmpty) return;
+      final baseDir = await getApplicationDocumentsDirectory();
+      final dir = Directory('${baseDir.path}/video_player_subtitles/${Uri.encodeComponent(key)}');
+      await OfflineSubtitlesHelper.downloadSubtitleFiles(
+        urls: subtitleUrls,
+        directory: dir,
+      );
+    } catch (_) {
+      // ignore errors in example
+    }
+  }
+
+  Future<List<String>> _findSubtitleUrls(String masterUrl) async {
+    try {
+      final data = await VariantSelector.getDataFromUrlString(masterUrl, null);
+      final playlist = await HlsPlaylistParser.create()
+          .parseString(Uri.parse(masterUrl), data);
+      if (playlist is HlsMasterPlaylist) {
+        return playlist.subtitles.map((r) => r.url.toString()).toList();
+      }
+    } catch (_) {}
+    return [];
   }
 
   static bool containsVideoCodec(String codecs) {
@@ -396,14 +427,54 @@ class _PlayPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final controller = VideoPlayerController(
+      configuration: VideoPlayerConfiguration(
+        autoPlay: true,
+        autoLoop: false,
+      ),
+    );
+
+    _attachOfflineWithLocalSubtitles(controller, offlineKey);
+
     return Scaffold(
       appBar: AppBar(),
       body: Column(children: [
         AspectRatio(
           aspectRatio: 16 / 9,
-          child: VideoPlayer.offline(offlineKey),
+          child: VideoPlayer(controller: controller),
         ),
       ]),
+    );
+  }
+
+  Future<void> _attachOfflineWithLocalSubtitles(
+    VideoPlayerController controller,
+    String offlineKey,
+  ) async {
+    final baseDir = await getApplicationDocumentsDirectory();
+    final dir = Directory('${baseDir.path}/video_player_subtitles/${Uri.encodeComponent(offlineKey)}');
+    List<VideoPlayerSubtitlesSource> sources = [];
+    if (await dir.exists()) {
+      final paths = dir
+          .listSync()
+          .whereType<File>()
+          .map((f) => f.path)
+          .toList();
+      if (paths.isNotEmpty) {
+        sources = [
+          VideoPlayerSubtitlesSource(
+            type: VideoPlayerSubtitlesSourceType.file,
+            name: 'Subtitles',
+            urls: paths,
+            selectedByDefault: true,
+          ),
+        ];
+      }
+    }
+
+    await controller.setOfflineDataSource(
+      offlineKey,
+      subtitles: sources,
     );
   }
 }
