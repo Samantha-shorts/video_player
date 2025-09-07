@@ -27,10 +27,13 @@ import androidx.media3.common.MediaItem.DrmConfiguration
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.Util
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.*
 import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.trackselection.AdaptiveTrackSelection
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
@@ -41,8 +44,6 @@ import androidx.work.*
 import com.google.common.collect.ImmutableMap
 import io.flutter.plugin.common.BinaryMessenger
 import java.util.*
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
-import android.util.Base64
 
 class VideoPlayer(
     private val context: Context,
@@ -181,83 +182,140 @@ class VideoPlayer(
     }
 
     fun setNetworkDataSource(uri: String, headers: Map<String, String>) {
-        val dataSourceFactory = DefaultHttpDataSource.Factory()
+        val parsed = Uri.parse(uri)
+        val httpFactory = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
             .setDefaultRequestProperties(headers)
             .setTransferListener(bandwidthMeter)
-        val mediaSourceFactory = HlsMediaSource.Factory(dataSourceFactory)
-        val mediaItem = MediaItem.fromUri(uri)
-        val mediaSource = mediaSourceFactory.createMediaSource(mediaItem)
+        // Use DefaultDataSource so local file/content schemes also work.
+        val defaultFactory = DefaultDataSource.Factory(context, httpFactory)
+
+        val mediaItem = MediaItem.fromUri(parsed)
+        val contentType = Util.inferContentType(parsed)
+        val mediaSource = when (contentType) {
+            C.CONTENT_TYPE_DASH -> DashMediaSource.Factory(httpFactory).createMediaSource(mediaItem)
+            C.CONTENT_TYPE_HLS -> HlsMediaSource.Factory(httpFactory).createMediaSource(mediaItem)
+            else -> ProgressiveMediaSource.Factory(defaultFactory).createMediaSource(mediaItem)
+        }
         setMediaSource(mediaSource)
     }
 
     fun setDrmDataSource(contentUrl: String, licenseUrl: String, headers: Map<String, String>) {
         val uri = Uri.parse(contentUrl)
 
-        val requestHeaders = mutableMapOf<String, String>()
+        val mediaItemBuilder = MediaItem.Builder()
+            .setUri(uri)
+            .setMediaMetadata(MediaMetadata.Builder().setTitle("DRM Content").build())
+            .setMimeType(Util.getAdaptiveMimeTypeForContentType(Util.inferContentType(uri)))
+            .setClippingConfiguration(
+                ClippingConfiguration.Builder().build()
+            )
+
+        val requestHeaders: MutableMap<String, String> = HashMap()
         requestHeaders["Content-Type"] = "application/octet-stream"
         requestHeaders["Accept"] = "application/octet-stream"
         requestHeaders.putAll(headers)
+        val drmLicenseRequestHeaders = ImmutableMap.copyOf(requestHeaders)
 
         val drmConfiguration = MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
             .setLicenseUri(licenseUrl)
-            .setLicenseRequestHeaders(ImmutableMap.copyOf(requestHeaders))
+            .setLicenseRequestHeaders(drmLicenseRequestHeaders)
             .setMultiSession(true)
             .build()
+        mediaItemBuilder.setDrmConfiguration(drmConfiguration)
 
-        val mediaItem = MediaItem.Builder()
-            .setUri(uri)
-            .setMimeType(Util.getAdaptiveMimeTypeForContentType(Util.inferContentType(uri)))
-            .setDrmConfiguration(drmConfiguration)
-            .build()
+        val mediaItem = mediaItemBuilder.build()
 
         val dataSourceFactory = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
             .setDefaultRequestProperties(headers)
+            .setTransferListener(bandwidthMeter)
 
-        val mediaSource =
-            if (contentUrl.endsWith(".mpd"))
+        val mediaSource: MediaSource = when {
+            contentUrl.endsWith(".mpd") -> {
                 DashMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
-            else if (contentUrl.endsWith(".m3u8"))
+            }
+            contentUrl.endsWith(".m3u8") -> {
                 HlsMediaSource.Factory(dataSourceFactory).createMediaSource(mediaItem)
-            else throw IllegalArgumentException("Unsupported DRM content type: $contentUrl")
+            }
+            else -> {
+                throw IllegalArgumentException("Unsupported DRM content type: $contentUrl")
+            }
+        }
 
         setMediaSource(mediaSource)
     }
 
     fun setOfflineDataSource(offlineKey: String) {
+        setOfflineDataSource(offlineKey, null, emptyMap())
+    }
+
+    fun setOfflineDataSource(
+        offlineKey: String,
+        licenseUrl: String?,
+        headers: Map<String, String>
+    ) {
         val download = Downloader.getDownloadByKey(context, offlineKey)
             ?: throw IllegalStateException("Download not found for key=$offlineKey")
 
-        val req = download.request
-        val baseItem = req.toMediaItem()
-        val keySetId: ByteArray? = req.data
-        require(!(keySetId == null || keySetId.isEmpty())) {
-            "Offline license (keySetId) not found. Re-download with license. key=$offlineKey"
+        val request = download.request
+        val baseItem = request.toMediaItem()
+
+        // Build MediaItem with offline DRM if present
+        val builder = MediaItem.Builder()
+            .setUri(request.uri)
+            .setMimeType(baseItem.localConfiguration?.mimeType)
+            .setCustomCacheKey(baseItem.localConfiguration?.customCacheKey ?: request.customCacheKey)
+
+        // Limit playback to downloaded streams to avoid cache misses.
+        val reqStreamKeys = request.streamKeys
+        if (reqStreamKeys != null && reqStreamKeys.isNotEmpty()) {
+            builder.setStreamKeys(reqStreamKeys)
         }
 
-        // 既存 LocalConfiguration / Drm を尊重
-        val existingLocal = baseItem.localConfiguration
-        val existingDrm = existingLocal?.drmConfiguration
-        val customCacheKey = existingLocal?.customCacheKey ?: req.customCacheKey
+        val keySetId = request.data
+        if (keySetId != null && keySetId.isNotEmpty()) {
+            val drmCfg = MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
+                .setKeySetId(keySetId)
+                .build()
+            builder.setDrmConfiguration(drmCfg)
+        } else if (!licenseUrl.isNullOrEmpty()) {
+            // Offline playback requested for DRM content but no offline key present.
+            // Do NOT fall back to online license fetch (would fail offline). Surface a clear error instead.
+            val message = "Offline license (keySetId) missing for key=$offlineKey. Re-download with Widevine license to enable offline playback."
+            Log.e(TAG, message)
+            throw IllegalStateException(message)
+        }
+        val mediaItem = builder.build()
 
-        val drmCfg = (existingDrm?.buildUpon() ?: MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID))
-            .setKeySetId(keySetId)
-            .setLicenseUri(null as String?)
-            .setLicenseRequestHeaders(emptyMap())
-            .build()
+        // Debug info to diagnose offline issues
+        try {
+            val stateName = when (download.state) {
+                Download.STATE_COMPLETED -> "COMPLETED"
+                Download.STATE_DOWNLOADING -> "DOWNLOADING"
+                Download.STATE_QUEUED -> "QUEUED"
+                Download.STATE_RESTARTING -> "RESTARTING"
+                Download.STATE_STOPPED -> "STOPPED"
+                Download.STATE_FAILED -> "FAILED"
+                else -> "UNKNOWN(${download.state})"
+            }
+            Log.d(TAG, "[offline] key=$offlineKey id=${download.request.id} uri=${request.uri} state=$stateName bytes=${download.bytesDownloaded}/${download.contentLength}")
+            Log.d(TAG, "[offline] customCacheKey=${mediaItem.localConfiguration?.customCacheKey} mime=${mediaItem.localConfiguration?.mimeType} hasKeySetId=${request.data?.isNotEmpty() == true}")
+        } catch (_: Throwable) {}
 
-        val mediaItem = MediaItem.Builder()
-            .setUri(req.uri)
-            .setMimeType(existingLocal?.mimeType)
-            .setDrmConfiguration(drmCfg)
-            .setCustomCacheKey(customCacheKey)
-            .build()
+        // Strict offline playback: read only from the download cache and forbid network
+        val dsFactory = Downloader.getOfflineOnlyDataSourceFactory(context)
 
-        val mediaSourceFactory = DefaultMediaSourceFactory(
-            Downloader.getOfflineOnlyDataSourceFactory(context)
-        )
-        setMediaSource(mediaSourceFactory.createMediaSource(mediaItem))
+        val contentType = Util.inferContentType(request.uri)
+        val mediaSource = when (contentType) {
+            C.CONTENT_TYPE_DASH -> DashMediaSource.Factory(dsFactory).createMediaSource(mediaItem)
+            C.CONTENT_TYPE_HLS -> HlsMediaSource.Factory(dsFactory).createMediaSource(mediaItem)
+            // Support progressive (e.g., MP4) offline playback as well.
+            C.CONTENT_TYPE_OTHER -> ProgressiveMediaSource.Factory(dsFactory).createMediaSource(mediaItem)
+            else -> throw IllegalArgumentException("Unsupported offline content type: $contentType")
+        }
+        Log.d(TAG, "[offline] contentType=$contentType using=${mediaSource.javaClass.simpleName}")
+        setMediaSource(mediaSource)
     }
 
     private fun setMediaSource(mediaSource: MediaSource) {

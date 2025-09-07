@@ -93,14 +93,37 @@ class VideoPlayerView(
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
-                    val map = mutableMapOf<String, Any>(
-                        "error" to (error.localizedMessage ?: "Playback error"),
-                        "code" to error.errorCode
-                    )
-                    when (val cause = error.cause) {
-                        is HttpDataSource.InvalidResponseCodeException -> map["httpResponseCode"] = cause.responseCode
+                    var invalid = false
+                    val sb = StringBuilder()
+                    sb.append("PlaybackException: ")
+                        .append(error.errorCodeName)
+                        .append(" (").append(error.errorCode).append(")")
+                        .append(": ")
+                        .append(error.message ?: "")
+
+                    var cause: Throwable? = error.cause
+                    var level = 0
+                    while (cause != null && level < 5) {
+                        sb.append("\ncaused by [").append(level).append("]: ")
+                            .append(cause::class.java.simpleName)
+                            .append(": ")
+                            .append(cause.message ?: "")
+                        if (cause is HttpDataSource.InvalidResponseCodeException) {
+                            if (cause.responseCode == 403) invalid = true
+                        }
+                        cause = cause.cause
+                        level++
                     }
-                    videoPlayer.sendEvent(EVENT_ERROR, map)
+
+                    Log.e(TAG, "onPlayerError: ${sb.toString()}")
+                    videoPlayer.sendEvent(
+                        EVENT_ERROR,
+                        mapOf(
+                            "error" to sb.toString(),
+                            "invalid" to invalid,
+                            "code" to error.errorCode
+                        )
+                    )
                 }
 
                 override fun onIsPlayingChanged(isPlaying: Boolean) {

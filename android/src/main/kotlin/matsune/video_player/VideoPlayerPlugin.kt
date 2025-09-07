@@ -21,7 +21,6 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.platform.PlatformViewRegistry
 import io.flutter.view.TextureRegistry
-import java.util.Locale
 
 class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private val videoPlayers = LongSparseArray<VideoPlayer>()
@@ -190,23 +189,21 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 val key = call.argument<String>("key")!!
                 val url = call.argument<String>("url")!!
 
-                // headers は Map<String, String?>? の可能性があるので整形
+                // Accept current MethodChannel payload shape (iOS parity):
+                // - headers: Map<String, String?>?
+                // - quality: String? ("low"|"medium"|"high")
+                // - widevineLicenseUrl: String?
                 @Suppress("UNCHECKED_CAST")
                 val rawHeaders: Map<String, String?>? = call.argument("headers")
                 val headers: Map<String, String>? =
                     rawHeaders?.filterValues { it != null }?.mapValues { it.value!! }
                         ?.takeIf { it.isNotEmpty() }
 
-                val widevineLicenseUrl = call.argument<String>("widevineLicenseUrl")
+                val widevineLicenseUrl: String? = call.argument("widevineLicenseUrl")
+                // quality is not used for now in Android downloader (optional)
+                // val quality: String? = call.argument("quality")
 
-                val qualityStr = call.argument<String>("quality")?.lowercase(Locale.ROOT) ?: "high"
-                val quality = when (qualityStr) {
-                    "low" -> Downloader.Quality.LOW
-                    "medium" -> Downloader.Quality.MEDIUM
-                    else -> Downloader.Quality.HIGH
-                }
-
-                Downloader.startDownload(context, key, url, headers, widevineLicenseUrl, quality)
+                Downloader.startDownload(context, key, url, headers, widevineLicenseUrl)
                 result.success(null)
             }
             METHOD_DELETE_OFFLINE_ASSET -> {
@@ -391,31 +388,41 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private fun setDataSource(call: MethodCall, textureId: Long, player: VideoPlayer) {
         val dataSource = call.argument<Map<String, Any?>>("dataSource")!!
         dataSources.put(textureId, dataSource)
-
-        val disableRemoteControl =
-            DataSourceUtils.getParameter<Boolean>(dataSource, "disableRemoteControl", false)
+        val disableRemoteControl = DataSourceUtils.getParameter<Boolean>(dataSource, "disableRemoteControl", false)
         player.disableRemoteControl = disableRemoteControl
-
         val offlineKey = DataSourceUtils.getParameter<String?>(dataSource, "offlineKey", null)
         if (offlineKey != null) {
-            player.setOfflineDataSource(offlineKey)
-            return
-        }
+            // headers may come as Map<String, String?>; filter nulls and coerce to String
+            @Suppress("UNCHECKED_CAST")
+            val rawHeaders: Map<String, Any?>? = dataSource["headers"] as? Map<String, Any?>
+            val headers: Map<String, String> = rawHeaders
+                ?.mapNotNull { (k, v) ->
+                    val value = (v as? String)
+                    if (k is String && value != null) k to value else null
+                }
+                ?.toMap() ?: emptyMap()
 
-        // Flutter 側は Map<String, String?>? を渡す可能性があるので整形
-        @Suppress("UNCHECKED_CAST")
-        val rawHeaders: Map<String, String?>? = dataSource["headers"] as? Map<String, String?>
-        val headers: Map<String, String> =
-            rawHeaders?.filterValues { it != null }?.mapValues { it.value!! } ?: emptyMap()
-
-        val fileUrl = DataSourceUtils.getParameter(dataSource, "fileUrl", "")
-        val drmDashFileUrl = DataSourceUtils.getParameter(dataSource, "drmDashFileUrl", "")
-        val widevineLicenseUrl = DataSourceUtils.getParameter(dataSource, "widevineLicenseUrl", "")
-
-        if (drmDashFileUrl.isNotEmpty() && widevineLicenseUrl.isNotEmpty()) {
-            player.setDrmDataSource(drmDashFileUrl, widevineLicenseUrl, headers)
+            val widevineLicenseUrl = DataSourceUtils.getParameter(dataSource, "widevineLicenseUrl", "")
+            player.setOfflineDataSource(offlineKey, widevineLicenseUrl, headers)
         } else {
-            player.setNetworkDataSource(fileUrl, headers)
+            // headers may come as Map<String, String?>; filter nulls and coerce to String
+            @Suppress("UNCHECKED_CAST")
+            val rawHeaders: Map<String, Any?>? = dataSource["headers"] as? Map<String, Any?>
+            val headers: Map<String, String> = rawHeaders
+                ?.mapNotNull { (k, v) ->
+                    val value = (v as? String)
+                    if (k is String && value != null) k to value else null
+                }
+                ?.toMap() ?: emptyMap()
+            val fileUrl = DataSourceUtils.getParameter(dataSource, "fileUrl", "")
+            val drmDashFileUrl = DataSourceUtils.getParameter(dataSource, "drmDashFileUrl", "")
+            val widevineLicenseUrl = DataSourceUtils.getParameter(dataSource, "widevineLicenseUrl", "")
+
+            if (drmDashFileUrl.isNotEmpty() && widevineLicenseUrl.isNotEmpty()) {
+                player.setDrmDataSource(drmDashFileUrl, widevineLicenseUrl, headers)
+            } else {
+                player.setNetworkDataSource(fileUrl, headers)
+            }
         }
     }
 

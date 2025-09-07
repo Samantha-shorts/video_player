@@ -2,15 +2,21 @@ package matsune.video_player
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.Base64
 import android.util.Log
 import androidx.media3.common.MediaItem
+import androidx.media3.common.C
+import androidx.media3.common.Format
 import androidx.media3.database.DatabaseProvider
 import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.cache.Cache
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.NoOpCacheEvictor
@@ -18,7 +24,8 @@ import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.RenderersFactory
 import androidx.media3.exoplayer.offline.*
-import androidx.media3.exoplayer.scheduler.Requirements
+import androidx.media3.exoplayer.drm.OfflineLicenseHelper
+import androidx.media3.exoplayer.drm.DrmSessionEventListener
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import io.flutter.plugin.common.EventChannel
 import java.io.File
@@ -27,10 +34,49 @@ import java.net.CookieHandler
 import java.net.CookieManager
 import java.net.CookiePolicy
 import java.util.concurrent.Executors
-import androidx.media3.common.C
-import androidx.media3.exoplayer.drm.OfflineLicenseHelper
-import androidx.media3.common.Format
-import androidx.media3.exoplayer.drm.DrmSessionEventListener
+import android.media.MediaDrm
+
+// --- ライセンスHTTPの詳細ログを出すFactory ---
+// --- ライセンスHTTPの詳細ログを出すFactory ---
+class LoggingHttpDataSourceFactory(
+    private val base: DefaultHttpDataSource.Factory
+) : HttpDataSource.Factory {
+
+    override fun createDataSource(): HttpDataSource {
+        val ds = base.createDataSource()
+        return object : HttpDataSource by ds {
+            override fun open(dataSpec: DataSpec): Long {
+                val r = ds.open(dataSpec)
+                val headers = ds.responseHeaders
+                val ct = headers["Content-Type"]?.joinToString()
+                val code = headers[":status"]?.firstOrNull() ?: "unknown"
+                Log.d("WV-LIC", "OPEN ${dataSpec.uri} -> code=$code, CT=$ct, reqLen=${dataSpec.length}")
+                return r
+            }
+
+            override fun read(buffer: ByteArray, offset: Int, readLength: Int): Int {
+                val n = ds.read(buffer, offset, readLength)
+                if (n > 0) {
+                    val preview = buffer.copyOfRange(offset, offset + minOf(n, 64))
+                    val ascii = buildString {
+                        preview.forEach {
+                            val c = it.toInt() and 0xFF
+                            append(if (c in 32..126) c.toChar() else '.')
+                        }
+                    }
+                    Log.d("WV-LIC", "READ $n bytes; head(ascii)=\"$ascii\"")
+                }
+                return n
+            }
+        }
+    }
+
+    // --- 必須メソッドは base に委譲 ---
+    override fun setDefaultRequestProperties(defaultRequestProperties: Map<String, String>): HttpDataSource.Factory {
+        base.setDefaultRequestProperties(defaultRequestProperties)
+        return this
+    }
+}
 
 object Downloader {
     private var dataSourceFactory: DataSource.Factory? = null
@@ -44,8 +90,6 @@ object Downloader {
 
     private val handler = Handler(Looper.getMainLooper())
     private val runnableMap: HashMap<Uri, Runnable> = hashMapOf()
-
-    enum class Quality { LOW, MEDIUM, HIGH }
 
     var eventChannel: EventChannel? = null
         private set
@@ -75,14 +119,21 @@ object Downloader {
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
     }
 
-    private fun getHttpDataSourceFactory(headers: Map<String, String>?): DataSource.Factory {
+    private fun newHttpDataSourceFactory(headers: Map<String, String>?): DefaultHttpDataSource.Factory {
         val cookieManager = CookieManager()
         cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ORIGINAL_SERVER)
         CookieHandler.setDefault(cookieManager)
-        httpDataSourceFactory = DefaultHttpDataSource.Factory().apply {
-            headers?.let {
-                setDefaultRequestProperties(it)
-            }
+        return DefaultHttpDataSource.Factory().apply {
+            headers?.let { setDefaultRequestProperties(it) }
+            setAllowCrossProtocolRedirects(true)
+            setConnectTimeoutMs(15_000)
+            setReadTimeoutMs(30_000)
+        }
+    }
+
+    private fun getHttpDataSourceFactory(headers: Map<String, String>?): DataSource.Factory {
+        if (httpDataSourceFactory == null) {
+            httpDataSourceFactory = newHttpDataSourceFactory(headers)
         }
         return httpDataSourceFactory!!
     }
@@ -119,12 +170,21 @@ object Downloader {
 
     fun buildReadOnlyCacheDataSource(
         upstreamFactory: DataSource.Factory, cache: Cache
-    ): CacheDataSource.Factory {
+    ): CacheDataSource.Factory? {
         return CacheDataSource.Factory()
             .setCache(cache)
             .setUpstreamDataSourceFactory(upstreamFactory)
             .setCacheWriteDataSinkFactory(null)
             .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+    }
+
+    fun getOfflineOnlyDataSourceFactory(context: Context): DataSource.Factory {
+        val cache = getDownloadCache(context)
+        val upstream = NoNetworkDataSource.Factory()
+        return CacheDataSource.Factory()
+            .setCache(cache)
+            .setUpstreamDataSourceFactory(upstream)
+            .setCacheWriteDataSinkFactory(null)
     }
 
     private fun getDatabaseProvider(context: Context): DatabaseProvider {
@@ -136,7 +196,7 @@ object Downloader {
 
     private fun getDownloadDirectory(context: Context): File {
         if (downloadDirectory == null) {
-            downloadDirectory = context.getExternalFilesDir( /* type= */null)
+            downloadDirectory = context.getExternalFilesDir(/* type= */ null)
             if (downloadDirectory == null) {
                 downloadDirectory = context.filesDir
             }
@@ -151,7 +211,7 @@ object Downloader {
                 getDatabaseProvider(context),
                 getDownloadCache(context),
                 getHttpDataSourceFactory(headers),
-                Executors.newFixedThreadPool( /* nThreads= */6)
+                Executors.newFixedThreadPool(/* nThreads= */ 6)
             )
             downloadIndex = downloadManager?.downloadIndex
             downloadManager?.resumeDownloads()
@@ -167,15 +227,9 @@ object Downloader {
                         }
                         Download.STATE_COMPLETED -> {
                             stopDownloadTimer(download)
-                            val req = download.request
-                            if (req.data == null || req.data!!.isEmpty()) {
-                                sendEvent(DOWNLOAD_EVENT_ERROR,
-                                    mapOf("error" to "Download finished without offline license (keySetId)."))
-                            } else {
-                                downloadHelpers.remove(req.uri)?.release()
-                                val key = getKeyByDownloadId(context, req.id)!!
-                                sendEvent(DOWNLOAD_EVENT_FINISHED, mapOf("key" to key))
-                            }
+                            downloadHelpers.remove(download.request.uri)?.release()
+                            val key = getKeyByDownloadId(context, download.request.id)!!
+                            sendEvent(DOWNLOAD_EVENT_FINISHED, mapOf("key" to key))
                         }
                         Download.STATE_FAILED -> {
                             stopDownloadTimer(download)
@@ -198,185 +252,216 @@ object Downloader {
         }
     }
 
-    fun getOfflineOnlyDataSourceFactory(context: Context): DataSource.Factory {
-        val cache = getDownloadCache(context)
-        val upstream = NoNetworkDataSource.Factory()
-        return CacheDataSource.Factory()
-            .setCache(cache)
-            .setUpstreamDataSourceFactory(upstream)
-            .setCacheWriteDataSinkFactory(null)
-    }
-
     fun startDownload(
         context: Context,
         key: String,
         url: String,
         headers: Map<String, String>?,
         widevineLicenseUrl: String?,
-        quality: Quality,
     ) {
         val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit()
-        val drmReqHeaders = (headers ?: emptyMap()).toMutableMap()
-        drmReqHeaders.putIfAbsent("Content-Type", "application/octet-stream")
-        drmReqHeaders.putIfAbsent("Accept", "application/octet-stream")
 
-        val httpFactory = DefaultHttpDataSource.Factory().apply {
-            setAllowCrossProtocolRedirects(true)
-            if (drmReqHeaders.isNotEmpty()) setDefaultRequestProperties(drmReqHeaders)
-        }
+        // --- コンテンツ(マニフェスト/セグメント)用 HTTP Factory ---
+        val contentHeaders = headers ?: emptyMap()
+        val contentHttpFactory = DefaultHttpDataSource.Factory()
+            .setDefaultRequestProperties(contentHeaders)
+            .setAllowCrossProtocolRedirects(true)
+            .setConnectTimeoutMs(15_000)
+            .setReadTimeoutMs(30_000)
 
-        val baseMediaItemBuilder = MediaItem.Builder().setUri(url)
+        val downloadManager = getDownloadManager(context, headers)
 
+        // 端末のセキュリティレベルを参考ログとして出す
+        logWidevineSecurityLevel()
+
+        val mediaItemBuilder = MediaItem.Builder().setUri(url)
         if (!widevineLicenseUrl.isNullOrEmpty()) {
+            val drmHeaders = HashMap<String, String>().apply {
+                put("Content-Type", "application/octet-stream")
+                put("Accept", "application/octet-stream")
+                putAll(contentHeaders) // Authorization/Cookie/Originなどを引き継ぐ
+            }
             val drmConf = MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
                 .setLicenseUri(widevineLicenseUrl)
-                .setLicenseRequestHeaders(drmReqHeaders)
+                .setLicenseRequestHeaders(drmHeaders)
                 .setMultiSession(false)
+                .setForceDefaultLicenseUri(true)
                 .build()
-            baseMediaItemBuilder.setDrmConfiguration(drmConf)
+            mediaItemBuilder.setDrmConfiguration(drmConf)
         }
 
+        val mediaItem = mediaItemBuilder.build()
 
-        val mediaItem = baseMediaItemBuilder.build()
-        val downloadManager = getDownloadManager(context, drmReqHeaders)
         val downloadHelper = DownloadHelper.forMediaItem(
             context,
             mediaItem,
             buildRenderersFactory(context),
-            getHttpDataSourceFactory(drmReqHeaders)
+            contentHttpFactory // コンテンツ用
         )
 
         downloadHelper.prepare(object : DownloadHelper.Callback {
             override fun onPrepared(helper: DownloadHelper) {
-                // --- 既存の DRM ライセンス取得処理はそのまま ---
-                val drmFormat: Format? = run {
-                    for (periodIndex in 0 until helper.periodCount) {
-                        val groups = helper.getTrackGroups(periodIndex)
-                        for (g in 0 until groups.length) {
-                            val group = groups.get(g)
-                            for (i in 0 until group.length) {
-                                val f = group.getFormat(i)
-                                if (f.drmInitData != null) return@run f
+                var requestData: ByteArray? = null
+
+                // --- ライセンス(オフライン)取得 ---
+                if (!widevineLicenseUrl.isNullOrEmpty()) {
+                    try {
+                        val drmFormat: Format? = findFirstDrmFormat(helper, url)
+                        if (drmFormat == null) {
+                            Log.e("Downloader", "No drmInitData found in tracks for $url")
+                        } else {
+                            // ライセンスHTTPは octet-stream & ログ出力付き
+                            val licHeaders = HashMap<String, String>().apply {
+                                put("Content-Type", "application/octet-stream")
+                                put("Accept", "application/octet-stream")
+                                putAll(contentHeaders)
+                            }
+                            val licenseHttpBase = DefaultHttpDataSource.Factory()
+                                .setDefaultRequestProperties(licHeaders)
+                                .setAllowCrossProtocolRedirects(true)
+                                .setConnectTimeoutMs(15_000)
+                                .setReadTimeoutMs(30_000)
+                            val licenseHttpFactory: HttpDataSource.Factory =
+                                LoggingHttpDataSourceFactory(licenseHttpBase)
+
+                            val licenseHelper = OfflineLicenseHelper.newWidevineInstance(
+                                widevineLicenseUrl,
+                                /* forceDefaultLicenseUrl = */ false,
+                                licenseHttpFactory,
+                                null,
+                                DrmSessionEventListener.EventDispatcher()
+                            )
+                            try {
+                                val keySetId = licenseHelper.downloadLicense(drmFormat)
+                                if (keySetId.isNotEmpty()) {
+                                    requestData = keySetId
+                                    Log.i("Downloader", "Offline license acquired: ${keySetId.size} bytes")
+                                } else {
+                                    Log.e("Downloader", "Offline keySetId is empty for $url (persistent disabled?)")
+                                }
+                            } finally {
+                                licenseHelper.release()
                             }
                         }
+                    } catch (e: HttpDataSource.InvalidResponseCodeException) {
+                        dumpLicenseHttpError(e, widevineLicenseUrl ?: url)
+                    } catch (e: IOException) {
+                        Log.e(
+                            "Downloader",
+                            "License IO error for $url: ${e.javaClass.simpleName}: ${e.message}"
+                        )
+                    } catch (e: Exception) {
+                        Log.e(
+                            "Downloader",
+                            "Offline license acquisition failed: ${e.javaClass.simpleName}: ${e.message}"
+                        )
                     }
-                    null
                 }
 
-                var requestData: ByteArray? = null
-                if (!widevineLicenseUrl.isNullOrEmpty() && drmFormat != null) {
-                    try {
-                        val licenseHelper = OfflineLicenseHelper.newWidevineInstance(
-                            widevineLicenseUrl, false, httpFactory, drmReqHeaders,
-                            DrmSessionEventListener.EventDispatcher()
-                        )
-                        val keySetId: ByteArray = licenseHelper.downloadLicense(drmFormat)
-                        Log.i("Downloader", "★ keySetId acquired: bytes=${keySetId.size}, key=$key")
-                        if (keySetId.isEmpty()) {
-                            sendEvent(DOWNLOAD_EVENT_ERROR, mapOf(
-                                "key" to key,
-                                "error" to "Offline license (keySetId) is empty"
-                            ))
-                            licenseHelper.release()
-                            return
-                        }
-                        licenseHelper.release()
-                        requestData = keySetId
-                    } catch (e: Exception) {
-                        sendEvent(DOWNLOAD_EVENT_ERROR,
-                            mapOf("error" to ("Offline license acquisition failed: ${e.message}")))
-                        return
-                    }
-                }
-                if (!widevineLicenseUrl.isNullOrEmpty() && (requestData == null || requestData!!.isEmpty())) {
-                    sendEvent(DOWNLOAD_EVENT_ERROR,
-                        mapOf("error" to "Offline license (keySetId) missing; aborting download"))
+                // ライセンス取得失敗時はDLを開始しない
+                if (!widevineLicenseUrl.isNullOrEmpty() && (requestData == null || requestData.isEmpty())) {
+                    Log.e("Downloader", "Offline license acquisition failed for $url; not starting download")
+                    sendEvent(DOWNLOAD_EVENT_ERROR, mapOf("key" to key, "error" to "offline_license_missing"))
+                    helper.release()
                     return
                 }
 
-                val streamKeys = mutableListOf<androidx.media3.common.StreamKey>()
+                val request = helper.getDownloadRequest(requestData)
 
-                for (period in 0 until helper.periodCount) {
-                    val groups = helper.getTrackGroups(period)
-
-                    // (groupIndex, trackIndex, format) の候補を集める
-                    val videoCandidates = mutableListOf<Triple<Int, Int, Format>>()
-                    val audioCandidates = mutableListOf<Triple<Int, Int, Format>>()
-
-                    for (g in 0 until groups.length) {
-                        val group = groups.get(g)
-                        for (t in 0 until group.length) {
-                            val f = group.getFormat(t)
-                            val mime = f.sampleMimeType ?: continue
-                            when {
-                                mime.startsWith("video") -> videoCandidates.add(Triple(g, t, f))
-                                mime.startsWith("audio") -> audioCandidates.add(Triple(g, t, f))
-                            }
-                        }
-                    }
-
-                    if (videoCandidates.isNotEmpty()) {
-                        videoCandidates.sortBy { it.third.bitrate.takeIf { b -> b > 0 } ?: 0 }
-                        val mid = (videoCandidates.size - 1) / 2
-                        val pickVideo = when (quality) {
-                            Quality.HIGH -> videoCandidates.last()
-                            Quality.LOW -> videoCandidates.first()
-                            Quality.MEDIUM -> videoCandidates[mid]
-                        }
-                        streamKeys.add(androidx.media3.common.StreamKey(period, pickVideo.first, pickVideo.second))
-                    } else {
-                        Log.w("Downloader", "No video formats found in period=$period; skipping video selection.")
-                    }
-
-                    if (audioCandidates.isNotEmpty()) {
-                        val pickAudio = audioCandidates.maxByOrNull { triple ->
-                            val f = triple.third
-                            val defaultScore = if (f.selectionFlags and C.SELECTION_FLAG_DEFAULT != 0) 1 else 0
-                            val langScore = if ((f.language ?: "").startsWith("ja", true)) 1 else 0
-                            defaultScore * 1_000_000_000 + langScore * 1_000_000 + (f.bitrate.takeIf { it > 0 } ?: 0)
-                        }!!
-                        streamKeys.add(androidx.media3.common.StreamKey(period, pickAudio.first, pickAudio.second))
-                    }
-                }
-
-                val request =
-                    if (streamKeys.isNotEmpty()) {
-                        val base = helper.getDownloadRequest(requestData)
-                        DownloadRequest.Builder(base.id, base.uri)
-                            .setMimeType(base.mimeType)
-                            .setCustomCacheKey(base.customCacheKey)
-                            .setData(base.data)
-                            .setStreamKeys(streamKeys)
-                            .build()
-                    } else {
-                        helper.getDownloadRequest(requestData)
-                    }
+                // Save key->id mapping first to avoid race
+                prefs.putString(key, request.id)
+                prefs.apply()
 
                 downloadHelpers[request.uri] = helper
                 downloadManager.addDownload(request)
-
-                val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE).edit()
-                prefs.putString(key, request.id)
-                prefs.apply()
             }
 
             override fun onPrepareError(helper: DownloadHelper, e: IOException) {
-                Log.e("DownloadUtil", "onPrepareError", e)
-                sendEvent(DOWNLOAD_EVENT_ERROR, mapOf("error" to (e.message ?: "prepare error")))
+                Log.e("Downloader", "onPrepareError url?=${mediaItemUriSafe(mediaItem)}", e)
+                sendEvent(
+                    DOWNLOAD_EVENT_ERROR,
+                    mapOf("key" to key, "error" to (e.localizedMessage ?: "prepare_error"))
+                )
             }
         })
+    }
+
+    private fun findFirstDrmFormat(helper: DownloadHelper, url: String): Format? {
+        for (period in 0 until helper.periodCount) {
+            val groups = helper.getTrackGroups(period)
+            for (g in 0 until groups.length) {
+                val group = groups.get(g)
+                for (i in 0 until group.length) {
+                    val f = group.getFormat(i)
+                    if (f.drmInitData != null) {
+                        Log.d(
+                            "Downloader",
+                            "Found drmInitData: sampleMimeType=${f.sampleMimeType}, codecs=${f.codecs}, width=${f.width}, height=${f.height}"
+                        )
+                        return f
+                    }
+                }
+            }
+        }
+        Log.w("Downloader", "No drmInitData in any track groups for $url")
+        return null
+    }
+
+    private fun mediaItemUriSafe(item: MediaItem): String? = try {
+        item.localConfiguration?.uri?.toString()
+    } catch (_: Throwable) { null }
+
+    private fun logWidevineSecurityLevel() {
+        try {
+            val uuid = C.WIDEVINE_UUID
+            val md = MediaDrm(uuid)
+            val level = md.getPropertyString("securityLevel")
+            val vendor = md.getPropertyString("vendor")
+            val version = md.getPropertyString("version")
+            Log.i("Downloader", "Widevine securityLevel=$level vendor=$vendor version=$version sdk=${Build.VERSION.SDK_INT}")
+            md.release()
+        } catch (e: Exception) {
+            Log.w("Downloader", "MediaDrm info unavailable: ${e.message}")
+        }
+    }
+
+    // --- HTTP 4xx/5xxなどの応答を詳細に出す ---
+    private fun dumpLicenseHttpError(e: HttpDataSource.InvalidResponseCodeException, url: String) {
+        val code = e.responseCode
+        val headers = e.headerFields?.entries?.joinToString { (k, v) -> "$k=${v?.joinToString()}" }
+        val body = e.responseBody
+        val bodyPreviewAscii = if (body != null) {
+            val len = minOf(body.size, 256)
+            buildString {
+                for (i in 0 until len) {
+                    val c = body[i].toInt() and 0xFF
+                    append(if (c in 32..126) c.toChar() else '.')
+                }
+            }
+        } else "(null)"
+        val bodyB64 = if (body != null) Base64.encodeToString(body, Base64.NO_WRAP) else "(null)"
+        Log.e("Downloader", "License HTTP $code for $url; headers=$headers")
+        Log.e("Downloader", "License body(head, ascii)=\"$bodyPreviewAscii\"")
+        Log.e("Downloader", "License body(base64)=$bodyB64")
     }
 
     private fun startDownloadTimer(context: Context, download: Download) {
         val runnable = object : Runnable {
             override fun run() {
-                // maybe called after download completed so check download is still going here
                 if (downloadHelpers.containsKey(download.request.uri)) {
-                    val progress = download.percentDownloaded / 100
-                    var bytesDownloaded = download.bytesDownloaded
-                    var bytesTotal = download.contentLength
+                    val progress = download.percentDownloaded / 100 // 0.0..1.0
                     val key = getKeyByDownloadId(context, download.request.id)!!
-                    sendEvent(DOWNLOAD_EVENT_PROGRESS, mapOf("key" to key, "progress" to progress, "bytesDownloaded" to bytesDownloaded, "bytesTotal" to bytesTotal))
+                    val bytesDownloaded = download.bytesDownloaded
+                    val bytesTotal = download.contentLength
+                    sendEvent(
+                        DOWNLOAD_EVENT_PROGRESS,
+                        mapOf(
+                            "key" to key,
+                            "progress" to progress,
+                            "bytesDownloaded" to bytesDownloaded,
+                            "bytesTotal" to bytesTotal,
+                        )
+                    )
                     handler.postDelayed(this, 1000)
                 } else {
                     stopDownloadTimer(download)
@@ -397,35 +482,8 @@ object Downloader {
         ensureDownloadManagerInitialized(context, null)
         val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE)
         val editor = prefs.edit()
-
-        prefs.getString(key, "")?.let { id ->
-            val download = downloadIndex?.getDownload(id)
-            val request = download?.request
-            val mediaItem = request?.toMediaItem()
-            val drmConf = mediaItem?.localConfiguration?.drmConfiguration
-
-            val licenseUri = drmConf?.licenseUri?.toString()
-            val keySetIdFromDrm = drmConf?.keySetId
-            val keySetIdFromData = request?.data
-            val keySetIdToRelease = keySetIdFromDrm ?: keySetIdFromData
-
-            if (!licenseUri.isNullOrEmpty() && keySetIdToRelease != null) {
-                try {
-                    val licenseHelper = OfflineLicenseHelper.newWidevineInstance(
-                        licenseUri,
-                        false,
-                        DefaultHttpDataSource.Factory(),
-                        null,
-                        DrmSessionEventListener.EventDispatcher()
-                    )
-                    licenseHelper.releaseLicense(keySetIdToRelease)
-                    licenseHelper.release()
-                } catch (e: Exception) {
-                    Log.w("DownloadUtil", "releaseLicense failed", e)
-                }
-            }
-
-            downloadManager?.removeDownload(id)
+        prefs.getString(key, "")?.let {
+            downloadManager?.removeDownload(it)
         }
         editor.remove(key)
         editor.apply()
@@ -451,33 +509,9 @@ object Downloader {
     }
 
     fun getDownloadByKey(context: Context, key: String): Download? {
-        // まず初期化
-        ensureDownloadManagerInitialized(context, null)
-
         val prefs = context.getSharedPreferences(PREFERENCES_KEY, Context.MODE_PRIVATE)
-        val id = prefs.getString(key, null) ?: return null
-
-        val d = downloadIndex?.getDownload(id)
-        if (d == null) {
-            // デバッグ用：インデックス内の id 一覧をログ
-            val ids = mutableListOf<String>()
-            val cursor = downloadIndex?.getDownloads()
-            if (cursor != null) {
-                try {
-                    while (cursor.moveToNext()) {
-                        val dl = cursor.getDownload() // ← プロパティではなくメソッドで取得
-                        ids.add(dl.request.id)
-                    }
-                } finally {
-                    cursor.close()
-                }
-            }
-            Log.w(
-                "Downloader",
-                "Download not found for key=$key (id=$id); index has ids=${ids.joinToString()}"
-            )
-        }
-        return d
+        ensureDownloadManagerInitialized(context, null)
+        return prefs.getString(key, "")?.let { downloadIndex?.getDownload(it) }
     }
 
     fun getKeyByDownloadId(context: Context, id: String): String? {

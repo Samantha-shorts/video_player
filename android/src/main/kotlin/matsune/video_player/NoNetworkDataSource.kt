@@ -6,6 +6,10 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.TransferListener
 import java.io.IOException
 
+/**
+ * A DataSource that forbids any network access. Useful for strict offline playback
+ * so that ExoPlayer reads only from the download cache.
+ */
 class NoNetworkDataSource : DataSource {
 
     class Factory : DataSource.Factory {
@@ -13,7 +17,7 @@ class NoNetworkDataSource : DataSource {
     }
 
     override fun addTransferListener(transferListener: TransferListener) {
-        // no-op (ネットワーク禁止のため転送は発生しない)
+        // no-op
     }
 
     @Throws(IOException::class)
@@ -28,5 +32,8 @@ class NoNetworkDataSource : DataSource {
 
     override fun getUri(): Uri? = null
 
-    override fun close() { /* no-op */ }
+    override fun close() {
+        // no-op
+    }
 }
+
