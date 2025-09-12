@@ -104,6 +104,13 @@ class VideoPlayer(
                 .setLoadControl(loadControl)
                 .setBandwidthMeter(bandwidthMeter)
                 .build()
+        exoPlayer.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_READY && !isInitialized) {
+                    setInitialized()
+                }
+            }
+        })
         workManager = WorkManager.getInstance(context)
         workerObserverMap = HashMap()
         runnable =
