@@ -187,7 +187,6 @@ class VideoPlayer(
             .setAllowCrossProtocolRedirects(true)
             .setDefaultRequestProperties(headers)
             .setTransferListener(bandwidthMeter)
-        // Use DefaultDataSource so local file/content schemes also work.
         val defaultFactory = DefaultDataSource.Factory(context, httpFactory)
 
         val mediaItem = MediaItem.fromUri(parsed)

@@ -43,11 +43,9 @@ class Downloader: NSObject {
         let asset = AVURLAsset(url: url, options: options)
         let assetTitle = url.lastPathComponent
 
-        // FairPlay の準備は現状どおり
         ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
         asset.resourceLoader.preloadsEligibleContentKeys = true
 
-        // ★ ここでマスター m3u8 を読んでビットレートを決める
         let selectedBitrate = selectBitrateForQuality(masterURL: url, headers: headers, fallback: quality)
 
         var dlOptions: [String: Any] = options
@@ -66,7 +64,6 @@ class Downloader: NSObject {
     }
 
     private func selectBitrateForQuality(masterURL: URL, headers: [String: String]?, fallback: Quality) -> Int? {
-        // マスター playlist を取得（同期）
         var request = URLRequest(url: masterURL)
         headers?.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
 
@@ -82,7 +79,6 @@ class Downloader: NSObject {
         semaphore.wait()
 
         guard error == nil, let body = data.flatMap({ String(data: $0, encoding: .utf8) }) else {
-            // 失敗時は閾値の固定値（例）にフォールバック
             switch fallback {
             case .low:    return 600_000
             case .medium: return 2_000_000
@@ -90,8 +86,6 @@ class Downloader: NSObject {
             }
         }
 
-        // #EXT-X-STREAM-INF の BANDWIDTH を全て取り出す
-        // 例: #EXT-X-STREAM-INF:BANDWIDTH=800000,AVERAGE-BANDWIDTH=600000,...
         let lines = body.components(separatedBy: .newlines)
         var bandwidths = [Int]()
         let pattern = #"BANDWIDTH=(\d+)"#
@@ -252,10 +246,6 @@ extension Downloader: AVAssetDownloadDelegate {
             forUrl: assetDownloadTask.urlAsset.url.absoluteString,
             path: location.relativePath
         )
-
-        print("[DEBUG][download] finished. source=\(assetDownloadTask.urlAsset.url.absoluteString)")
-        print("[DEBUG][download] saved absolute path: \(location.path)")
-        print("[DEBUG][download] file exists? \(FileManager.default.fileExists(atPath: location.path))")
 
         let url = assetDownloadTask.urlAsset.url.absoluteString
         guard let key = DownloadPathManager.key(forUrl: url) else {

@@ -161,30 +161,19 @@ class VideoPlayer: NSObject {
     }
 
     func setDrmDataSource(url: URL, certUrl: String, licenseUrl: String, headers: [String: String]?) {
-        print("[VideoPlayer] setDrmDataSource() called")
-        print("[DEBUG] drmURL: \(url.absoluteString)")
-        print("[DEBUG] certUrl: \(certUrl)")
-        print("[DEBUG] licenseUrl: \(licenseUrl)")
-        print("[DEBUG] headers: \(headers ?? [:])")
-
         let assetOptions = ["AVURLAssetHTTPHeaderFieldsKey": headers ?? [:]]
         let asset = AVURLAsset(url: url, options: assetOptions)
-        print("[DEBUG] AVURLAsset created: \(asset)")
 
         if #available(iOS 11.2, tvOS 11.2, *) {
-            print("[DEBUG] addContentKeyRecipient called")
             ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
             ContentKeyManager.shared.contentKeyDelegate.setDrmDataSource(
                 certUrl: certUrl,
                 licenseUrl: licenseUrl,
                 headers: headers
             )
-        } else {
-            print("[WARN] DRM not supported on this iOS version")
         }
 
         let item = AVPlayerItem(asset: asset)
-        print("[DEBUG] AVPlayerItem created")
 
         // item.addObserver(self, forKeyPath: "status", options: [.new, .old], context: nil)
         item.preferredForwardBufferDuration = 100
@@ -192,10 +181,7 @@ class VideoPlayer: NSObject {
         player.replaceCurrentItem(with: item)
 
         if let group = asset.mediaSelectionGroup(forMediaCharacteristic: .legible) {
-            print("[DEBUG] AVMediaSelectionGroup found for legible")
             item.select(nil, in: group)
-        } else {
-            print("[DEBUG] No AVMediaSelectionGroup found for legible")
         }
 
         addObservers(to: item)
@@ -300,16 +286,6 @@ class VideoPlayer: NSObject {
                         invalid = nsError.code == NSURLErrorNoPermissionsToReadFile
                         errorCode = nsError.code
                     }
-
-                    if let avAsset = item.asset as? AVURLAsset {
-                        print("[DEBUG][error] url=\(avAsset.url.absoluteString)")
-                    } else {
-                        print("[DEBUG][error] url=<not AVURLAsset>")
-                    }
-                    if let nsError = item.error as NSError? {
-                        print("[DEBUG][error] domain=\(nsError.domain) code=\(nsError.code) userInfo=\(nsError.userInfo)")
-                    }
-
                     self?.sendEvent(.error, ["error": item.error?.localizedDescription as Any, "invalid": invalid, "code": errorCode as Any])
                 case .readyToPlay:
                     self?.readyToPlay()

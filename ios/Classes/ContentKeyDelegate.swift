@@ -39,9 +39,6 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
     }
 
     func requestApplicationCertificate() throws -> Data {
-        print("[ContentKeyDelegate] requestApplicationCertificate() called.")
-        print("[DEBUG] certUrl: \(certUrl)")
-
         let url = URL(string: certUrl)!
         var req = URLRequest(url: url)
         req.addValue("application/pkix-cert", forHTTPHeaderField: "content-type")
@@ -67,35 +64,23 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
         task.resume()
         semaphore.wait()
 
-        if let e = error {
-            print("[ContentKeyDelegate] Failed to get certificate with error: \(e.localizedDescription)")
-            throw e
-        }
         guard let res = response as? HTTPURLResponse else {
-            print("[ContentKeyDelegate] Certificate request failed: no HTTP response.")
             throw ProgramError.missingApplicationCertificate
         }
-        print("[DEBUG] cert HTTP status: \(res.statusCode)")
         if let cert = data {
             let responseText = String(data: cert, encoding: .utf8) ?? "<binary or non-UTF8 data>"
-            print("[DEBUG] cert response body: \(responseText)")
         } else {
-            print("[DEBUG] cert response body: <no data>")
         }
         guard res.statusCode >= 200 && res.statusCode < 300 else {
             throw ProgramError.missingApplicationCertificate
         }
         guard let cert = data else {
-            print("[ContentKeyDelegate] Certificate request returned empty data.")
             throw ProgramError.missingApplicationCertificate
         }
-        print("[DEBUG] cert data size: \(cert.count) bytes")
         return cert
     }
 
     func requestContentKeyFromKeySecurityModule(spcData: Data, assetID: String) throws -> Data {
-        print("[ContentKeyDelegate] requestContentKeyFromKeySecurityModule() called. assetID=\(assetID)")
-
         let semaphore = DispatchSemaphore(value: 0)
         let url = URL(string: licenseUrl)!
         var req = URLRequest(url: url)
@@ -126,34 +111,26 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
         semaphore.wait()
 
         if let e = error {
-            print("[ContentKeyDelegate] License request error: \(e.localizedDescription)")
             throw e
         }
         guard let res = response as? HTTPURLResponse else {
-            print("[ContentKeyDelegate] License request failed: no HTTP response.")
             throw ProgramError.missingApplicationCertificate
         }
-        print("[DEBUG] license HTTP status: \(res.statusCode)")
         guard res.statusCode >= 200 && res.statusCode < 300 else {
             throw ProgramError.noCKCReturnedByKSM
         }
         guard let json = data else {
-            print("[ContentKeyDelegate] License request returned empty data.")
             throw ProgramError.noCKCReturnedByKSM
         }
 
-        print("[DEBUG] raw license JSON: \(String(data: json, encoding: .utf8) ?? "<parse error>")")
         let licenseDict = (try? JSONSerialization.jsonObject(with: json, options: [])) as? [String: String]
         guard let ckcBase64 = licenseDict?["ckc"] else {
-            print("[ContentKeyDelegate] License response JSON did not contain 'ckc' field.")
             throw ProgramError.noCKCReturnedByKSM
         }
         guard let ckcData = Data(base64Encoded: ckcBase64) else {
-            print("[ContentKeyDelegate] Failed to decode base64 'ckc' from license response.")
             throw ProgramError.noCKCReturnedByKSM
         }
 
-        print("[DEBUG] CKC Base64 decode size: \(ckcData.count) bytes")
         return ckcData
     }
 
@@ -162,29 +139,23 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
     }
 
     func contentKeySession(_ session: AVContentKeySession, didProvide keyRequest: AVContentKeyRequest) {
-        print("[ContentKeyDelegate] didProvide keyRequest: ID=\(String(describing: keyRequest.identifier))")
-
         guard let assetID = keyRequest.identifier as? String else {
             return keyRequest.processContentKeyResponseError(ProgramError.noCKCReturnedByKSM)
         }
 
-        // 保存済み PCK のファイルを探す
         let fileURL = persistableContentKeyURL(forAssetID: assetID)
         if FileManager.default.fileExists(atPath: fileURL.path) {
             do {
                 let pckData = try Data(contentsOf: fileURL)
                 let response = AVContentKeyResponse(fairPlayStreamingKeyResponseData: pckData)
                 keyRequest.processContentKeyResponse(response)
-                print("[DEBUG] Reused persistable key for assetID=\(assetID)")
                 return
             } catch {
-                print("[ERROR] Failed to load persistable key: \(error)")
                 keyRequest.processContentKeyResponseError(error)
                 return
             }
         }
 
-        // 保存が無ければオンライン用の処理へ
         do {
             try keyRequest.respondByRequestingPersistableContentKeyRequestAndReturnError()
         } catch {
@@ -193,8 +164,6 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
     }
 
     func contentKeySession(_ session: AVContentKeySession, didProvideRenewingContentKeyRequest keyRequest: AVContentKeyRequest) {
-        print("[ContentKeyDelegate] didProvideRenewingContentKeyRequest: ID=\(String(describing: keyRequest.identifier))")
-
         guard let assetID = keyRequest.identifier as? String else {
             return keyRequest.processContentKeyResponseError(ProgramError.noCKCReturnedByKSM)
         }
@@ -206,10 +175,8 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
                 let pckData = try Data(contentsOf: fileURL)
                 let response = AVContentKeyResponse(fairPlayStreamingKeyResponseData: pckData)
                 keyRequest.processContentKeyResponse(response)
-                print("[DEBUG] Reused persistable key for renewing request, assetID=\(assetID)")
                 return
             } catch {
-                print("[ERROR] Failed to load persistable key: \(error)")
                 keyRequest.processContentKeyResponseError(error)
                 return
             }
@@ -256,12 +223,9 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
                         )
                         let pck = try r.persistableContentKey(fromKeyVendorResponse: ckc, options: nil)
 
-                        // ★ ここで保存
                         let fileURL = self.persistableContentKeyURL(forAssetID: assetID)
                         try pck.write(to: fileURL, options: .atomic)
-                        print("[DEBUG] Saved PCK at \(fileURL.path)")
 
-                        // ★ その後 AVPlayer に応答
                         let response = AVContentKeyResponse(fairPlayStreamingKeyResponseData: pck)
                         r.processContentKeyResponse(response)
 
@@ -280,32 +244,17 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
     func contentKeySession(_ session: AVContentKeySession,
                            shouldRetry keyRequest: AVContentKeyRequest,
                            reason retryReason: AVContentKeyRequest.RetryReason) -> Bool {
-        print("[ContentKeyDelegate] shouldRetry keyRequest: reason=\(retryReason.rawValue), ID=\(String(describing: keyRequest.identifier))")
         let shouldRetry = [.timedOut, .receivedResponseWithExpiredLease, .receivedObsoleteContentKey].contains(retryReason)
-        print("[ContentKeyDelegate] -> Will \(shouldRetry ? "" : "NOT ")retry key request.")
         return shouldRetry
     }
 
-    func contentKeySession(_ session: AVContentKeySession,
-                           contentKeyRequest keyRequest: AVContentKeyRequest,
-                           didFailWithError err: Error) {
-        print("[ContentKeyDelegate] contentKeySession didFailWithError: \(err.localizedDescription)")
-        print("[ContentKeyDelegate] didFailWithError: \(err.localizedDescription)")
-    }
-
     func handleStreamingContentKeyRequest(keyRequest: AVContentKeyRequest) {
-        print("[ContentKeyDelegate] handleStreamingContentKeyRequest() start.")
-
         guard let contentKeyIdentifierString = keyRequest.identifier as? String,
               let contentKeyIdentifierURL = URL(string: contentKeyIdentifierString),
               let assetIDString = contentKeyIdentifierURL.host,
               let assetIDData = assetIDString.data(using: .utf8) else {
-            print("[ContentKeyDelegate] handleStreamingContentKeyRequest() -> Missing or invalid assetID.")
             return
         }
-
-        print("[DEBUG] contentKeyIdentifierURL: \(contentKeyIdentifierURL.absoluteString)")
-        print("[DEBUG] assetID: \(assetIDString)")
 
         let provideOnlineKey: () -> Void = { [weak self] in
             guard let strongSelf = self else { return }
@@ -313,15 +262,12 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
                 let applicationCertificate = try strongSelf.requestApplicationCertificate()
 
                 let completionHandler = { (spcData: Data?, error: Error?) in
-                    print("[DEBUG] makeStreamingContentKeyRequestData completed. spcData size = \(spcData?.count ?? -1), error = \(String(describing: error))")
                     if let err = error {
-                        print("[ContentKeyDelegate] makeStreamingContentKeyRequestData error: \(err.localizedDescription)")
                         keyRequest.processContentKeyResponseError(err)
                         return
                     }
 
                     guard let spcData = spcData else {
-                        print("[ContentKeyDelegate] makeStreamingContentKeyRequestData returned nil spcData.")
                         return
                     }
 
@@ -329,9 +275,7 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
                         let ckcData = try strongSelf.requestContentKeyFromKeySecurityModule(spcData: spcData, assetID: assetIDString)
                         let keyResponse = AVContentKeyResponse(fairPlayStreamingKeyResponseData: ckcData)
                         keyRequest.processContentKeyResponse(keyResponse)
-                        print("[ContentKeyDelegate] handleStreamingContentKeyRequest -> processContentKeyResponse (CKC) success.")
                     } catch {
-                        print("[ContentKeyDelegate] CKC acquisition error: \(error.localizedDescription)")
                         keyRequest.processContentKeyResponseError(error)
                     }
                 }
@@ -344,7 +288,6 @@ class ContentKeyDelegate: NSObject, AVContentKeySessionDelegate {
                 )
 
             } catch {
-                print("[ContentKeyDelegate] requestApplicationCertificate error: \(error.localizedDescription)")
                 keyRequest.processContentKeyResponseError(error)
             }
         }

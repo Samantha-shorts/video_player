@@ -148,7 +148,6 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 player.disableRemoteControl = disableRemoteControl
             }
             if let key = dataSource["offlineKey"] as? String {
-                // ★ オフラインでもDRM情報を渡す
                 if let certUrlString = dataSource["fairplayCertUrl"] as? String,
                 let licenseUrlString = dataSource["fairplayLicenseUrl"] as? String {
                     let headers = dataSource["headers"] as? [String: String]
@@ -164,15 +163,9 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                     return
                 }
 
-                // .movpkg はディレクトリ。isDirectory: true で作る
                 let assetURL: URL = path.hasPrefix("/") ?
                     URL(fileURLWithPath: path, isDirectory: true) :
                     URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true).appendingPathComponent(path, isDirectory: true)
-
-                print("[DEBUG][offline] key=\(key)")
-                print("[DEBUG][offline] raw path from plist: \(path)")
-                print("[DEBUG][offline] resolved file URL: \(assetURL.absoluteString)")
-                print("[DEBUG][offline] file exists? \(FileManager.default.fileExists(atPath: assetURL.path))")
 
                 let asset = AVURLAsset(url: assetURL, options: nil)
 

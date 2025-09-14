@@ -268,13 +268,9 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     tracksController.reset();
     subtitlesController.reset();
 
-    // If explicit subtitles are provided (e.g., offline overlay subtitles),
-    // register them before initialization so the drawer can prepare.
     if (dataSource.subtitles != null && dataSource.subtitles!.isNotEmpty) {
       subtitlesController.setSubtitlesSourceList(dataSource.subtitles!);
-      // Auto-select default if any source is marked as selectedByDefault.
       subtitlesController.selectDefaultSource();
-      // If not segmented, eagerly load all lines for smoother UX.
       if (!subtitlesController.isSelectedNone &&
           subtitlesController.selectedSubtitlesSource?.asmsIsSegmented !=
               true) {

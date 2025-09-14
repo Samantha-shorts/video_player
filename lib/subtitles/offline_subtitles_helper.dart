@@ -4,14 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:video_player/controller/controller.dart';
 import 'package:video_player/subtitles/subtitles.dart';
 
-/// Utilities to prepare overlay subtitles (file/memory) for offline playback.
-///
-/// Note: This helper does not choose a storage directory for you to persist
-/// files across app restarts. Pass an explicit [Directory] from your app
-/// (e.g. using path_provider) when calling [downloadSubtitleFiles].
 class OfflineSubtitlesHelper {
-  /// Downloads all [urls] to the provided [directory]. Returns absolute paths.
-  /// If a file with the same name already exists, it will be overwritten.
   static Future<List<String>> downloadSubtitleFiles({
     required List<String> urls,
     required Directory directory,
@@ -49,12 +42,6 @@ class OfflineSubtitlesHelper {
     }
   }
 
-  /// Downloads subtitles provided as a map of locale -> URL into [directory].
-  /// Returns a map of locale -> absolute saved file path.
-  ///
-  /// To avoid name collisions when multiple locales share the same filename
-  /// (e.g. "subtitles.vtt"), saved files are suffixed with the sanitized
-  /// locale (e.g. "subtitles__en.vtt"). Existing files will be overwritten.
   static Future<Map<String, String>> downloadSubtitleFilesByLocale({
     required Map<String, String> urlsByLocale,
     required Directory directory,
@@ -107,7 +94,6 @@ class OfflineSubtitlesHelper {
     }
   }
 
-  /// Builds [VideoPlayerSubtitlesSource] from local file paths.
   static List<VideoPlayerSubtitlesSource> buildFileSources({
     required List<String> paths,
     String name = 'Subtitles',
@@ -123,16 +109,6 @@ class OfflineSubtitlesHelper {
     ];
   }
 
-  /// Convenience: Download subtitles and set them on an offline data source.
-  ///
-  /// Example usage (with path_provider in the app):
-  /// final dir = await getApplicationDocumentsDirectory();
-  /// await OfflineSubtitlesHelper.attachToOffline(
-  ///   controller: controller,
-  ///   offlineKey: key,
-  ///   subtitleUrls: ['https://example.com/subs.vtt'],
-  ///   directory: Directory('${dir.path}/video_player_subtitles/$key'),
-  /// );
   static Future<void> attachToOffline({
     required VideoPlayerController controller,
     required String offlineKey,
