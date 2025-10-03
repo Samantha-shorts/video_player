@@ -188,8 +188,22 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             METHOD_DOWNLOAD_OFFLINE_ASSET -> {
                 val key = call.argument<String>("key")!!
                 val url = call.argument<String>("url")!!
-                val headers: Map<String, String>? = call.argument<Map<String, String>>("headers")
-                Downloader.startDownload(context, key, url, headers)
+
+                // Accept current MethodChannel payload shape (iOS parity):
+                // - headers: Map<String, String?>?
+                // - quality: String? ("low"|"medium"|"high")
+                // - widevineLicenseUrl: String?
+                @Suppress("UNCHECKED_CAST")
+                val rawHeaders: Map<String, String?>? = call.argument("headers")
+                val headers: Map<String, String>? =
+                    rawHeaders?.filterValues { it != null }?.mapValues { it.value!! }
+                        ?.takeIf { it.isNotEmpty() }
+
+                val widevineLicenseUrl: String? = call.argument("widevineLicenseUrl")
+                // quality is not used for now in Android downloader (optional)
+                // val quality: String? = call.argument("quality")
+
+                Downloader.startDownload(context, key, url, headers, widevineLicenseUrl)
                 result.success(null)
             }
             METHOD_DELETE_OFFLINE_ASSET -> {
@@ -378,10 +392,28 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         player.disableRemoteControl = disableRemoteControl
         val offlineKey = DataSourceUtils.getParameter<String?>(dataSource, "offlineKey", null)
         if (offlineKey != null) {
-            player.setOfflineDataSource(offlineKey)
+            // headers may come as Map<String, String?>; filter nulls and coerce to String
+            @Suppress("UNCHECKED_CAST")
+            val rawHeaders: Map<String, Any?>? = dataSource["headers"] as? Map<String, Any?>
+            val headers: Map<String, String> = rawHeaders
+                ?.mapNotNull { (k, v) ->
+                    val value = (v as? String)
+                    if (k is String && value != null) k to value else null
+                }
+                ?.toMap() ?: emptyMap()
+
+            val widevineLicenseUrl = DataSourceUtils.getParameter(dataSource, "widevineLicenseUrl", "")
+            player.setOfflineDataSource(offlineKey, widevineLicenseUrl, headers)
         } else {
-            val headers: Map<String, String> =
-                DataSourceUtils.getParameter(dataSource, "headers", HashMap())
+            // headers may come as Map<String, String?>; filter nulls and coerce to String
+            @Suppress("UNCHECKED_CAST")
+            val rawHeaders: Map<String, Any?>? = dataSource["headers"] as? Map<String, Any?>
+            val headers: Map<String, String> = rawHeaders
+                ?.mapNotNull { (k, v) ->
+                    val value = (v as? String)
+                    if (k is String && value != null) k to value else null
+                }
+                ?.toMap() ?: emptyMap()
             val fileUrl = DataSourceUtils.getParameter(dataSource, "fileUrl", "")
             val drmDashFileUrl = DataSourceUtils.getParameter(dataSource, "drmDashFileUrl", "")
             val widevineLicenseUrl = DataSourceUtils.getParameter(dataSource, "widevineLicenseUrl", "")

@@ -93,20 +93,36 @@ class VideoPlayerView(
                 }
 
                 override fun onPlayerError(error: PlaybackException) {
-                    var invalid = false;
+                    var invalid = false
+                    val sb = StringBuilder()
+                    sb.append("PlaybackException: ")
+                        .append(error.errorCodeName)
+                        .append(" (").append(error.errorCode).append(")")
+                        .append(": ")
+                        .append(error.message ?: "")
 
-                    when (val cause = error.cause) {
-                        is HttpDataSource.InvalidResponseCodeException -> {
-                            val responseCode = cause.responseCode
-                            if (responseCode == 403) {
-                                invalid = true
-                            }
+                    var cause: Throwable? = error.cause
+                    var level = 0
+                    while (cause != null && level < 5) {
+                        sb.append("\ncaused by [").append(level).append("]: ")
+                            .append(cause::class.java.simpleName)
+                            .append(": ")
+                            .append(cause.message ?: "")
+                        if (cause is HttpDataSource.InvalidResponseCodeException) {
+                            if (cause.responseCode == 403) invalid = true
                         }
+                        cause = cause.cause
+                        level++
                     }
 
+                    Log.e(TAG, "onPlayerError: ${sb.toString()}")
                     videoPlayer.sendEvent(
                         EVENT_ERROR,
-                        mapOf("error" to error.localizedMessage, "invalid" to invalid)
+                        mapOf(
+                            "error" to sb.toString(),
+                            "invalid" to invalid,
+                            "code" to error.errorCode
+                        )
                     )
                 }
 

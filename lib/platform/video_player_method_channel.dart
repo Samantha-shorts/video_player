@@ -8,6 +8,12 @@ import 'package:video_player/controller/controller.dart';
 import 'package:video_player/platform/platform.dart';
 import 'package:video_player/utils.dart';
 
+enum DownloadQuality {
+  low,
+  medium,
+  high,
+}
+
 /// An implementation of [VideoPlayerPlatform] that uses method channels.
 class MethodChannelVideoPlayer extends VideoPlayerPlatform {
   /// The method channel used to interact with the native platform.
@@ -198,6 +204,9 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
       case VideoPlayerDataSourceType.offline:
         return {
           'offlineKey': dataSource.offlineKey,
+          'fairplayCertUrl': dataSource.fairplayCertUrl,
+          'fairplayLicenseUrl': dataSource.fairplayLicenseUrl,
+          'widevineLicenseUrl': dataSource.widevineLicenseUrl,
           'title': dataSource.notificationConfiguration?.title,
           'author': dataSource.notificationConfiguration?.author,
           'imageUrl': dataSource.notificationConfiguration?.imageUrl,
@@ -367,6 +376,8 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
             eventType: eventType,
             key: map["key"] as String?,
             progress: map["progress"] as double,
+            bytesDownloaded: map["bytesDownloaded"] as int?,
+            bytesTotal: map["bytesTotal"] as int?,
           );
         case PlatformDownloadEventType.finished:
           return PlatformDownloadEvent(
@@ -404,6 +415,7 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
   Future<void> downloadOfflineAsset({
     required String key,
     required String url,
+    required DownloadQuality quality,
     Map<String, String?>? headers,
   }) async {
     await methodChannel.invokeMethod(
@@ -412,6 +424,12 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
         'key': key,
         'url': url,
         'headers': headers,
+        'quality': quality.name,
+        'fairplayCertUrl': const String.fromEnvironment('FAIRPLAY_CERT_URL'),
+        'fairplayLicenseUrl':
+            const String.fromEnvironment('FAIRPLAY_LICENSE_URL'),
+        'widevineLicenseUrl':
+            const String.fromEnvironment('WIDEVINE_LICENSE_URL'),
       },
     );
   }

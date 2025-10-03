@@ -27,10 +27,13 @@ import androidx.media3.common.MediaItem.DrmConfiguration
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.util.Util
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.*
 import androidx.media3.exoplayer.dash.DashMediaSource
 import androidx.media3.exoplayer.hls.HlsMediaSource
+import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.trackselection.AdaptiveTrackSelection
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.upstream.DefaultBandwidthMeter
@@ -186,13 +189,20 @@ class VideoPlayer(
     }
 
     fun setNetworkDataSource(uri: String, headers: Map<String, String>) {
-        val dataSourceFactory = DefaultHttpDataSource.Factory()
+        val parsed = Uri.parse(uri)
+        val httpFactory = DefaultHttpDataSource.Factory()
             .setAllowCrossProtocolRedirects(true)
             .setDefaultRequestProperties(headers)
             .setTransferListener(bandwidthMeter)
-        val mediaSourceFactory = HlsMediaSource.Factory(dataSourceFactory)
-        val mediaItem = MediaItem.fromUri(uri)
-        val mediaSource = mediaSourceFactory.createMediaSource(mediaItem)
+        val defaultFactory = DefaultDataSource.Factory(context, httpFactory)
+
+        val mediaItem = MediaItem.fromUri(parsed)
+        val contentType = Util.inferContentType(parsed)
+        val mediaSource = when (contentType) {
+            C.CONTENT_TYPE_DASH -> DashMediaSource.Factory(httpFactory).createMediaSource(mediaItem)
+            C.CONTENT_TYPE_HLS -> HlsMediaSource.Factory(httpFactory).createMediaSource(mediaItem)
+            else -> ProgressiveMediaSource.Factory(defaultFactory).createMediaSource(mediaItem)
+        }
         setMediaSource(mediaSource)
     }
 
@@ -243,11 +253,74 @@ class VideoPlayer(
     }
 
     fun setOfflineDataSource(offlineKey: String) {
-        val download = Downloader.getDownloadByKey(context, offlineKey)!!
-        val dataSourceFactory = Downloader.getDataSourceFactory(context)
-        val mediaSourceFactory = HlsMediaSource.Factory(dataSourceFactory)
-        val mediaItem = download.request.toMediaItem()
-        val mediaSource = mediaSourceFactory.createMediaSource(mediaItem)
+        setOfflineDataSource(offlineKey, null, emptyMap())
+    }
+
+    fun setOfflineDataSource(
+        offlineKey: String,
+        licenseUrl: String?,
+        headers: Map<String, String>
+    ) {
+        val download = Downloader.getDownloadByKey(context, offlineKey)
+            ?: throw IllegalStateException("Download not found for key=$offlineKey")
+
+        val request = download.request
+        val baseItem = request.toMediaItem()
+
+        // Build MediaItem with offline DRM if present
+        val builder = MediaItem.Builder()
+            .setUri(request.uri)
+            .setMimeType(baseItem.localConfiguration?.mimeType)
+            .setCustomCacheKey(baseItem.localConfiguration?.customCacheKey ?: request.customCacheKey)
+
+        // Limit playback to downloaded streams to avoid cache misses.
+        val reqStreamKeys = request.streamKeys
+        if (reqStreamKeys != null && reqStreamKeys.isNotEmpty()) {
+            builder.setStreamKeys(reqStreamKeys)
+        }
+
+        val keySetId = request.data
+        if (keySetId != null && keySetId.isNotEmpty()) {
+            val drmCfg = MediaItem.DrmConfiguration.Builder(C.WIDEVINE_UUID)
+                .setKeySetId(keySetId)
+                .build()
+            builder.setDrmConfiguration(drmCfg)
+        } else if (!licenseUrl.isNullOrEmpty()) {
+            // Offline playback requested for DRM content but no offline key present.
+            // Do NOT fall back to online license fetch (would fail offline). Surface a clear error instead.
+            val message = "Offline license (keySetId) missing for key=$offlineKey. Re-download with Widevine license to enable offline playback."
+            Log.e(TAG, message)
+            throw IllegalStateException(message)
+        }
+        val mediaItem = builder.build()
+
+        // Debug info to diagnose offline issues
+        try {
+            val stateName = when (download.state) {
+                Download.STATE_COMPLETED -> "COMPLETED"
+                Download.STATE_DOWNLOADING -> "DOWNLOADING"
+                Download.STATE_QUEUED -> "QUEUED"
+                Download.STATE_RESTARTING -> "RESTARTING"
+                Download.STATE_STOPPED -> "STOPPED"
+                Download.STATE_FAILED -> "FAILED"
+                else -> "UNKNOWN(${download.state})"
+            }
+            Log.d(TAG, "[offline] key=$offlineKey id=${download.request.id} uri=${request.uri} state=$stateName bytes=${download.bytesDownloaded}/${download.contentLength}")
+            Log.d(TAG, "[offline] customCacheKey=${mediaItem.localConfiguration?.customCacheKey} mime=${mediaItem.localConfiguration?.mimeType} hasKeySetId=${request.data?.isNotEmpty() == true}")
+        } catch (_: Throwable) {}
+
+        // Strict offline playback: read only from the download cache and forbid network
+        val dsFactory = Downloader.getOfflineOnlyDataSourceFactory(context)
+
+        val contentType = Util.inferContentType(request.uri)
+        val mediaSource = when (contentType) {
+            C.CONTENT_TYPE_DASH -> DashMediaSource.Factory(dsFactory).createMediaSource(mediaItem)
+            C.CONTENT_TYPE_HLS -> HlsMediaSource.Factory(dsFactory).createMediaSource(mediaItem)
+            // Support progressive (e.g., MP4) offline playback as well.
+            C.CONTENT_TYPE_OTHER -> ProgressiveMediaSource.Factory(dsFactory).createMediaSource(mediaItem)
+            else -> throw IllegalArgumentException("Unsupported offline content type: $contentType")
+        }
+        Log.d(TAG, "[offline] contentType=$contentType using=${mediaSource.javaClass.simpleName}")
         setMediaSource(mediaSource)
     }
 

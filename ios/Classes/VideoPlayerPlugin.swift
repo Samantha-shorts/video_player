@@ -148,14 +148,42 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 player.disableRemoteControl = disableRemoteControl
             }
             if let key = dataSource["offlineKey"] as? String {
-                guard let path = DownloadPathManager.assetPath(forKey: key)
-                else {
+                if let certUrlString = dataSource["fairplayCertUrl"] as? String,
+                let licenseUrlString = dataSource["fairplayLicenseUrl"] as? String {
+                    let headers = dataSource["headers"] as? [String: String]
+                    ContentKeyManager.shared.contentKeyDelegate.setDrmDataSource(
+                        certUrl: certUrlString,
+                        licenseUrl: licenseUrlString,
+                        headers: headers
+                    )
+                }
+
+                guard let path = DownloadPathManager.assetPath(forKey: key) else {
                     result(FlutterError.assetNotFound())
                     return
                 }
-                let assetURL = URL(fileURLWithPath: NSHomeDirectory())
-                    .appendingPathComponent(path)
-                player.setDataSource(url: assetURL, headers: nil)
+
+                let assetURL: URL = path.hasPrefix("/") ?
+                    URL(fileURLWithPath: path, isDirectory: true) :
+                    URL(fileURLWithPath: NSHomeDirectory(), isDirectory: true).appendingPathComponent(path, isDirectory: true)
+
+                let asset = AVURLAsset(url: assetURL, options: nil)
+
+                ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
+                asset.resourceLoader.preloadsEligibleContentKeys = true
+
+                let item = AVPlayerItem(asset: asset)
+                item.preferredForwardBufferDuration = 100
+                item.add(player.videoOutput)
+                player.player.replaceCurrentItem(with: item)
+
+                if let group = asset.mediaSelectionGroup(forMediaCharacteristic: .legible) {
+                    player.player.currentItem?.select(nil, in: group)
+                }
+
+                player.addObservers(to: item)
+                result(nil)
+                return
             } else {
                 let headers = dataSource["headers"] as? [String: String]
 
@@ -307,10 +335,24 @@ public class VideoPlayerPlugin: NSObject, FlutterPlugin {
                 result(FlutterError.invalidArgs(message: "requires key and valid url"))
                 return
             }
+
+            let headers = args["headers"] as? [String: String]
+            // ★ DRM パラメータ（Flutter 側から渡す）
+            if let cert = args["fairplayCertUrl"] as? String,
+            let license = args["fairplayLicenseUrl"] as? String {
+                // ここで必ず先にセット（ログは既存のまま）
+                ContentKeyManager.shared.contentKeyDelegate.setDrmDataSource(
+                    certUrl: cert, licenseUrl: license, headers: headers
+                )
+            }
+            let qualityStr = (args["quality"] as? String)?.lowercased() ?? "high"
+            let quality: Downloader.Quality = (qualityStr == "low") ? .low : (qualityStr == "medium" ? .medium : .high)
+
             downloader.startDownload(
                 key: key,
                 url: url,
-                headers: args["headers"] as? [String: String]
+                headers: args["headers"] as? [String: String],
+                quality: quality
             )
             result(nil)
         case .pauseDownload:

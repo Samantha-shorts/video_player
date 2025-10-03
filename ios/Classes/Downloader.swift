@@ -9,6 +9,7 @@ import AVKit
 import Flutter
 
 class Downloader: NSObject {
+    enum Quality { case low, medium, high }
 
     let eventChannel: FlutterEventChannel
     private var eventSink: FlutterEventSink?
@@ -37,18 +38,85 @@ class Downloader: NSObject {
         eventChannel.setStreamHandler(nil)
     }
 
-    func startDownload(key: String, url: URL, headers: [String: String]?) {
+    func startDownload(key: String, url: URL, headers: [String: String]?, quality: Quality) {
         let options = ["AVURLAssetHTTPHeaderFieldsKey": headers ?? [:]]
         let asset = AVURLAsset(url: url, options: options)
         let assetTitle = url.lastPathComponent
+
+        ContentKeyManager.shared.contentKeySession.addContentKeyRecipient(asset)
+        asset.resourceLoader.preloadsEligibleContentKeys = true
+
+        let selectedBitrate = selectBitrateForQuality(masterURL: url, headers: headers, fallback: quality)
+
+        var dlOptions: [String: Any] = options
+        if let br = selectedBitrate {
+            dlOptions[AVAssetDownloadTaskMinimumRequiredMediaBitrateKey] = NSNumber(value: br)
+        }
+
         let downloadTask = downloadSession.makeAssetDownloadTask(
             asset: asset,
             assetTitle: assetTitle,
             assetArtworkData: nil,
-            options: options
+            options: dlOptions
         )
         downloadTask?.resume()
         DownloadPathManager.add(key: key, url: url.absoluteString)
+    }
+
+    private func selectBitrateForQuality(masterURL: URL, headers: [String: String]?, fallback: Quality) -> Int? {
+        var request = URLRequest(url: masterURL)
+        headers?.forEach { request.setValue($0.value, forHTTPHeaderField: $0.key) }
+
+        let semaphore = DispatchSemaphore(value: 1)
+        var data: Data?
+        var response: URLResponse?
+        var error: Error?
+
+        URLSession.shared.dataTask(with: request) { d, r, e in
+            data = d; response = r; error = e
+            semaphore.signal()
+        }.resume()
+        semaphore.wait()
+
+        guard error == nil, let body = data.flatMap({ String(data: $0, encoding: .utf8) }) else {
+            switch fallback {
+            case .low:    return 600_000
+            case .medium: return 2_000_000
+            case .high:   return 5_000_000
+            }
+        }
+
+        let lines = body.components(separatedBy: .newlines)
+        var bandwidths = [Int]()
+        let pattern = #"BANDWIDTH=(\d+)"#
+        let regex = try? NSRegularExpression(pattern: pattern, options: [])
+
+        for line in lines where line.contains("#EXT-X-STREAM-INF:") {
+            if let m = regex?.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)),
+            let r = Range(m.range(at: 1), in: line),
+            let bw = Int(line[r]) {
+                bandwidths.append(bw)
+            }
+        }
+
+        guard !bandwidths.isEmpty else {
+            // 候補が取れなければ固定閾値へ
+            switch fallback {
+            case .low:    return 600_000
+            case .medium: return 2_000_000
+            case .high:   return 5_000_000
+            }
+        }
+
+        let sorted = bandwidths.sorted()
+        switch fallback {
+        case .low:
+            return sorted.first
+        case .high:
+            return sorted.last
+        case .medium:
+            return sorted[sorted.count / 2]
+        }
     }
 
     func getAllDownloadTasks(_ completion: @escaping ([AVAssetDownloadTask]) -> Void) {
@@ -138,6 +206,8 @@ extension Downloader: AVAssetDownloadDelegate {
         sendEvent(.progress, [
             "key": key,
             "progress": percentComplete,
+            "bytesDownloaded": assetDownloadTask.countOfBytesReceived,
+            "bytesTotal": assetDownloadTask.countOfBytesExpectedToReceive
         ])
     }
 
@@ -176,6 +246,7 @@ extension Downloader: AVAssetDownloadDelegate {
             forUrl: assetDownloadTask.urlAsset.url.absoluteString,
             path: location.relativePath
         )
+
         let url = assetDownloadTask.urlAsset.url.absoluteString
         guard let key = DownloadPathManager.key(forUrl: url) else {
             fatalError("key not found for url \(url)")

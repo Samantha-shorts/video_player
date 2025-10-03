@@ -268,6 +268,16 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     tracksController.reset();
     subtitlesController.reset();
 
+    if (dataSource.subtitles != null && dataSource.subtitles!.isNotEmpty) {
+      subtitlesController.setSubtitlesSourceList(dataSource.subtitles!);
+      subtitlesController.selectDefaultSource();
+      if (!subtitlesController.isSelectedNone &&
+          subtitlesController.selectedSubtitlesSource?.asmsIsSegmented !=
+              true) {
+        subtitlesController.loadAllSubtitleLines();
+      }
+    }
+
     if (dataSource.sourceType == VideoPlayerDataSourceType.network) {
       if (Utils.isDataSourceHls(dataSource.fileUrl)) {
         _loadAbrManifest(dataSource);
