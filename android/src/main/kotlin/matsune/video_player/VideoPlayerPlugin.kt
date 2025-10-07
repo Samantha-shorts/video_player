@@ -2,6 +2,7 @@ package matsune.video_player
 
 import android.app.Activity
 import android.app.PictureInPictureParams
+import android.content.ComponentCallbacks2
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
@@ -22,7 +23,7 @@ import io.flutter.plugin.common.MethodChannel.Result
 import io.flutter.plugin.platform.PlatformViewRegistry
 import io.flutter.view.TextureRegistry
 
-class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
+class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware, ComponentCallbacks2 {
     private val videoPlayers = LongSparseArray<VideoPlayer>()
     private val dataSources = LongSparseArray<Map<String, Any?>>()
     private var flutterState: FlutterState? = null
@@ -48,6 +49,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
             binding.platformViewRegistry,
         )
         flutterState?.startListening(this)
+        binding.applicationContext.registerComponentCallbacks(this)
 
         if (Downloader.eventChannel == null) {
             val eventChannel = EventChannel(flutterState?.binaryMessenger, DOWNLOAD_EVENTS_CHANNEL)
@@ -58,6 +60,7 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         disposeAllPlayers()
         flutterState?.stopListening()
+        binding.applicationContext.unregisterComponentCallbacks(this)
         flutterState = null
     }
 
@@ -510,5 +513,22 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         private const val DOWNLOAD_STATE_RUNNING = "running"
         private const val DOWNLOAD_STATE_SUSPENDED = "suspended"
         private const val DOWNLOAD_STATE_COMPLETED = "completed"
+    }
+
+    override fun onTrimMemory(level: Int) {
+        if (level < ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+            return
+        }
+        for (index in 0 until videoPlayers.size()) {
+            videoPlayers.valueAt(index).handleTrimMemory(level)
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        // no-op
+    }
+
+    override fun onLowMemory() {
+        onTrimMemory(ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL)
     }
 }
