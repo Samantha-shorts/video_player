@@ -20,6 +20,7 @@ import android.view.Surface
 import android.view.View
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.Observer
+import android.content.ComponentCallbacks2
 import androidx.media3.common.*
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
@@ -710,6 +711,24 @@ class VideoPlayer(
         isAutoQualitySelected = false
         Log.w(TAG, "[memory-guard] Forced lowest quality track height=${format.height} bitrate=${format.bitrate}")
         return true
+    }
+
+    fun handleTrimMemory(level: Int) {
+        if (!isAutoQualitySelected) {
+            return
+        }
+        if (level < ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
+            return
+        }
+        handler.post {
+            if (!isAutoQualitySelected) {
+                return@post
+            }
+            val reduced = enforceLowestQualityTrack()
+            if (reduced) {
+                stopAutoMemoryGuard()
+            }
+        }
     }
 
     companion object {
