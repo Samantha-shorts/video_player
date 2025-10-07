@@ -1,5 +1,6 @@
 package matsune.video_player
 
+import android.app.ActivityManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -55,6 +56,7 @@ class VideoPlayer(
     val eventSink = QueuingEventSink()
     private val bandwidthMeter = DefaultBandwidthMeter.Builder(context).build()
     private val trackSelector = DefaultTrackSelector(context, AdaptiveTrackSelection.Factory())
+    private val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as? ActivityManager
     var isInitialized = false
     private var lastSendBufferedPosition = 0L
     private var mediaSession: MediaSessionCompat? = null
@@ -72,6 +74,8 @@ class VideoPlayer(
     private val workerObserverMap: HashMap<UUID, Observer<WorkInfo?>>
     var disableRemoteControl: Boolean = false
     var isBufferingRunnableStarted = false
+    private var isAutoQualitySelected = false
+    private var memoryGuardRunnable: Runnable? = null
 
     var isMuted: Boolean
         get() = exoPlayer.volume == 0f
@@ -146,6 +150,7 @@ class VideoPlayer(
         handler.removeCallbacks(bufferingRunnable)
         isBufferingRunnableStarted = false
         handler.removeCallbacks(runnable)
+        stopAutoMemoryGuard()
         if (isInitialized) {
             exoPlayer.stop()
         }
@@ -344,6 +349,14 @@ class VideoPlayer(
     }
 
     fun setTrackParameters(width: Int, height: Int, bitrate: Int) {
+        val isAuto = width == 0 && height == 0 && bitrate == 0
+        if (isAuto) {
+            isAutoQualitySelected = true
+            startAutoMemoryGuard()
+        } else {
+            isAutoQualitySelected = false
+            stopAutoMemoryGuard()
+        }
         val parametersBuilder = trackSelector.buildUponParameters()
         if (width != 0 && height != 0) {
             parametersBuilder.setMaxVideoSize(width, height)
@@ -589,6 +602,116 @@ class VideoPlayer(
         bitmap = null
     }
 
+    private fun startAutoMemoryGuard() {
+        if (!isAutoQualitySelected || memoryGuardRunnable != null || activityManager == null) {
+            return
+        }
+        val runnable = object : Runnable {
+            override fun run() {
+                if (!isAutoQualitySelected) {
+                    stopAutoMemoryGuard()
+                    return
+                }
+                val manager = activityManager ?: return
+                if (!isMemoryHealthy(manager)) {
+                    val enforced = enforceLowestQualityTrack()
+                    if (enforced) {
+                        stopAutoMemoryGuard()
+                    } else {
+                        handler.postDelayed(this, MEMORY_GUARD_RETRY_INTERVAL_MS)
+                    }
+                    return
+                }
+                handler.postDelayed(this, MEMORY_GUARD_INTERVAL_MS)
+            }
+        }
+        memoryGuardRunnable = runnable
+        handler.post(runnable)
+    }
+
+    private fun stopAutoMemoryGuard() {
+        memoryGuardRunnable?.let { handler.removeCallbacks(it) }
+        memoryGuardRunnable = null
+    }
+
+    private fun isMemoryHealthy(activityManager: ActivityManager): Boolean {
+        return try {
+            val info = ActivityManager.MemoryInfo()
+            activityManager.getMemoryInfo(info)
+            if (info.lowMemory) {
+                Log.w(TAG, "[memory-guard] lowMemory=true avail=${info.availMem} threshold=${info.threshold}")
+                false
+            } else if (info.availMem <= info.threshold) {
+                Log.w(TAG, "[memory-guard] avail=${info.availMem} below threshold=${info.threshold}")
+                false
+            } else {
+                true
+            }
+        } catch (exception: Exception) {
+            Log.w(TAG, "[memory-guard] failed to read memory info: $exception")
+            true
+        }
+    }
+
+    private fun enforceLowestQualityTrack(): Boolean {
+        val tracks = exoPlayer.currentTracks
+        var bestScore = Int.MAX_VALUE
+        var bestBitrate = Int.MAX_VALUE
+        var targetFormat: Format? = null
+
+        for (group in tracks.groups) {
+            if (group.type != C.TRACK_TYPE_VIDEO) {
+                continue
+            }
+            for (index in 0 until group.length) {
+                if (!group.isTrackSupported(index)) {
+                    continue
+                }
+                val format = group.getTrackFormat(index)
+                if (format == null) {
+                    continue
+                }
+                val heightScore = if (format.height > 0) format.height else Int.MAX_VALUE
+                val bitrateScore = if (format.bitrate > 0) format.bitrate else Int.MAX_VALUE
+                val candidateScore = if (heightScore != Int.MAX_VALUE) heightScore else bitrateScore
+
+                val isBetterCandidate = candidateScore < bestScore ||
+                    (candidateScore == bestScore && bitrateScore < bestBitrate)
+
+                if (isBetterCandidate) {
+                    bestScore = candidateScore
+                    bestBitrate = bitrateScore
+                    targetFormat = format
+                }
+            }
+        }
+
+        val format = targetFormat ?: run {
+            Log.w(TAG, "[memory-guard] no video tracks available to downgrade")
+            return false
+        }
+        val parametersBuilder = trackSelector
+            .buildUponParameters()
+            .clearSelectionOverrides()
+            .setTrackTypeDisabled(C.TRACK_TYPE_VIDEO, false)
+
+        if (format.width > 0 && format.height > 0) {
+            parametersBuilder.setMaxVideoSize(format.width, format.height)
+        } else {
+            parametersBuilder.clearVideoSizeConstraints()
+        }
+        if (format.bitrate > 0) {
+            parametersBuilder.setMaxVideoBitrate(format.bitrate)
+        } else {
+            parametersBuilder.setMaxVideoBitrate(Int.MAX_VALUE)
+        }
+
+        trackSelector.setParameters(parametersBuilder)
+        isAutoQualitySelected = false
+        Log.w(TAG, "[memory-guard] Forced lowest quality track height=${format.height} bitrate=${format.bitrate}")
+        return true
+    }
+
     companion object {
         private const val TAG = "VideoPlayer"
 
@@ -604,5 +727,8 @@ class VideoPlayer(
 
         private const val DEFAULT_NOTIFICATION_CHANNEL = "VIDEO_PLAYER_NOTIFICATION"
         private const val NOTIFICATION_ID = 10000
+
+        private const val MEMORY_GUARD_INTERVAL_MS = 10_000L
+        private const val MEMORY_GUARD_RETRY_INTERVAL_MS = 1_000L
     }
 }
