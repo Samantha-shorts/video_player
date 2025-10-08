@@ -122,15 +122,6 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
           );
         case PlatformEventType.ended:
           return PlatformEvent(eventType: eventType);
-        case PlatformEventType.trackChanged:
-          return PlatformEvent(
-            eventType: eventType,
-            size: Size(
-              (map['width'] as num?)?.toDouble() ?? 0,
-              (map['height'] as num?)?.toDouble() ?? 0,
-            ),
-            trackBitrate: map['bitrate'] as int?,
-          );
         case PlatformEventType.error:
           throw PlayerException(
             errorDescription: map['error'] as String,

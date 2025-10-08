@@ -10,7 +10,6 @@ enum PlatformEventType {
   pipChanged,
   muteChanged,
   ended,
-  trackChanged,
   error,
 }
 
@@ -32,7 +31,6 @@ class PlatformEvent {
     this.isPip = false,
     this.isMuted = false,
     this.state = 0,
-    this.trackBitrate,
   });
 
   final PlatformEventType eventType;
@@ -52,8 +50,6 @@ class PlatformEvent {
   final bool isMuted;
 
   final int state;
-
-  final int? trackBitrate;
 }
 
 class PlayerException implements Exception {

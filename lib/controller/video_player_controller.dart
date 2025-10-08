@@ -161,13 +161,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
             exitFullscreen();
           }
           break;
-        case PlatformEventType.trackChanged:
-          tracksController.setSelectedTrackFromPlatform(
-            width: event.size?.width.round(),
-            height: event.size?.height.round(),
-            bitrate: event.trackBitrate,
-          );
-          break;
         default:
           break;
       }
