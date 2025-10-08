@@ -709,7 +709,18 @@ class VideoPlayer(
 
         trackSelector.setParameters(parametersBuilder)
         isAutoQualitySelected = false
-        Log.w(TAG, "[memory-guard] Forced lowest quality track height=${format.height} bitrate=${format.bitrate}")
+        sendEvent(
+            EVENT_TRACK_CHANGED,
+            mapOf(
+                "width" to format.width,
+                "height" to format.height,
+                "bitrate" to format.bitrate,
+            ),
+        )
+        Log.w(
+            TAG,
+            "[memory-guard] Forced lowest quality track height=${format.height} bitrate=${format.bitrate}",
+        )
         return true
     }
 
@@ -743,6 +754,7 @@ class VideoPlayer(
         private const val EVENT_MUTE_CHANGED = "muteChanged"
         private const val EVENT_ENDED = "ended"
         private const val EVENT_ERROR = "error"
+        private const val EVENT_TRACK_CHANGED = "trackChanged"
 
         private const val DEFAULT_NOTIFICATION_CHANNEL = "VIDEO_PLAYER_NOTIFICATION"
         private const val NOTIFICATION_ID = 10000
