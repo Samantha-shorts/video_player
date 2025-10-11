@@ -421,7 +421,9 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       VideoPlayerPlatform.instance.isPictureInPictureSupported();
 
   Future<void> enablePictureInPicture() async {
-    final bool isPipSupported = await isPictureInPictureSupported();
+    if (_isDisposed || textureId == null || !value.initialized) return;
+
+    final isPipSupported = await isPictureInPictureSupported();
     if (!isPipSupported) return;
     await VideoPlayerPlatform.instance.enablePictureInPicture(textureId);
     if (Platform.isAndroid) {
