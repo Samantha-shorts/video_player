@@ -431,8 +431,10 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     }
   }
 
-  Future<void> disablePictureInPicture() =>
-      VideoPlayerPlatform.instance.disablePictureInPicture(textureId);
+  Future<void> disablePictureInPicture() async {
+    if (_isDisposed || textureId == null || !value.initialized) return;
+    return VideoPlayerPlatform.instance.disablePictureInPicture(textureId);
+  }
 
   Future<void> setMuted(bool isMuted) {
     value = value.copyWith(isMuted: isMuted);
