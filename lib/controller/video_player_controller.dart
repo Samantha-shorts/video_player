@@ -199,11 +199,24 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
 
   @override
   void dispose() async {
+    if (_isDisposed) {
+      super.dispose();
+      return;
+    }
+    _isDisposed = true;
     await createCompleter.future;
-    if (!_isDisposed) {
-      _isDisposed = true;
-      await _eventSubscription?.cancel();
-      await VideoPlayerPlatform.instance.dispose(textureId);
+    await _eventSubscription?.cancel();
+    final id = textureId;
+    if (id != null) {
+      try {
+        await VideoPlayerPlatform.instance.dispose(id);
+      } on PlatformException catch (error) {
+        if (error.code != 'INVALID_TEXTURE_ID' &&
+            error.code != 'INVLIAD_ARGS') {
+          rethrow;
+        }
+        // Player already disposed on the platform side; ignore.
+      }
     }
     super.dispose();
   }
