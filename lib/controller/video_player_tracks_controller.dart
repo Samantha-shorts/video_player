@@ -17,6 +17,12 @@ class VideoPlayerTracksController {
 
   ///List of tracks available for current data source. Used only for HLS / DASH.
   List<AbrTrack> get abrTracks => _abrTracks;
+  List<AbrTrack> get formatAbrTracks => _abrTracks.where((track) {
+        final int width = track.width ?? 0;
+        final int height = track.height ?? 0;
+        final int bitrate = track.bitrate ?? 0;
+        return width > 0 && height > 0 && bitrate > 0;
+      }).toList();
 
   AbrTrack? _selectedTrack;
 
