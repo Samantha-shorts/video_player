@@ -12,7 +12,7 @@ class Utils {
   static log(String message) {
     if (!kReleaseMode) {
       final timestamp = DateTime.now().toString();
-      print("[$timestamp] $message");
+      debugPrint("[$timestamp] $message");
     }
   }
 

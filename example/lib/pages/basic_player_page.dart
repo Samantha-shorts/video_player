@@ -13,10 +13,7 @@ class BasicPlayerPage extends StatefulWidget {
 
 class _BasicPlayerPageState extends State<BasicPlayerPage> {
   final controller = VideoPlayerController(
-    configuration: VideoPlayerConfiguration(
-      autoPlay: false,
-      autoLoop: true,
-    ),
+    configuration: VideoPlayerConfiguration(autoPlay: false, autoLoop: true),
   );
 
   StreamSubscription? _controlsEventSubscription;
@@ -32,7 +29,7 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
       ),
     );
     _controlsEventSubscription = controller.controlsEventStream.listen((event) {
-      print(event);
+      debugPrint(event.toString());
     });
   }
 
@@ -45,9 +42,7 @@ class _BasicPlayerPageState extends State<BasicPlayerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Basic player"),
-      ),
+      appBar: AppBar(title: const Text("Basic player")),
       body: Column(
         children: [
           const SizedBox(height: 8),
