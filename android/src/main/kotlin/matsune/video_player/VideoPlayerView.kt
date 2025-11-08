@@ -21,6 +21,7 @@ class VideoPlayerView(
     private val videoPlayer: VideoPlayer
 ) : PlatformView {
     private val playerView: PlayerView = PlayerView(context)
+    private val surfaceOwnerToken = Any()
 
     init {
         playerView.useController = false
@@ -31,6 +32,7 @@ class VideoPlayerView(
     override fun getView(): View = playerView
 
     override fun dispose() {
+        videoPlayer.clearVideoSurface(surfaceOwnerToken)
         eventChannel.setStreamHandler(null)
         playerView.player = null
     }
@@ -41,7 +43,7 @@ class VideoPlayerView(
             val holder = surfaceView.holder
             val surface = holder.surface
             if (surface != null && surface.isValid) {
-                videoPlayer.exoPlayer.setVideoSurface(surface)
+                videoPlayer.bindVideoSurface(surfaceOwnerToken, surface)
                 val currentPosition = videoPlayer.exoPlayer.currentPosition
                 val mediaItem = videoPlayer.exoPlayer.currentMediaItem
                 videoPlayer.exoPlayer.setMediaItem(mediaItem!!, currentPosition)
@@ -51,15 +53,16 @@ class VideoPlayerView(
             holder.addCallback(object : SurfaceHolder.Callback {
                 override fun surfaceCreated(holder: SurfaceHolder) {
                     if (videoPlayer.exoPlayer.applicationLooper.thread.isAlive) {
-                        videoPlayer.exoPlayer.setVideoSurface(holder.surface)
+                        videoPlayer.bindVideoSurface(surfaceOwnerToken, holder.surface)
                     } else {
                         Log.e(TAG, "Surface created, but ExoPlayer is already released.")
                     }
                 }
                 override fun surfaceDestroyed(holder: SurfaceHolder) {
-                    val surface = surfaceView.holder.surface
-                    surface.release()
-                    videoPlayer.exoPlayer.setVideoSurface(null)
+                    videoPlayer.clearVideoSurface(surfaceOwnerToken)
+                    try {
+                        surfaceView.holder.surface.release()
+                    } catch (_: Throwable) {}
                 }
                 override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
             })
