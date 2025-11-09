@@ -144,11 +144,11 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 )
         }
         val viewId = System.currentTimeMillis().toLong()
-        val eventChannel = EventChannel(flutterState!!.binaryMessenger, EVENTS_CHANNEL + viewId)
+        val eventChannel = EventChannel(flutterState.binaryMessenger, EVENTS_CHANNEL + viewId)
 
-        var videoPlayer = VideoPlayer(
-            flutterState!!.applicationContext,
-            flutterState!!.binaryMessenger,
+        val videoPlayer = VideoPlayer(
+            flutterState.applicationContext,
+            flutterState.binaryMessenger,
             customDefaultLoadControl,
         )
 
@@ -166,10 +166,10 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
 
         videoPlayers.put(viewId, videoPlayer)
 
-        flutterState!!.platformViewRegistry.registerViewFactory(
+        flutterState.platformViewRegistry.registerViewFactory(
             "matsune.video_player/VideoPlayerView$viewId",
             VideoPlayerFactory(
-                flutterState!!.applicationContext,
+                flutterState.applicationContext,
                 eventChannel,
                 videoPlayer,
             )
@@ -186,45 +186,27 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         val context = flutterState.applicationContext
         when (call.method) {
             METHOD_DOWNLOAD_OFFLINE_ASSET -> {
-                val key = call.argument<String>("key")!!
-                val url = call.argument<String>("url")!!
-
-                // Accept current MethodChannel payload shape (iOS parity):
-                // - headers: Map<String, String?>?
-                // - quality: String? ("low"|"medium"|"high")
-                // - widevineLicenseUrl: String?
+                val key = call.requireStringArg("key")
+                val url = call.requireStringArg("url")
                 @Suppress("UNCHECKED_CAST")
                 val rawHeaders: Map<String, String?>? = call.argument("headers")
-                val headers: Map<String, String>? =
+                val headers =
                     rawHeaders?.filterValues { it != null }?.mapValues { it.value!! }
-                        ?.takeIf { it.isNotEmpty() }
-
                 val widevineLicenseUrl: String? = call.argument("widevineLicenseUrl")
-                // quality is not used for now in Android downloader (optional)
-                // val quality: String? = call.argument("quality")
-
                 Downloader.startDownload(context, key, url, headers, widevineLicenseUrl)
-                result.success(null)
+                result.successUnit()
             }
-            METHOD_DELETE_OFFLINE_ASSET -> {
-                val key = call.argument<String>("key")!!
+            METHOD_DELETE_OFFLINE_ASSET -> withKey(call, result) { key ->
                 Downloader.removeDownload(context, key)
-                result.success(null)
             }
-            METHOD_PAUSE_DOWNLOAD -> {
-                val key = call.argument<String>("key")!!
+            METHOD_PAUSE_DOWNLOAD -> withKey(call, result) { key ->
                 Downloader.pauseDownload(context, key)
-                result.success(null)
             }
-            METHOD_RESUME_DOWNLOAD -> {
-                val key = call.argument<String>("key")!!
+            METHOD_RESUME_DOWNLOAD -> withKey(call, result) { key ->
                 Downloader.resumeDownload(context, key)
-                result.success(null)
             }
-            METHOD_CANCEL_DOWNLOAD -> {
-                val key = call.argument<String>("key")!!
+            METHOD_CANCEL_DOWNLOAD -> withKey(call, result) { key ->
                 Downloader.cancelDownload(context, key)
-                result.success(null)
             }
             METHOD_GET_DOWNLOADS -> {
                 val keys = Downloader.getDownloadKeys(context)
@@ -263,23 +245,23 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         when (call.method) {
             METHOD_SET_DATA_SOURCE -> {
                 setDataSource(call, textureId, player)
-                result.success(null)
+                result.successUnit()
             }
             METHOD_SET_AUTO_LOOP -> {
-                val autoLoop = call.argument("autoLoop") as? Boolean
-                player.setAutoLoop(autoLoop!!)
-                result.success(null)
+                val autoLoop = call.requireBooleanArg("autoLoop")
+                player.setAutoLoop(autoLoop)
+                result.successUnit()
             }
             METHOD_PLAY -> {
                 if (isAndroidHigherM && !player.disableRemoteControl) {
                     setupNotification(flutterState.applicationContext, textureId, player)
                 }
                 player.play()
-                result.success(null)
+                result.successUnit()
             }
             METHOD_PAUSE -> {
                 player.pause()
-                result.success(null)
+                result.successUnit()
             }
             METHOD_REFRESH_PLAYER -> {
                 val location = player.exoPlayer.currentPosition.toInt() + 1
@@ -287,13 +269,13 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 result.success(null)
             }
             METHOD_SEEK_TO -> {
-                val location = (call.argument("position") as Number?)!!.toInt()
+                val location = call.requireIntArg("position")
                 player.seekTo(location)
-                result.success(null)
+                result.successUnit()
             }
             METHOD_DISPOSE -> {
                 dispose(player, textureId)
-                result.success(null)
+                result.successUnit()
             }
             METHOD_WILL_EXIT_FULLSCREEN -> {}
             METHOD_ENABLE_PICTURE_IN_PICTURE -> {
@@ -304,39 +286,26 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                     }
                     enablePictureInPicture(flutterState.applicationContext, activity!!, player)
                 }
-                result.success(null)
+                result.successUnit()
             }
             METHOD_DISABLE_PICTURE_IN_PICTURE -> {
                 disablePictureInPicture(player)
-                result.success(null)
+                result.successUnit()
             }
             METHOD_SET_MUTED -> {
-                player.isMuted = call.argument("muted")!!
-                result.success(null)
+                player.isMuted = call.requireBooleanArg("muted")
+                result.successUnit()
             }
             METHOD_SET_PLAYBACK_RATE -> {
-                val rate = (call.argument("rate") as Number?)!!.toFloat()
-                player.playbackSpeed = rate
-                result.success(null)
+                player.playbackSpeed = call.floatArg("rate")
+                result.successUnit()
             }
             METHOD_SET_TRACK_PARAMETERS -> {
-                val width: Int = if (call.argument<Any>("width") is Number) {
-                    call.argument<Number>("width")!!.toInt()
-                } else {
-                    0
-                }
-                val height = if (call.argument<Any>("height") is Number) {
-                    call.argument<Number>("height")!!.toInt()
-                } else {
-                    0
-                }
-                val bitrate = if (call.argument<Any>("bitrate") is Number) {
-                    call.argument<Number>("bitrate")!!.toInt()
-                } else {
-                    0
-                }
+                val width = call.intArgOrDefault("width")
+                val height = call.intArgOrDefault("height")
+                val bitrate = call.intArgOrDefault("bitrate")
                 player.setTrackParameters(width, height, bitrate)
-                result.success(null)
+                result.successUnit()
             }
             METHOD_EXPAND -> {}
             METHOD_SHRINK -> {}
@@ -388,41 +357,25 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
     private fun setDataSource(call: MethodCall, textureId: Long, player: VideoPlayer) {
         val dataSource = call.argument<Map<String, Any?>>("dataSource")!!
         dataSources.put(textureId, dataSource)
-        val disableRemoteControl = DataSourceUtils.getParameter<Boolean>(dataSource, "disableRemoteControl", false)
-        player.disableRemoteControl = disableRemoteControl
+        player.disableRemoteControl =
+            DataSourceUtils.getParameter(dataSource, "disableRemoteControl", false)
+
+        val headers = dataSource["headers"].asStringMap()
         val offlineKey = DataSourceUtils.getParameter<String?>(dataSource, "offlineKey", null)
         if (offlineKey != null) {
-            // headers may come as Map<String, String?>; filter nulls and coerce to String
-            @Suppress("UNCHECKED_CAST")
-            val rawHeaders: Map<String, Any?>? = dataSource["headers"] as? Map<String, Any?>
-            val headers: Map<String, String> = rawHeaders
-                ?.mapNotNull { (k, v) ->
-                    val value = (v as? String)
-                    if (k is String && value != null) k to value else null
-                }
-                ?.toMap() ?: emptyMap()
-
             val widevineLicenseUrl = DataSourceUtils.getParameter(dataSource, "widevineLicenseUrl", "")
             player.setOfflineDataSource(offlineKey, widevineLicenseUrl, headers)
-        } else {
-            // headers may come as Map<String, String?>; filter nulls and coerce to String
-            @Suppress("UNCHECKED_CAST")
-            val rawHeaders: Map<String, Any?>? = dataSource["headers"] as? Map<String, Any?>
-            val headers: Map<String, String> = rawHeaders
-                ?.mapNotNull { (k, v) ->
-                    val value = (v as? String)
-                    if (k is String && value != null) k to value else null
-                }
-                ?.toMap() ?: emptyMap()
-            val fileUrl = DataSourceUtils.getParameter(dataSource, "fileUrl", "")
-            val drmDashFileUrl = DataSourceUtils.getParameter(dataSource, "drmDashFileUrl", "")
-            val widevineLicenseUrl = DataSourceUtils.getParameter(dataSource, "widevineLicenseUrl", "")
+            return
+        }
 
-            if (drmDashFileUrl.isNotEmpty() && widevineLicenseUrl.isNotEmpty()) {
-                player.setDrmDataSource(drmDashFileUrl, widevineLicenseUrl, headers)
-            } else {
-                player.setNetworkDataSource(fileUrl, headers)
-            }
+        val fileUrl = DataSourceUtils.getParameter(dataSource, "fileUrl", "")
+        val drmDashFileUrl = DataSourceUtils.getParameter(dataSource, "drmDashFileUrl", "")
+        val widevineLicenseUrl = DataSourceUtils.getParameter(dataSource, "widevineLicenseUrl", "")
+
+        if (drmDashFileUrl.isNotEmpty() && widevineLicenseUrl.isNotEmpty()) {
+            player.setDrmDataSource(drmDashFileUrl, widevineLicenseUrl, headers)
+        } else {
+            player.setNetworkDataSource(fileUrl, headers)
         }
     }
 
@@ -444,6 +397,43 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         pipListener.stopPipHandler()
         activity?.moveTaskToBack(false)
         player.disposeMediaSession()
+    }
+
+    private fun MethodCall.requireStringArg(name: String): String =
+        requireNotNull(argument<String>(name)) { "$name is null" }
+
+    private fun MethodCall.requireBooleanArg(name: String): Boolean =
+        requireNotNull(argument<Boolean>(name)) { "$name is null" }
+
+    private fun MethodCall.requireIntArg(name: String): Int =
+        (argument<Any>(name) as? Number)?.toInt()
+            ?: throw IllegalArgumentException("$name is null or not a number")
+
+    private fun MethodCall.floatArg(name: String): Float =
+        (argument<Any>(name) as? Number)?.toFloat()
+            ?: throw IllegalArgumentException("$name is null or not a number")
+
+    private fun MethodCall.intArgOrDefault(name: String): Int =
+        (argument<Any>(name) as? Number)?.toInt() ?: 0
+
+    private fun Result.successUnit() = success(null)
+
+    private inline fun withKey(call: MethodCall, result: Result, block: (String) -> Unit) {
+        val key = call.requireStringArg("key")
+        block(key)
+        result.successUnit()
+    }
+
+    private fun Any?.asStringMap(): Map<String, String> {
+        val source = this as? Map<*, *> ?: return emptyMap()
+        if (source.isEmpty()) return emptyMap()
+        val headers = mutableMapOf<String, String>()
+        source.forEach { (key, value) ->
+            if (key is String && value is String) {
+                headers[key] = value
+            }
+        }
+        return headers
     }
 
     private class FlutterState(
