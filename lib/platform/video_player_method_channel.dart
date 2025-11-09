@@ -254,16 +254,6 @@ class MethodChannelVideoPlayer extends VideoPlayerPlatform {
       );
 
   @override
-  Future<void> refreshPlayer(int? textureId) {
-    return methodChannel.invokeMethod<void>(
-      'refreshPlayer',
-      <String, dynamic>{
-        'textureId': textureId,
-      },
-    );
-  }
-
-  @override
   Future<void> seekTo(int? textureId, Duration position) {
     return methodChannel.invokeMethod<void>(
       'seekTo',

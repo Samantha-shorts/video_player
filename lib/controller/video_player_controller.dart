@@ -363,11 +363,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
     await VideoPlayerPlatform.instance.pause(textureId);
   }
 
-  Future<void> refreshPlayer() async {
-    if (!value.initialized || _isDisposed) return;
-    await VideoPlayerPlatform.instance.refreshPlayer(textureId);
-  }
-
   Future<void> seekTo(Duration? position) async {
     if (!value.initialized || _isDisposed || position == null) {
       return;

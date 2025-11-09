@@ -263,11 +263,6 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
                 player.pause()
                 result.successUnit()
             }
-            METHOD_REFRESH_PLAYER -> {
-                val location = player.exoPlayer.currentPosition.toInt() + 1
-                player.seekTo(location)
-                result.success(null)
-            }
             METHOD_SEEK_TO -> {
                 val location = call.requireIntArg("position")
                 player.seekTo(location)
@@ -477,7 +472,6 @@ class VideoPlayerPlugin : FlutterPlugin, MethodCallHandler, ActivityAware {
         private const val METHOD_SET_AUTO_LOOP = "setAutoLoop"
         private const val METHOD_PLAY = "play"
         private const val METHOD_PAUSE = "pause"
-        private const val METHOD_REFRESH_PLAYER = "refreshPlayer"
         private const val METHOD_SEEK_TO = "seekTo"
         private const val METHOD_DISPOSE = "dispose"
         private const val METHOD_WILL_EXIT_FULLSCREEN = "willExitFullscreen"

@@ -84,11 +84,6 @@ class _PlayerState extends State<_Player> {
         });
       }
 
-      if (Platform.isAndroid &&
-          widget.controller.value.eventType ==
-              VideoPlayerEventType.fullscreenChanged) {
-        widget.controller.refreshPlayer();
-      }
     };
   }
 
