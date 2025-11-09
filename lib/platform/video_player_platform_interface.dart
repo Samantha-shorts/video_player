@@ -62,9 +62,6 @@ abstract class VideoPlayerPlatform extends PlatformInterface {
   Future<void> pause(int? textureId) =>
       throw UnimplementedError('pause() has not been implemented.');
 
-  Future<void> refreshPlayer(int? textureId) =>
-      throw UnimplementedError('pause() has not been implemented.');
-
   /// Sets the video position to a [Duration] from the start.
   Future<void> seekTo(int? textureId, Duration position) =>
       throw UnimplementedError('seekTo() has not been implemented.');

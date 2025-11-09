@@ -142,7 +142,7 @@ class MoreButtonState extends VideoPlayerControllerState<MoreButton> {
       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
       color: isSelected
           ? controlsConfiguration.overflowModalTextColor
-          : controlsConfiguration.overflowModalTextColor.withOpacity(0.7),
+          : controlsConfiguration.overflowModalTextColor.withValues(alpha: 0.7),
     );
   }
 

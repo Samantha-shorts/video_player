@@ -27,7 +27,7 @@ class _ScrollVideoPageState extends State<ScrollVideoPage> {
         },
         itemCount: 10,
         onPageChanged: (value) {
-          print(value);
+          debugPrint(value.toString());
         },
       ),
     );
@@ -46,7 +46,6 @@ class _Page extends StatefulWidget {
 class __PageState extends State<_Page> {
   @override
   void initState() {
-    // TODO: implement initState
     super.initState();
     controller.setNetworkDataSource(
       fileUrl: Constants.m3u8_16x9,

@@ -58,6 +58,8 @@ class VideoPlayer(
     var isInitialized = false
     private var lastSendBufferedPosition = 0L
     private var mediaSession: MediaSessionCompat? = null
+    private val surfaceOwnerLock = Any()
+    private var currentSurfaceOwner: Any? = null
 
     var handler = Handler(Looper.getMainLooper())
     val runnable: Runnable
@@ -356,6 +358,22 @@ class VideoPlayer(
             parametersBuilder.setMaxVideoBitrate(Int.MAX_VALUE)
         }
         trackSelector.setParameters(parametersBuilder)
+    }
+
+    fun bindVideoSurface(owner: Any, surface: Surface) {
+        synchronized(surfaceOwnerLock) {
+            currentSurfaceOwner = owner
+            exoPlayer.setVideoSurface(surface)
+        }
+    }
+
+    fun clearVideoSurface(owner: Any) {
+        synchronized(surfaceOwnerLock) {
+            if (currentSurfaceOwner == owner) {
+                currentSurfaceOwner = null
+                exoPlayer.setVideoSurface(null)
+            }
+        }
     }
 
     fun onPictureInPictureStatusChanged(isPip: Boolean) {

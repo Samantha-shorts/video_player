@@ -224,7 +224,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   /// Set data source for playing a video from obtained from
   /// the network.
   Future<void> setNetworkDataSource({
-    // TODO: null safety
     String? fileUrl,
     String? drmDashFileUrl,
     String? drmHlsFileUrl,
@@ -362,11 +361,6 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
   Future<void> pause() async {
     if (!value.initialized || _isDisposed || !value.isPlaying) return;
     await VideoPlayerPlatform.instance.pause(textureId);
-  }
-
-  Future<void> refreshPlayer() async {
-    if (!value.initialized || _isDisposed) return;
-    await VideoPlayerPlatform.instance.refreshPlayer(textureId);
   }
 
   Future<void> seekTo(Duration? position) async {
