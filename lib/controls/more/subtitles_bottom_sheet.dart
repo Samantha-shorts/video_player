@@ -6,11 +6,15 @@ class SubtitlesBottomSheet extends StatefulWidget {
   });
 
   static show(BuildContext context) {
+    final controller = VideoPlayerController.of(context);
     showModalBottomSheet<void>(
       backgroundColor: Colors.transparent,
       context: context,
       builder: (context) {
-        return const SubtitlesBottomSheet();
+        return VideoPlayerControllerProvider(
+          controller: controller,
+          child: const SubtitlesBottomSheet(),
+        );
       },
     );
   }

@@ -6,11 +6,15 @@ class PlaybackSpeedBottomSheet extends StatefulWidget {
   });
 
   static show(BuildContext context) {
+    final controller = VideoPlayerController.of(context);
     showModalBottomSheet<void>(
       backgroundColor: Colors.transparent,
       context: context,
       builder: (context) {
-        return const PlaybackSpeedBottomSheet();
+        return VideoPlayerControllerProvider(
+          controller: controller,
+          child: const PlaybackSpeedBottomSheet(),
+        );
       },
     );
   }
