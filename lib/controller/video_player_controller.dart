@@ -434,16 +434,33 @@ class VideoPlayerController extends ValueNotifier<VideoPlayerValue> {
       VideoPlayerPlatform.instance.isPictureInPictureSupported();
 
   Future<void> enablePictureInPicture() async {
+    if (_isDisposed) {
+      return;
+    }
+    final textureId = _textureId;
+    if (textureId == null) {
+      return;
+    }
     final bool isPipSupported = await isPictureInPictureSupported();
-    if (!isPipSupported) return;
+    if (!isPipSupported) {
+      return;
+    }
     await VideoPlayerPlatform.instance.enablePictureInPicture(textureId);
     if (Platform.isAndroid) {
       enterFullscreen();
     }
   }
 
-  Future<void> disablePictureInPicture() =>
-      VideoPlayerPlatform.instance.disablePictureInPicture(textureId);
+  Future<void> disablePictureInPicture() {
+    if (_isDisposed) {
+      return Future<void>.value();
+    }
+    final textureId = _textureId;
+    if (textureId == null) {
+      return Future<void>.value();
+    }
+    return VideoPlayerPlatform.instance.disablePictureInPicture(textureId);
+  }
 
   Future<void> setMuted(bool isMuted) {
     value = value.copyWith(isMuted: isMuted);
